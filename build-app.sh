@@ -184,6 +184,8 @@ cp "$DIR/assets/walkie-bound.png" "$CONTENTS/Resources/walkie-bound.png"
 # assembled by hand. `CaretHalo` also finds it in `assets/` when the binary is
 # run straight out of `.build`, which is how the contact sheet and the demo run.
 cp "$DIR/assets/caret-halo-5x5.png" "$CONTENTS/Resources/caret-halo-5x5.png"
+# The ⚡ quick question's film (`CaretHalo.questionLayer`, `tools/build-question-mark.py`).
+cp "$DIR/assets/question-mark-8x6.png" "$CONTENTS/Resources/question-mark-8x6.png"
 # The halo preview's voice: one clip of his own, copied out of the corpus (see
 # `ClipVoice`). Never played aloud.
 cp "$DIR/assets/halo-voice.wav" "$CONTENTS/Resources/halo-voice.wav"

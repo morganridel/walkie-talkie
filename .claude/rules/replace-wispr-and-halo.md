@@ -431,6 +431,19 @@ fade out foarte repede, după ce dictarea s-a injectat cu succes. În timp cât 
   afternoon's bow (*"a bit elliptical"*, then *"concave"*) is gone. The Reverse tunnel is left only
   for a dress that cannot ride (and the spawn keeps Sparks).
 - **A ⚡ quick question wears Reverse tunnel and nothing else** (2026-10-09, Victor: *"the effect associated during the dictation should be the reverse tunnel … no second effect … then getting smaller until it disappears, fading out around the mouse"*). `CaretHalo.quick` (pushed from `syncBorrowedGestures` as `quickAsk`) makes `setDestination` wear `tunnelStyle`; the same sync keeps `setRewind`, `setCoasting`, `setDelivering` and the arrow off, so the close goes straight to `hide`'s collapse into the pointer — `quickCollapse` 1 s, the ink fading the whole way rather than in its last fifth. The reply pop-up sits above the halo's level and opens on the answer's first words, not before (*"no prompt preview because it's super fast"*).
+  **Superseded on the dress, 2026-10-11**: the effect is the `Question` row's (`HaloDestination.quick`),
+  default **Question mark** (`HaloStyle.questionMark`, Victor: *"redai acest semn al întrebării …
+  zonele negre să fie transparente … mai opac sau mai puțin opac în funcție de cum vorbesc … în
+  buclă"*). `setDestination` no longer forces `tunnelStyle` when `quick` — doing so since the row
+  existed (2026-10-10) had made the row a dead switch. The one-effect, no-rewind, 1 s collapse rules
+  above stand. The film: `assets/question-mark-8x6.png`, built by `tools/build-question-mark.py`
+  from his clip (720 px square crop on the mark, keyed `a = max(r,g,b)` above a 0.03 floor, radial
+  fade to the cell edge, 48 cells = every 2nd frame of a 4 s stretch played at 12 fps — real time —
+  the last 8 cells smoothstep-blended into the frames that lead into the first). Seam measured:
+  last→first cell 0.0061 mean abs diff vs 0.0101 median step. `CaretHalo.questionLayer`: discrete
+  reel, no spin, no ring mask, 300 pt cell centred on the pointer; window alpha
+  `questionRest` 0.22 → `questionLoud` 0.92 on `level` (wider than the ring's, by request), the 20 %
+  swell kept. `isFilm` marks the two native films (never a fallback, separator after them in 𝓯𝔁).
 - **The dust circles the caret when Accessibility can find one** (2026-10-10, Victor: *"shouldn't go
   and circle around the window, but should circle around the cursor if we can locate a cursor into
   the window … the diameter … should be a bit smaller … only for the dust"*). `aimRewind` asks

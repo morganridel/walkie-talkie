@@ -798,17 +798,19 @@ final class CaretHalo {
     /// with it, the same way the arrow stops asking for a place to paste.
     func setDestination(_ new: HaloDestination) {
         destination = new
-        use(rewinding ? rewindStyle : quick ? Self.tunnelStyle : HaloStyle.current(for: new))
+        use(rewinding ? rewindStyle : HaloStyle.current(for: new))
     }
 
-    /// **A ⚡ quick question wears Reverse tunnel, and only that** (2026-10-09,
-    /// Victor: *"the effect associated during the dictation should be the
-    /// reverse tunnel … no second effect, just the reverse tunnel … then getting
-    /// smaller until it disappears, fading out around the mouse"*). Set from
-    /// `syncBorrowedGestures` before `setDestination`; the same sync keeps the
-    /// rewind, the coast and the heads off, so at the close the ring goes
-    /// straight into `hide`'s collapse — stretched to `quickCollapse` and fading
-    /// the whole way, under the reply pop-up that opens on the answer's first words.
+    /// **A ⚡ quick question has one effect** (2026-10-09, Victor: *"no second
+    /// effect … then getting smaller until it disappears, fading out around the
+    /// mouse"*). Which one is the `Question` row's (`HaloDestination.quick`,
+    /// the electric question mark since 2026-10-11) — it was Reverse tunnel,
+    /// forced here, until the row existed; forcing it after 2026-10-10 made the
+    /// row a dead switch. Set from `syncBorrowedGestures` before
+    /// `setDestination`; the same sync keeps the rewind, the coast and the heads
+    /// off, so at the close the ring goes straight into `hide`'s collapse —
+    /// stretched to `quickCollapse` and fading the whole way, under the reply
+    /// pop-up that opens on the answer's first words.
     var quick = false
     private static let quickCollapse: TimeInterval = 1.0
 
@@ -2422,7 +2424,8 @@ final class CaretHalo {
             return
         }
         let loud = CGFloat(max(0, min(1, level?() ?? 0)))
-        let floor = Self.opacity(Self.rest), ceiling = Self.opacity(Self.loud)
+        let (floor, ceiling) = drawn == .questionMark ? (Self.questionRest, Self.questionLoud)
+            : (Self.opacity(Self.rest), Self.opacity(Self.loud))
         panel.alphaValue = (floor + (ceiling - floor) * loud) * coastFactor
         // The scale is set on `pulse` and nowhere else — `stage` belongs to the
         // collapse and the film to the spin, and a layer whose transform is
@@ -2811,11 +2814,16 @@ final class CaretHalo {
     /// how the contact sheet is shot — and `WT_HALO_IMAGE` overriding both, so a
     /// candidate sheet can be tried without touching the repo.
     private static func artworkFile() -> (URL, Int, Int)? {
+        sheetFile(["caret-halo-5x5.png", "caret-halo.png"], override: "WT_HALO_IMAGE")
+    }
+
+    /// A bundled sprite sheet and its grid — the lookup `artworkFile` documents,
+    /// shared with the question mark's film.
+    private static func sheetFile(_ names: [String], override env: String) -> (URL, Int, Int)? {
         var candidates: [URL] = []
-        if let override = ProcessInfo.processInfo.environment["WT_HALO_IMAGE"] {
+        if let override = ProcessInfo.processInfo.environment[env] {
             candidates.append(URL(fileURLWithPath: override))
         }
-        let names = ["caret-halo-5x5.png", "caret-halo.png"]
         if let res = Bundle.main.resourcePath {
             for n in names { candidates.append(URL(fileURLWithPath: res).appendingPathComponent(n)) }
         }
@@ -2837,6 +2845,77 @@ final class CaretHalo {
         else { return (url, 1, 1) }
         return (url, c, r)
     }
+
+    /// **The ⚡ quick question's film** (2026-10-11): `question-mark-8x6.png`,
+    /// 48 cells of a golden electric `?` keyed off black, played as a loop.
+    ///
+    /// Everything the ring's film needs to be measured for is already done in
+    /// the sheet (`tools/build-question-mark.py`): the mark is in the middle of
+    /// each cell, the black is alpha, the bolts that run off the crop fade to
+    /// nothing before its edge, and the seam is cross-faded — the last half
+    /// second blends into the frames that lead into the first, so the jump
+    /// back reads as the clip going on. So this only cuts the cells and runs
+    /// them: **discrete** (lightning does not tween, the ring's rule), at the
+    /// clip's own pace — 12 fps over every second frame is real time, and the
+    /// crackle is the clip's, not a speed-up of it.
+    ///
+    /// Not spun and not masked by the ring's envelope: the envelope is an
+    /// annulus with a hole where the `?` is.
+    static func questionLayer(side: CGFloat) -> CALayer? {
+        if questionFrames == nil {
+            guard let (url, cols, rows) = sheetFile(["question-mark-8x6.png"], override: "WT_QUESTION_IMAGE"),
+                  let file = NSImage(contentsOf: url),
+                  let sheet = file.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                Log.info("◯ caret halo: no question-mark sheet found — drawing the lightning film instead")
+                return nil
+            }
+            let cw = sheet.width / cols, ch = sheet.height / rows
+            var frames: [CGImage] = []
+            for r in 0..<rows {
+                for c in 0..<cols {
+                    if let cell = sheet.cropping(to: CGRect(x: c * cw, y: r * ch, width: cw, height: ch)) {
+                        frames.append(cell)
+                    }
+                }
+            }
+            guard !frames.isEmpty else { return nil }
+            questionFrames = frames
+            Log.info("◯ caret halo: question mark film, \(frames.count) frames of \(cw)px, a \(String(format: "%.1f", Double(frames.count) / questionFps)) s loop")
+        }
+        guard let frames = questionFrames else { return nil }
+        let container = CALayer()
+        container.frame = CGRect(x: 0, y: 0, width: side, height: side)
+        let film = CALayer()
+        let size = min(side, questionSize)
+        film.frame = CGRect(x: (side - size) / 2, y: (side - size) / 2, width: size, height: size)
+        film.contentsGravity = .resize
+        film.magnificationFilter = .trilinear
+        film.contents = frames[0]
+        let reel = CAKeyframeAnimation(keyPath: "contents")
+        reel.values = frames
+        reel.calculationMode = .discrete
+        reel.duration = Double(frames.count) / questionFps
+        reel.repeatCount = .infinity
+        // The ring's reason: the panel is ordered out between dictations, not
+        // rebuilt, and a reel that tidied itself away would leave a still `?`.
+        reel.isRemovedOnCompletion = false
+        film.add(reel, forKey: "reel")
+        container.addSublayer(film)
+        return container
+    }
+
+    /// Decoded once; a style change rebuilds the panel, not the cells.
+    private static var questionFrames: [CGImage]?
+    /// Every second frame of a 24 fps clip — real time.
+    private static let questionFps = 12.0
+    /// The cell on screen, in points: the `?` itself is about half of it.
+    private static let questionSize: CGFloat = 300
+    /// **The voice moves it from barely there to nearly solid** — *"mai opac sau
+    /// mai puțin opac în funcție de cum vorbesc"*. Wider than the ring's
+    /// 0.148…0.535: the ring is a rim round what he reads, this is a sign he
+    /// asked for, and a range he can see is the whole of the request.
+    static let questionRest: CGFloat = 0.22
+    static let questionLoud: CGFloat = 0.92
 
     /// **The strokes, drawn once and faded by the same curve the gradient uses.**
     ///
@@ -3218,7 +3297,7 @@ final class CaretHalo {
         // **What this panel draws.** The page, if the style asks for one and
         // it can be had; the film otherwise — and the film always for
         // `.lightning`, which never touches a web view.
-        drawn = style != .lightning && !pageBroken && style.isAvailable ? style : .lightning
+        drawn = style.isFilm || (!pageBroken && style.isAvailable) ? style : .lightning
         if drawn != style {
             Log.error("◯ caret halo: \(style.rawValue) asked for, drawing the film — \(pageBroken ? "the page failed this style" : (style.unavailableReason ?? "unavailable"))")
         }
@@ -3305,7 +3384,7 @@ final class CaretHalo {
             web = host
             Log.info("◯ caret halo: \(drawn.rawValue) — \(drawn.title), the page in a \(Int(frame.width))×\(Int(frame.height))pt web view")
         } else {
-            if drawn != .lightning {
+            if !drawn.isFilm {
                 // The host found no page after `isAvailable` said there was
                 // one — a race with an install; the film, on the film's own
                 // frame, and no retry until the style changes.
@@ -3313,24 +3392,30 @@ final class CaretHalo {
                 Log.error("◯ caret halo: the page vanished between the check and the load — drawing the film")
                 return makePanel()
             }
-            halo = Self.haloLayer(side: side)
-            // **The turn goes on the halo, not on the stage** — see `stage` for why
-            // the two motions may not share a layer. Its box is the whole panel, so
-            // its centre is the pointer, and the picture inside is hung with its own
-            // centroid on that same point: the rotation therefore has no radius to
-            // wobble around. The envelope goes round with it and cannot tell,
-            // because a radial mask turned about its centre is the same mask.
-            let turn = CABasicAnimation(keyPath: "transform.rotation.z")
-            turn.fromValue = 0
-            turn.toValue = -2 * Double.pi
-            turn.duration = Self.spin
-            turn.repeatCount = .infinity
-            // Like the film's own reel, and for the film's own reason: the panel is
-            // ordered out between dictations rather than rebuilt, so an animation
-            // that tidied itself away would leave a ring that turns for one sentence
-            // and stands still for every one after it.
-            turn.isRemovedOnCompletion = false
-            halo.add(turn, forKey: "spin")
+            if drawn == .questionMark, let film = Self.questionLayer(side: side) {
+                // No spin: a question mark turning round the pointer is a
+                // question mark upside down half the time.
+                halo = film
+            } else {
+                halo = Self.haloLayer(side: side)
+                // **The turn goes on the halo, not on the stage** — see `stage` for why
+                // the two motions may not share a layer. Its box is the whole panel, so
+                // its centre is the pointer, and the picture inside is hung with its own
+                // centroid on that same point: the rotation therefore has no radius to
+                // wobble around. The envelope goes round with it and cannot tell,
+                // because a radial mask turned about its centre is the same mask.
+                let turn = CABasicAnimation(keyPath: "transform.rotation.z")
+                turn.fromValue = 0
+                turn.toValue = -2 * Double.pi
+                turn.duration = Self.spin
+                turn.repeatCount = .infinity
+                // Like the film's own reel, and for the film's own reason: the panel is
+                // ordered out between dictations rather than rebuilt, so an animation
+                // that tidied itself away would leave a ring that turns for one sentence
+                // and stands still for every one after it.
+                turn.isRemovedOnCompletion = false
+                halo.add(turn, forKey: "spin")
+            }
         }
         // **A third layer, for a third motion.** `stage` belongs to the collapse
         // and the film to the spin, and the swell is written from a timer 20

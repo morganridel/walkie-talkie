@@ -708,8 +708,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
             row.isEnabled = style.isAvailable
             row.image = style == ticked ? Self.symbolIcon("checkmark") : Self.blankIcon
             menu.addItem(row)
-            // The film first and apart: the default, and the one drawn natively.
-            if style == .lightning { menu.addItem(.separator()) }
+            // The films first and apart: the two drawn natively.
+            if style == .questionMark { menu.addItem(.separator()) }
         }
     }
 

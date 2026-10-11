@@ -274,7 +274,8 @@ can"*, on his subscription; *"the key to bind it to. I think forward and left"*.
   nothing is typed anywhere, no outbox line, the question goes on the clipboard (Q17),
   `lastDelivery.to = "quick"`. The chip's destination row says `⚡ quick answer — opus`.
   **Its own halo** (2026-10-10, *"add menu: question with liquid cursor as default for now"*):
-  `HaloDestination.quick`, the 𝓯𝔁 menu's `Question` row, **Liquid cursor** unless picked.
+  `HaloDestination.quick`, the 𝓯𝔁 menu's `Question` row, **Question mark** unless picked
+  (Liquid cursor until 2026-10-11 — `replace-wispr-and-halo.md`).
   `quickAsk` is an `Envelope` field.
 - **The answer streams into the reply pop-up** (`ReplyPanel.live`), header `⚡ <the question>` so
   he sees what was heard, no tty, so only the ✕. It opens at once — an agent's open pop-up steps

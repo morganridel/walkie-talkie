@@ -26,6 +26,14 @@ enum HaloStyle: String, CaseIterable {
     /// **What ships and what he uses every day** — the rotating lightning film
     /// in `CaretHalo`. Native, never waits on a web view.
     case lightning
+    /// **The ⚡ quick question's own film** (Victor, 2026-10-11: *"redai acest
+    /// semn al întrebării … zonele negre să fie transparente … mai opac sau mai
+    /// puțin opac în funcție de cum vorbesc … în buclă"*). A golden electric `?`
+    /// keyed off black, `assets/question-mark-8x6.png` (`tools/build-question-mark.py`
+    /// from his clip): 48 cells, a 4 s loop at 12 fps whose last half-second is
+    /// cross-faded into the frames that lead into its first. Native like the
+    /// lightning film — no spin, the voice moves its opacity over a wider range.
+    case questionMark
     /// Page 1, *Pulse*: inel de undă — cerc perfect în tăcere, se rotește.
     case waveRing
     /// Page 2, *Amethyst*: oscilogramă mov — albastrul și roșul suprapuse.
@@ -122,10 +130,14 @@ enum HaloStyle: String, CaseIterable {
     /// Pavel din 2017, la parametrii paginii lor (`pmh_set_canvas` mod 6).
     case smoke
 
+    /// **Drawn natively from a sprite sheet** — never a web view, never a fallback.
+    var isFilm: Bool { self == .lightning || self == .questionMark }
+
     /// The menu row's wording — Victor's short names.
     var title: String {
         switch self {
         case .lightning:      return "Lightning ring"
+        case .questionMark:   return "Question mark"
         case .waveRing:       return "Pulse"
         case .oscillogram:    return "Amethyst"
         case .crown:          return "Crown"
@@ -861,8 +873,9 @@ enum HaloDestination: String, CaseIterable {
         // **Mosaic** (*"când am Wispr Flow, dictare să apară mozaic"*) —
         // brought back from the page's `−` list for this one destination.
         case .wispr: return .milkdrop99   // Mosaic
-        // *"for now"* — the sparks on high-contrast edges are meant to take it.
-        case .quick: return .liquidCursor
+        // Liquid cursor *"for now"* (2026-10-10) until his own picture came
+        // the next day: the electric question mark.
+        case .quick: return .questionMark
         }
     }
 
