@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import QuartzCore
 
 /// **A halo round the pointer for the whole of every dictation — breathing and
@@ -681,7 +682,7 @@ final class CaretHalo {
     /// than the window moved, so nothing an effect draws to the screen's edge
     /// is ever clipped by a window smaller than the screen.
     private func panelFrame() -> NSRect {
-        if drawn.preset?.anchored == true, let a = anchor ?? anchoredFrame() { return a }
+        if drawn.isAnchored, let a = anchor ?? anchoredFrame() { return a }
         let mouse = aim
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
             ?? NSScreen.main ?? NSScreen.screens[0]
@@ -715,9 +716,11 @@ final class CaretHalo {
     /// and sits in the Retina's middle like Stars. No built-in display (lid
     /// shut): the pointer's screen, as before.
     private func anchoredFrame() -> NSRect? {
-        guard let preset = drawn.preset else { return nil }
         let mouse = NSEvent.mouseLocation
         let f = (Self.retina ?? NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens[0]).frame
+        // The question mark is the screen itself, not a square on it.
+        if drawn == .questionMark { return f }
+        guard let preset = drawn.preset else { return nil }
         let s = (max(f.width, f.height) * preset.scale).rounded()
         if preset.centred || !NSMouseInRect(mouse, f, false) { return NSRect(x: (f.midX - s / 2).rounded(), y: (f.midY - s / 2).rounded(), width: s, height: s) }
         func place(_ p: CGFloat, _ lo: CGFloat, _ len: CGFloat) -> CGFloat {
@@ -1750,14 +1753,15 @@ final class CaretHalo {
         stage?.removeAnimation(forKey: "bloom")
         // After `makePanel`, never before: building the layer is what measures
         // the picture and so what sets `artworkGain`.
-        panel.alphaValue = Self.opacity(Self.rest)
+        panel.alphaValue = drawn == .questionMark ? 0 : Self.opacity(Self.rest)
+        if drawn == .questionMark { Self.questionPlayer?.play() }
         // The swell and the arrow are both left wherever the last sentence
         // ended, and a ring that comes up 20% oversized on a syllable nobody has
         // said yet is the same lie a frozen indicator tells. The stage is set
         // to full size or to the pointer's dot, depending on how this one opens.
         small = opening != .whole
         if !rewinding { fadeAim = nil }
-        if drawn.preset?.anchored == true, let a = anchoredFrame() {
+        if drawn.isAnchored, let a = anchoredFrame() {
             anchor = a
             panel.setFrameOrigin(a.origin)
         } else {
@@ -1980,6 +1984,7 @@ final class CaretHalo {
             self.closing = false
             self.releaseMonitorsIfIdle()
             self.panel?.orderOut(nil)
+            Self.questionPlayer?.pause()
             stage.removeAnimation(forKey: "collapse")
             stage.removeAnimation(forKey: "collapse-ink")
         }
@@ -2103,7 +2108,7 @@ final class CaretHalo {
         // everything that rides it, the middle of what is seen for an anchored
         // square — Stars sits in the middle of the Retina, the puzzle where
         // the pointer was when it rose.
-        let rides = drawn.preset?.anchored != true
+        let rides = !drawn.isAnchored
         let p = aim
         let focus = rides && NSMouseInRect(p, seen, false)
             ? CGPoint(x: p.x - from.minX, y: p.y - from.minY)
@@ -2349,7 +2354,7 @@ final class CaretHalo {
         // A preset's square is bigger than the ring's, so the origin is the
         // frame's rather than `Self.origin()`, which the arrow keeps.
         // An `anchored` preset's square stays where `show` put it; only the arrow rides the pointer.
-        if drawn.preset?.anchored == true, anchor != nil {
+        if drawn.isAnchored, anchor != nil {
             delivering && !rewinding ? arrow.hold(at: Self.origin()) : arrow.place(at: Self.origin())
             return
         }
@@ -2424,8 +2429,19 @@ final class CaretHalo {
             return
         }
         let loud = CGFloat(max(0, min(1, level?() ?? 0)))
-        let (floor, ceiling) = drawn == .questionMark ? (Self.questionRest, Self.questionLoud)
-            : (Self.opacity(Self.rest), Self.opacity(Self.loud))
+        if drawn == .questionMark {
+            // **Nothing at all in silence** (2026-10-11, *"să dispară complet
+            // atunci când nu se aude niciun zgomot"*): no floor, and the meter's
+            // three-second linear fall cut short — past `questionQuiet` of audio
+            // with nothing over the voiced bar it is gone within a second. The
+            // film runs on underneath, so it comes back mid-crackle.
+            let q = CGFloat(quietSeconds?() ?? 0)
+            let t = min(max((q - Self.questionQuiet.lowerBound) / (Self.questionQuiet.upperBound - Self.questionQuiet.lowerBound), 0), 1)
+            panel.alphaValue = Self.questionLoud * loud * (1 - t * t * (3 - 2 * t)) * coastFactor
+            arrow.refresh(quiet: quietSeconds?() ?? 0, at: Self.origin())
+            return
+        }
+        let floor = Self.opacity(Self.rest), ceiling = Self.opacity(Self.loud)
         panel.alphaValue = (floor + (ceiling - floor) * loud) * coastFactor
         // The scale is set on `pulse` and nowhere else — `stage` belongs to the
         // collapse and the film to the spin, and a layer whose transform is
@@ -2846,76 +2862,48 @@ final class CaretHalo {
         return (url, c, r)
     }
 
-    /// **The ⚡ quick question's film** (2026-10-11): `question-mark-8x6.png`,
-    /// 48 cells of a golden electric `?` keyed off black, played as a loop.
+    /// **The ⚡ quick question's film** (2026-10-11): `question-mark.mov`, a
+    /// golden electric `?` over the whole Retina, looped.
     ///
-    /// Everything the ring's film needs to be measured for is already done in
-    /// the sheet (`tools/build-question-mark.py`): the mark is in the middle of
-    /// each cell, the black is alpha, the bolts that run off the crop fade to
-    /// nothing before its edge, and the seam is cross-faded — the last half
-    /// second blends into the frames that lead into the first, so the jump
-    /// back reads as the clip going on. So this only cuts the cells and runs
-    /// them: **discrete** (lightning does not tween, the ring's rule), at the
-    /// clip's own pace — 12 fps over every second frame is real time, and the
-    /// crackle is the clip's, not a speed-up of it.
+    /// A video, not a sprite sheet: at the screen's size a sheet would be
+    /// either 3× upscaled mush or ~100 MB of decoded cells for Core Animation
+    /// to hold. HEVC with alpha is decoded in hardware and `AVPlayerLayer`
+    /// composites its alpha over the live desktop; the clip is keyed, and its
+    /// seam cross-faded, by `tools/build-question-mark.py`, so `AVPlayerLooper`
+    /// only has to go round. Aspect-fill: the clip is 16:9, the Retina 16:10,
+    /// so a sliver of each side goes, rather than a hard edge top and bottom.
     ///
-    /// Not spun and not masked by the ring's envelope: the envelope is an
-    /// annulus with a hole where the `?` is.
-    static func questionLayer(side: CGFloat) -> CALayer? {
-        if questionFrames == nil {
-            guard let (url, cols, rows) = sheetFile(["question-mark-8x6.png"], override: "WT_QUESTION_IMAGE"),
-                  let file = NSImage(contentsOf: url),
-                  let sheet = file.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-                Log.info("◯ caret halo: no question-mark sheet found — drawing the lightning film instead")
+    /// One player for the app, built once: the reel goes on under a silent
+    /// panel (alpha 0), so a voice fades in on lightning already in motion; it
+    /// is paused when the panel is ordered out and resumed by `show`.
+    static func questionLayer(size: CGSize) -> CALayer? {
+        if questionPlayer == nil {
+            guard let (url, _, _) = sheetFile(["question-mark.mov"], override: "WT_QUESTION_MOVIE") else {
+                Log.info("◯ caret halo: no question-mark film found — drawing the lightning film instead")
                 return nil
             }
-            let cw = sheet.width / cols, ch = sheet.height / rows
-            var frames: [CGImage] = []
-            for r in 0..<rows {
-                for c in 0..<cols {
-                    if let cell = sheet.cropping(to: CGRect(x: c * cw, y: r * ch, width: cw, height: ch)) {
-                        frames.append(cell)
-                    }
-                }
-            }
-            guard !frames.isEmpty else { return nil }
-            questionFrames = frames
-            Log.info("◯ caret halo: question mark film, \(frames.count) frames of \(cw)px, a \(String(format: "%.1f", Double(frames.count) / questionFps)) s loop")
+            let player = AVQueuePlayer()
+            player.isMuted = true
+            player.preventsDisplaySleepDuringVideoPlayback = false
+            questionLooper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+            questionPlayer = player
+            Log.info("◯ caret halo: question mark film \(url.lastPathComponent), looped over the Retina")
         }
-        guard let frames = questionFrames else { return nil }
-        let container = CALayer()
-        container.frame = CGRect(x: 0, y: 0, width: side, height: side)
-        let film = CALayer()
-        let size = min(side, questionSize)
-        film.frame = CGRect(x: (side - size) / 2, y: (side - size) / 2, width: size, height: size)
-        film.contentsGravity = .resize
-        film.magnificationFilter = .trilinear
-        film.contents = frames[0]
-        let reel = CAKeyframeAnimation(keyPath: "contents")
-        reel.values = frames
-        reel.calculationMode = .discrete
-        reel.duration = Double(frames.count) / questionFps
-        reel.repeatCount = .infinity
-        // The ring's reason: the panel is ordered out between dictations, not
-        // rebuilt, and a reel that tidied itself away would leave a still `?`.
-        reel.isRemovedOnCompletion = false
-        film.add(reel, forKey: "reel")
-        container.addSublayer(film)
-        return container
+        let layer = AVPlayerLayer(player: questionPlayer)
+        layer.frame = CGRect(origin: .zero, size: size)
+        layer.videoGravity = .resizeAspectFill
+        layer.backgroundColor = .clear
+        layer.pixelBufferAttributes = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        return layer
     }
 
-    /// Decoded once; a style change rebuilds the panel, not the cells.
-    private static var questionFrames: [CGImage]?
-    /// Every second frame of a 24 fps clip — real time.
-    private static let questionFps = 12.0
-    /// The cell on screen, in points: the `?` itself is about half of it.
-    private static let questionSize: CGFloat = 300
-    /// **The voice moves it from barely there to nearly solid** — *"mai opac sau
-    /// mai puțin opac în funcție de cum vorbesc"*. Wider than the ring's
-    /// 0.148…0.535: the ring is a rim round what he reads, this is a sign he
-    /// asked for, and a range he can see is the whole of the request.
-    static let questionRest: CGFloat = 0.22
+    private(set) static var questionPlayer: AVQueuePlayer?
+    private static var questionLooper: AVPlayerLooper?
+    /// Full voice is nearly solid — the screen is his, the `?` is on loan.
     static let questionLoud: CGFloat = 0.92
+    /// Seconds of audio with nothing over the voiced bar across which it goes
+    /// to nothing: a breath between words dims it, a stop puts it out.
+    static let questionQuiet: ClosedRange<CGFloat> = 0.35...1.0
 
     /// **The strokes, drawn once and faded by the same curve the gradient uses.**
     ///
@@ -3392,7 +3380,7 @@ final class CaretHalo {
                 Log.error("◯ caret halo: the page vanished between the check and the load — drawing the film")
                 return makePanel()
             }
-            if drawn == .questionMark, let film = Self.questionLayer(side: side) {
+            if drawn == .questionMark, let film = Self.questionLayer(size: frame.size) {
                 // No spin: a question mark turning round the pointer is a
                 // question mark upside down half the time.
                 halo = film

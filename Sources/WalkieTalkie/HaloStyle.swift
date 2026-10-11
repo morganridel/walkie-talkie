@@ -29,10 +29,10 @@ enum HaloStyle: String, CaseIterable {
     /// **The ⚡ quick question's own film** (Victor, 2026-10-11: *"redai acest
     /// semn al întrebării … zonele negre să fie transparente … mai opac sau mai
     /// puțin opac în funcție de cum vorbesc … în buclă"*). A golden electric `?`
-    /// keyed off black, `assets/question-mark-8x6.png` (`tools/build-question-mark.py`
-    /// from his clip): 48 cells, a 4 s loop at 12 fps whose last half-second is
-    /// cross-faded into the frames that lead into its first. Native like the
-    /// lightning film — no spin, the voice moves its opacity over a wider range.
+    /// keyed off black, `assets/question-mark.mov` (`tools/build-question-mark.py`
+    /// from his clip): HEVC with alpha, a 4 s loop whose last ⅔ s is cross-faded
+    /// into the frames that lead into its first. Native, over the whole Retina
+    /// (2026-10-11, the same evening), invisible in silence.
     case questionMark
     /// Page 1, *Pulse*: inel de undă — cerc perfect în tăcere, se rotește.
     case waveRing
@@ -132,6 +132,12 @@ enum HaloStyle: String, CaseIterable {
 
     /// **Drawn natively from a sprite sheet** — never a web view, never a fallback.
     var isFilm: Bool { self == .lightning || self == .questionMark }
+
+    /// **Placed once on the Retina and left there**, whatever the pointer does —
+    /// the anchored presets (Stars, the puzzle) and, since 2026-10-11, the
+    /// question mark, which fills the whole of it (*"centrat pe retină,
+    /// indiferent unde este mouse-ul … pe tot ecranul"*).
+    var isAnchored: Bool { preset?.anchored == true || self == .questionMark }
 
     /// The menu row's wording — Victor's short names.
     var title: String {

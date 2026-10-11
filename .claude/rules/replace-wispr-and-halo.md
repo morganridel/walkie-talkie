@@ -432,18 +432,28 @@ fade out foarte repede, după ce dictarea s-a injectat cu succes. În timp cât 
   for a dress that cannot ride (and the spawn keeps Sparks).
 - **A ⚡ quick question wears Reverse tunnel and nothing else** (2026-10-09, Victor: *"the effect associated during the dictation should be the reverse tunnel … no second effect … then getting smaller until it disappears, fading out around the mouse"*). `CaretHalo.quick` (pushed from `syncBorrowedGestures` as `quickAsk`) makes `setDestination` wear `tunnelStyle`; the same sync keeps `setRewind`, `setCoasting`, `setDelivering` and the arrow off, so the close goes straight to `hide`'s collapse into the pointer — `quickCollapse` 1 s, the ink fading the whole way rather than in its last fifth. The reply pop-up sits above the halo's level and opens on the answer's first words, not before (*"no prompt preview because it's super fast"*).
   **Superseded on the dress, 2026-10-11**: the effect is the `Question` row's (`HaloDestination.quick`),
-  default **Question mark** (`HaloStyle.questionMark`, Victor: *"redai acest semn al întrebării …
-  zonele negre să fie transparente … mai opac sau mai puțin opac în funcție de cum vorbesc … în
-  buclă"*). `setDestination` no longer forces `tunnelStyle` when `quick` — doing so since the row
-  existed (2026-10-10) had made the row a dead switch. The one-effect, no-rewind, 1 s collapse rules
-  above stand. The film: `assets/question-mark-8x6.png`, built by `tools/build-question-mark.py`
-  from his clip (720 px square crop on the mark, keyed `a = max(r,g,b)` above a 0.03 floor, radial
-  fade to the cell edge, 48 cells = every 2nd frame of a 4 s stretch played at 12 fps — real time —
-  the last 8 cells smoothstep-blended into the frames that lead into the first). Seam measured:
-  last→first cell 0.0061 mean abs diff vs 0.0101 median step. `CaretHalo.questionLayer`: discrete
-  reel, no spin, no ring mask, 300 pt cell centred on the pointer; window alpha
-  `questionRest` 0.22 → `questionLoud` 0.92 on `level` (wider than the ring's, by request), the 20 %
-  swell kept. `isFilm` marks the two native films (never a fallback, separator after them in 𝓯𝔁).
+  default **Question mark** (`HaloStyle.questionMark`). `setDestination` no longer forces
+  `tunnelStyle` when `quick` — doing so since the row existed (2026-10-10) had made the row a dead
+  switch. The one-effect, no-rewind, 1 s collapse rules above stand.
+  **Centred on the Retina, full screen, gone in silence** (same evening, Victor: *"centrat pe retină,
+  indiferent unde este mouse-ul … pe tot ecranul și să dispară complet atunci când nu se aude niciun
+  zgomot … când face fade-in, să continue cu fulgere"*): `HaloStyle.isAnchored` (the anchored presets
+  + this) places the panel once in `show` — `anchoredFrame` answers the Retina's whole frame (lid
+  shut: the pointer's screen) — and `follow` never moves it; the bloom and the collapse scale about the
+  screen's middle. The film is **`assets/question-mark.mov`, HEVC with alpha** in an `AVPlayerLayer`
+  (aspect-fill: the 16:9 clip loses a sliver of each side on the 16:10 Retina), one `AVQueuePlayer` +
+  `AVPlayerLooper` for the app, played in `show`, paused when the collapse orders the panel out — so
+  under a silent (alpha 0) panel the reel goes on and a voice fades in on lightning in motion. A
+  sprite sheet at screen size was 3× upscaled or ~100 MB of cells. **Colour goes into the encoder
+  premultiplied**: Apple's decoder returns HEVC-alpha frames premultiplied, and straight colour came
+  out 1/α too bright (gold → lemon, bolts white). `tools/build-question-mark.py` keys (`a = max(r,g,b)`
+  over a 0.03 floor), picks the 4 s stretch whose ends match best and smoothsteps the last 16 frames
+  into the ones that lead into the first. Window alpha = `questionLoud` 0.92 × `level`, times a fade
+  to 0 across `questionQuiet` 0.35…1 s of `quietSeconds` — no floor, no swell. **`WT_HALO_DEMO` with
+  `WT_HALO_DEMO_AUDIO` shows nothing for it**: `DemoVoice`/`ClipVoice` update `level` only inside
+  `samples()`, which only a web host calls; use the fabricated voice (no `_AUDIO`). It **can** be
+  checked with the display asleep: `screencapture -o -l<window id>` of the demo's panel (verified
+  2026-10-11: centred, 26–44 % of the screen lit while voiced, 0 % from 6 s of silence).
 - **The dust circles the caret when Accessibility can find one** (2026-10-10, Victor: *"shouldn't go
   and circle around the window, but should circle around the cursor if we can locate a cursor into
   the window … the diameter … should be a bit smaller … only for the dust"*). `aimRewind` asks
