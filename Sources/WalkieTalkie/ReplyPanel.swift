@@ -26,8 +26,16 @@ import AppKit
 /// it is read, and clicked once. **It zooms in out of the pointer, fading in**
 /// (`zoom`; a toast rising from the screen's bottom until the same afternoon),
 /// centred on the pointer's x, its top edge `belowPointer` under the pointer
-/// (2026-10-08, Victor: *"marginea de sus a panelului … un pic sub mouse"*). `sharingType = .none`: the next dictation's
-/// pictures are of his screen, not of this.
+/// (2026-10-08, Victor: *"marginea de sus a panelului … un pic sub mouse"*).
+///
+/// **Shared in a Teams/Zoom screen share, absent from the shutter's frames**
+/// (2026-10-12, Victor: *"When I share with teams, this overlay … is not
+/// displayed. Fix."*). It was `sharingType = .none`, which hid it from every
+/// capture — the room's included. It is `.readOnly` now, and `outOfShot` drops
+/// it to `.none` only for the length of the shutter's own `screencapture`, so
+/// the next dictation's pictures are still of his screen, not of this. The flip
+/// is invisible on his display; a viewer of the share sees it gone for the
+/// ~0.3 s of the shot.
 enum ReplyPanel {
     private static var panel: NSPanel?
     private static var queue: [(text: String, label: String?, tty: String?, images: [URL])] = []
@@ -56,9 +64,21 @@ enum ReplyPanel {
 
     private static let walkie: NSImage? = RelayWindow.walkieURL("walkie-bound").flatMap { NSImage(contentsOf: $0) }
 
-    /// **Desk only** (`POST /test/quick {"capturable": true}`): the next pop-ups
-    /// show up in a screenshot, so a desk can see what Victor sees.
-    static var capturable = false
+    /// On by default since 2026-10-12, so a screen share shows the answer
+    /// (`POST /test/quick {"capturable": false}` turns it off for the next pop-ups).
+    static var capturable = true
+
+    /// **Out of the frame while `body` takes a screenshot** — the shutter's
+    /// `screencapture` runs off the main thread, the window is touched on it.
+    static func outOfShot<T>(_ body: () throws -> T) rethrows -> T {
+        func share(_ type: NSWindow.SharingType) {
+            if Thread.isMainThread { panel?.sharingType = type }
+            else { DispatchQueue.main.sync { panel?.sharingType = type } }
+        }
+        share(.none)
+        defer { share(capturable ? .readOnly : .none) }
+        return try body()
+    }
     /// The open pop-up's frame, global Cocoa points.
     static var frame: NSRect? { panel?.frame }
 

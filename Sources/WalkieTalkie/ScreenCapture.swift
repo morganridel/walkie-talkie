@@ -60,8 +60,11 @@ enum ScreenCapture {
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         process.arguments = ["-x", "-t", "jpg", "-D", String(display), file.path]
         do {
-            try process.run()
-            process.waitUntilExit()
+            // The reply pop-up is in a screen share, never in these frames.
+            try ReplyPanel.outOfShot {
+                try process.run()
+                process.waitUntilExit()
+            }
         } catch {
             Log.error("screencapture failed: \(error)")
             return nil
@@ -146,8 +149,11 @@ enum ScreenCapture {
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         process.arguments = ["-x", "-t", "jpg", "-D", String(display), file.path]
         do {
-            try process.run()
-            process.waitUntilExit()
+            // The reply pop-up is in a screen share, never in these frames.
+            try ReplyPanel.outOfShot {
+                try process.run()
+                process.waitUntilExit()
+            }
         } catch {
             Log.error("screencapture failed: \(error)")
             return nil
