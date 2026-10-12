@@ -419,6 +419,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let wispr = via.hasPrefix("wispr") || via == "pasteboard"
         let mic = wispr ? InputDevice.label(wisprName: wisprMicName)
                         : InputDevice.label(opened: MicRecorder.lastOpened?.device)
+        return "Mic: \(mic)\nEngine: \(Self.engineName(via: via, engineLabel: engineLabel))"
+    }
+
+    /// The engine that wrote a sentence, by the route its words came — the
+    /// panel's `Engine:` row and the envelope's `[Transcribed … by …]` clause.
+    static func engineName(via: String, engineLabel: String) -> String {
+        let wispr = via.hasPrefix("wispr") || via == "pasteboard"
         // The ☁️ / 💻 first, as everywhere an engine is named (`StatusItem.cloud`).
         let local = "\(StatusItem.local) Local Whisper" + (engineLabel.isEmpty ? "" : " (\(engineLabel))")
         let engine: String
@@ -431,7 +438,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case _ where wispr: engine = "\(StatusItem.cloud) \(WisprFlowSource.engineLabel)"
         default: engine = engineLabel.isEmpty ? via : engineLabel
         }
-        return "Mic: \(mic)\nEngine: \(engine)"
+        return engine
     }
 
     private var wisprHearsThis: Bool { wisprSource.isRecording || wisprHearing || source === wisprSource }
@@ -1364,7 +1371,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         /// carried for `via`'s reason: the panel holds every prompt for seconds
         /// and the engine is a menu row that may have been switched by then.
         ///
-        /// **No longer rendered into the prompt** (2026-09-19): `dictatedHint`
+        /// **Rendered into the prompt again since 2026-10-12** (`dictatedHint`).
+        /// From 2026-09-19 until then `dictatedHint`
         /// stopped naming it, so this is now filed in `outbox.jsonl` and read
         /// back from there — which is where a question about *which recogniser
         /// heard that sentence* is actually asked, after the fact.
@@ -8889,13 +8897,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// ceva."* — his question in, its answer out; nothing else rides it.
     static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done.]"
 
-    private static func dictatedHint() -> String {
-        // **Four words, and the recogniser's name is not one of them**
-        // (2026-09-19, Victor's template). What this clause is *for* is telling
-        // an agent that a Romanian word in the middle of an English sentence is
-        // not a typo; which engine heard it is a fact about this app, it is in
-        // the outbox line, and it was costing a sentence of every envelope.
-        "[Dictated in RO or EN]"
+    /// **`[Transcribed in RO or EN by <engine>]`** (2026-10-12, Victor: *"let's
+    /// call it transcribed in RO or EN, and then you place the name of the engine
+    /// that transcribed it"*). Reverses the 2026-09-19 cut above (`questionHint` sits between): the clause now
+    /// rides as hidden context (the `walkie-inbox` mod's `splitTyped`), so it no
+    /// longer costs him a line of every transcript, and the engine is named the
+    /// way the panel's `Engine:` row names it (`engineName`). The mod matches
+    /// both spellings.
+    private static func dictatedHint(_ m: Message) -> String {
+        "[Transcribed in RO or EN by \(engineName(via: m.via, engineLabel: m.engine))]"
     }
 
     /// **What a Replace Wispr dictation actually pastes: the words, and only
@@ -9396,7 +9406,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var parts: [String] = []
         if let text = m.text, !text.isEmpty { parts.append(leading(m) + text) }
         if m.kind == "dictation", let text = m.text, !text.isEmpty {
-            parts.append(dictatedHint())
+            parts.append(dictatedHint(m))
             // **`[voice: hesitant]` / `[voice: tense]`, beside the hint, or
             // nothing** (2026-09-27) — what the transcript lost, never a number.
             if let tag = m.affect?.verdict.tag { parts.append(tag) }

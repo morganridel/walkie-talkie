@@ -125,7 +125,7 @@ make the overlay draw above the screen grow effect, right now it ends up under i
 
 kamikaze
 
-[Dictated in RO or EN]
+[Transcribed in RO or EN by ☁️ ElevenLabs Scribe]
 [📁=$WALKIE_SHOTS/2026-10-04-17-13-27]
 [📸0 = 📁/screenshot-0-800px.jpg, or -original.jpg at 3456x2234px]
 ```
