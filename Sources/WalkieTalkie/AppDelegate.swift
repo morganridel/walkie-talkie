@@ -9055,6 +9055,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             mice: mice, areas: areas, sizes: sizes, sources: sources,
                             shotNumbers: markerNumbers,
                             app: nil, elements: picks, startedAt: since,
+                            via: pendingVia ?? "test",
                             engine: pendingEngine ?? "", affect: affect)
             return Self.terminalLine(m)
         }

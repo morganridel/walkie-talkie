@@ -140,6 +140,15 @@ final class MicAnnouncer {
         return (name, cardText(glyph: "🎙️ \(name)"))
     }
 
+    /// `WT_SHOOT_TAB` — see `BottomTab.shoot`. `WT_TAB_TEXT` overrides the
+    /// words, `〰` standing for the wave.
+    static func shootTab(to path: String) {
+        let text = ProcessInfo.processInfo.environment["WT_TAB_TEXT"]
+            .map { $0.replacingOccurrences(of: "〰", with: wave) }
+            ?? "🎤 \(wave) \(StatusItem.cloud) ElevenLabs Scribe"
+        BottomTab.shoot(text, to: path)
+    }
+
     /// The exact copy — `Listening 🎤`, Victor Addons' wording. A device none
     /// of `known` names passes `🎙️ <its name>`, the only thing that says which.
     static func cardText(glyph: String) -> String { "Listening \(glyph)" }
@@ -292,16 +301,15 @@ private final class BottomTab {
     private func startGlint(after delay: TimeInterval, lasting: TimeInterval) {
         glintTimer?.invalidate()
         glintTimer = nil
-        guard shownText.contains(MicAnnouncer.wave) else { return }
         let start = Date()
         let t = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] tm in
             guard let self, let label = self.label else {
                 if self?.panel == nil { tm.invalidate() }
                 return
             }
-            // Below 0 the head has not reached the wave yet: a dim, empty wire.
+            // Below 0 nothing has lit yet: a dim, empty wire.
             let phase = min(1, (Date().timeIntervalSince(start) - delay) / lasting)
-            label.attributedStringValue = Self.attributed(self.shownText, glint: CGFloat(phase))
+            label.attributedStringValue = Self.attributed(self.shownText, pass: CGFloat(phase))
         }
         RunLoop.main.add(t, forMode: .common)
         glintTimer = t
@@ -330,27 +338,90 @@ private final class BottomTab {
         t.fire()
     }
 
-    /// White, centred, bold 40 — with `MicAnnouncer.wave` drawn as `WaveGlyph`.
-    private static func attributed(_ text: String, glint: CGFloat? = nil) -> NSAttributedString {
+    /// **Three lights, one after the other: the microphone, the wire, the
+    /// engine** (2026-10-12, Victor: *"fă să strălucească microfonul, apoi, în
+    /// continuare, să vină acel semnal și apoi să strălucească și emoji-ul din
+    /// label-ul engine-ului … ca o strălucire așa diagonală"*). `pass` runs 0…1
+    /// over the one pass `startGlint` times; each light gets its own stretch
+    /// of it, overlapping the next a little so the light reads as handed on.
+    /// nil: everything still and white (the width probe, a tab with no timer).
+    struct Lights { var mic: CGFloat?, wave: CGFloat?, engine: CGFloat? }
+    static let micSpan: ClosedRange<CGFloat> = 0...0.28
+    static let waveSpan: ClosedRange<CGFloat> = 0.22...0.78
+    static let engineSpan: ClosedRange<CGFloat> = 0.72...1
+    static func lights(_ pass: CGFloat?) -> Lights {
+        guard let pass else { return Lights() }
+        func local(_ r: ClosedRange<CGFloat>) -> CGFloat { (pass - r.lowerBound) / (r.upperBound - r.lowerBound) }
+        // The wire stays dim from the start (below 0: empty, above 1: gone by).
+        return Lights(mic: local(micSpan), wave: local(waveSpan), engine: local(engineSpan))
+    }
+
+    /// White, centred, bold 40 — with `MicAnnouncer.wave` drawn as `WaveGlyph`
+    /// and the first emoji on either side of it (the microphone, the engine's
+    /// ☁️ / 💻) drawn as `ShineGlyph`, always, so the tab is as wide lit or not.
+    private static func attributed(_ text: String, pass: CGFloat? = nil) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.alignment = .center
         para.lineBreakMode = .byTruncatingTail
         let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white, .paragraphStyle: para]
+        let lit = lights(pass)
         let out = NSMutableAttributedString()
-        for (i, part) in text.components(separatedBy: MicAnnouncer.wave).enumerated() {
+        func attach(_ img: NSImage, bounds: NSRect) {
+            let a = NSTextAttachment()
+            a.image = img
+            a.bounds = bounds
+            let s = NSMutableAttributedString(attachment: a)
+            s.addAttributes(attrs, range: NSRange(location: 0, length: s.length))
+            out.append(s)
+        }
+        let parts = text.components(separatedBy: MicAnnouncer.wave)
+        for (i, part) in parts.enumerated() {
             if i > 0 {
-                let a = NSTextAttachment()
-                let img = WaveGlyph.image(height: font.capHeight * 1.25, glint: glint)
-                a.image = img
-                a.bounds = NSRect(x: 0, y: (font.capHeight - img.size.height) / 2,
-                                  width: img.size.width, height: img.size.height)
-                let s = NSMutableAttributedString(attachment: a)
-                s.addAttributes(attrs, range: NSRange(location: 0, length: s.length))
-                out.append(s)
+                let img = WaveGlyph.image(height: font.capHeight * 1.25, glint: pass == nil ? nil : lit.wave)
+                attach(img, bounds: NSRect(x: 0, y: (font.capHeight - img.size.height) / 2,
+                                           width: img.size.width, height: img.size.height))
             }
-            out.append(NSAttributedString(string: part, attributes: attrs))
+            // The microphone is the first part's emoji, the engine's the second's.
+            let shine = i == 0 ? lit.mic : i == 1 ? lit.engine : nil
+            guard i < 2, let at = part.firstIndex(where: ShineGlyph.isEmoji) else {
+                out.append(NSAttributedString(string: part, attributes: attrs))
+                continue
+            }
+            // The glow's room kerned out on both sides, so the emoji sits where
+            // the bare character would.
+            let pad = ShineGlyph.pad(font)
+            let before = NSMutableAttributedString(string: String(part[..<at]), attributes: attrs)
+            if before.length > 0 { before.addAttribute(.kern, value: -pad, range: NSRange(location: before.length - 1, length: 1)) }
+            out.append(before)
+            let glyph = ShineGlyph.image(String(part[at]), font: font, shine: shine)
+            attach(glyph.image, bounds: glyph.bounds)
+            out.addAttribute(.kern, value: -pad, range: NSRange(location: out.length - 1, length: 1))
+            out.append(NSAttributedString(string: String(part[part.index(after: at)...]), attributes: attrs))
         }
         return out
+    }
+
+    /// **`WT_SHOOT_TAB=/tmp/tab.png`** — the launch tab's words at nine moments
+    /// of the pass, one under the other on the tab's blue, and quit. The tab is
+    /// `sharingType = .none`, so no screen capture can review the lights.
+    static func shoot(_ text: String, to path: String) {
+        let passes: [CGFloat?] = [nil, -0.1, 0.08, 0.16, 0.3, 0.5, 0.74, 0.84, 0.94]
+        let rows = passes.map { attributed(text, pass: $0) }
+        let w = ceil(rows.map { $0.size().width }.max() ?? 0) + 2 * padding
+        let rowH = height
+        let sheet = NSImage(size: NSSize(width: w, height: rowH * CGFloat(rows.count)))
+        sheet.lockFocus()
+        MicAnnouncer.startupTint.withAlphaComponent(1).setFill()
+        NSRect(origin: .zero, size: sheet.size).fill()
+        for (k, row) in rows.enumerated() {
+            let size = row.size()
+            row.draw(in: NSRect(x: (w - size.width) / 2, y: sheet.size.height - rowH * CGFloat(k + 1) + (rowH - size.height) / 2,
+                                width: size.width, height: size.height))
+        }
+        sheet.unlockFocus()
+        guard let tiff = sheet.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path))
     }
 
     private func width(for text: String, screen: NSScreen) -> CGFloat {
@@ -378,6 +449,65 @@ private final class BottomTab {
     private static func screenUnderMouse() -> NSScreen? {
         let p = NSEvent.mouseLocation
         return NSScreen.screens.first { NSMouseInRect(p, $0.frame, false) } ?? NSScreen.main
+    }
+}
+
+/// **An emoji with a light passing over it, corner to corner** (2026-10-12,
+/// *"ca o strălucire așa diagonală de ceva cool"*): a white band at 45° crosses
+/// the glyph bottom-left → top-right, painted only where the emoji has ink
+/// (`sourceAtop` inside a layer), and the glyph glows while it does — a halo
+/// that swells and fades with the band (`sin(π·p)`).
+enum ShineGlyph {
+    /// An emoji grapheme: one shown in colour by default, or asked to be (FE0F).
+    static func isEmoji(_ c: Character) -> Bool {
+        c.unicodeScalars.contains { $0.properties.isEmojiPresentation || $0 == "\u{FE0F}" }
+    }
+
+    /// The room around the glyph, as wide as the glow's blur so the halo is
+    /// never cut square; `attributed` kerns it back out of the line.
+    static func pad(_ font: NSFont) -> CGFloat { (font.pointSize * 0.3).rounded() }
+
+    /// The glyph's image and its attachment bounds (the baseline at y 0), with
+    /// room for the glow on every side whether lit or not, so nothing beside it
+    /// moves when the light comes.
+    static func image(_ emoji: String, font: NSFont, shine: CGFloat?) -> (image: NSImage, bounds: NSRect) {
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: emoji, attributes: [.font: font]))
+        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+        let w = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
+        let pad = Self.pad(font)
+        let size = NSSize(width: ceil(w) + 2 * pad, height: ceil(ascent + descent) + 2 * pad)
+        let p = shine.map { min(max($0, 0), 1) }
+        let lit = p.map { $0 > 0 && $0 < 1 } ?? false
+        let img = NSImage(size: size, flipped: false) { _ in
+            guard let cg = NSGraphicsContext.current?.cgContext else { return false }
+            cg.saveGState()
+            if lit, let p {
+                let glow = sin(.pi * p)
+                cg.setShadow(offset: .zero, blur: pad * glow,
+                             color: NSColor.white.withAlphaComponent(0.95 * glow).cgColor)
+            }
+            cg.beginTransparencyLayer(auxiliaryInfo: nil)
+            cg.textPosition = CGPoint(x: pad, y: pad + descent)
+            CTLineDraw(line, cg)
+            if lit, let p {
+                // The band's centre runs along x + y from below the glyph's
+                // lower-left corner to past its upper-right one.
+                let span = size.width + size.height, band = span * 0.22
+                let c = -band + p * (span + 2 * band)
+                func at(_ u: CGFloat) -> CGPoint { CGPoint(x: u / 2, y: u / 2) }  // on x = y, where x + y = u
+                let colors = [NSColor.white.withAlphaComponent(0).cgColor,
+                              NSColor.white.withAlphaComponent(0.9).cgColor,
+                              NSColor.white.withAlphaComponent(0).cgColor] as CFArray
+                if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.5, 1]) {
+                    cg.setBlendMode(.sourceAtop)
+                    cg.drawLinearGradient(g, start: at(c - band), end: at(c + band), options: [])
+                }
+            }
+            cg.endTransparencyLayer()
+            cg.restoreGState()
+            return true
+        }
+        return (img, NSRect(x: 0, y: -descent - pad, width: size.width, height: size.height))
     }
 }
 

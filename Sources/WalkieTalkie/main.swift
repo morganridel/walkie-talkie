@@ -59,6 +59,14 @@ if let out = ProcessInfo.processInfo.environment["WT_SHOOT_MENU"] {
     exit(0)
 }
 
+// The bottom tab's lights at nine moments of their pass, and quit —
+// `WT_SHOOT_TAB=/tmp/tab.png`. See `MicAnnouncer.shootTab`.
+if let out = ProcessInfo.processInfo.environment["WT_SHOOT_TAB"] {
+    NSApplication.shared.setActivationPolicy(.accessory)
+    MicAnnouncer.shootTab(to: out)
+    exit(0)
+}
+
 // Compose a contact sheet out of JPEGs already on disk and quit —
 // `WT_SHOOT_SHEET=/tmp/sheet.png WT_SHEET_FRAMES=/path/to/dir`. The sheet is
 // what the agent sees of a screen recording, so it has to be reviewable without

@@ -357,6 +357,17 @@ never include a bare `dji mic`, which is the transmitter's name (`DJI Mic Mini-B
   transparency layer dimmed whole — a translucent stroke showed brighter dots where each run met its
   turn. The glyph keeps a fixed margin for the arcs and glow on every frame, so the
   words never shift.
+- **Three lights in one pass: the microphone, the wire, the engine** (2026-10-12, Victor: *"fă să
+  strălucească microfonul, apoi, în continuare, să vină acel semnal și apoi să strălucească și emoji-ul
+  din label-ul engine-ului … ca o strălucire așa diagonală"*). The glint's pass is split
+  (`BottomTab.micSpan` 0–0.28, `waveSpan` 0.22–0.78, `engineSpan` 0.72–1, overlapping so the light is
+  handed on); the wave's light is the old one, squeezed into its span. The first emoji before the wave
+  (the microphone) and after it (the engine's ☁️/💻) are always `ShineGlyph` attachments: a white band
+  at 45° crosses them bottom-left → top-right, painted only on the emoji's ink (`sourceAtop`), with a
+  glow `sin(π·p)` around it. The glyph keeps `ShineGlyph.pad` (0.3 × the font, the glow's blur) on every
+  side so the halo is never cut square, kerned back out of the line so nothing moves. Reviewed with
+  **`WT_SHOOT_TAB=<png>`** (`WT_TAB_TEXT`, `〰` for the wave): nine moments of the pass, stacked; the tab
+  itself is `sharingType = .none`.
 - **`resolve()` is the single answer**, read by `select` (what records), by the chip's mark and by
   the menu's top row. Three readers computing "which microphone" separately is three ways for the
   glyph, the tick and the recording to disagree. → journal: *The chip says which microphone, and the menu picks it (2026-09-19)*
