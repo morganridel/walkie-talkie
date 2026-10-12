@@ -186,6 +186,8 @@ cp "$DIR/assets/walkie-bound.png" "$CONTENTS/Resources/walkie-bound.png"
 cp "$DIR/assets/caret-halo-5x5.png" "$CONTENTS/Resources/caret-halo-5x5.png"
 # The ⚡ quick question's film (`CaretHalo.questionLayer`, `tools/build-question-mark.py`).
 cp "$DIR/assets/question-mark.mov" "$CONTENTS/Resources/question-mark.mov"
+# Its still, in front of `Asking...` on the chip (`RelayWindow.questionGlyph`).
+cp "$DIR/assets/question-mark-icon.png" "$CONTENTS/Resources/question-mark-icon.png"
 # The halo preview's voice: one clip of his own, copied out of the corpus (see
 # `ClipVoice`). Never played aloud.
 cp "$DIR/assets/halo-voice.wav" "$CONTENTS/Resources/halo-voice.wav"

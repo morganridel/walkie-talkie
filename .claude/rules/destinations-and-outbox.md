@@ -272,7 +272,7 @@ can"*, on his subscription; *"the key to bind it to. I think forward and left"*.
   sentence (`startDictation(paste: true, clean: true, quick: true)` — words only, no picture, no
   attachment) whose `deliver` sends the words to `askQuick` **before** any caret or terminal route:
   nothing is typed anywhere, no outbox line, the question goes on the clipboard (Q17),
-  `lastDelivery.to = "quick"`. The chip's destination row says `⚡ quick answer — opus`.
+  `lastDelivery.to = "quick"`. The chip's destination row says `quick answer — opus`, collapsed while dictating to the gold ❓ in front of `Asking...` (2026-10-12; a ⚡ before).
   **Its own halo** (2026-10-10, *"add menu: question with liquid cursor as default for now"*):
   `HaloDestination.quick`, the 𝓯𝔁 menu's `Question` row, **Question mark** unless picked
   (Liquid cursor until 2026-10-11 — `replace-wispr-and-halo.md`).

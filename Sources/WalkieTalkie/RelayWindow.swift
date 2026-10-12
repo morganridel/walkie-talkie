@@ -2826,6 +2826,25 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// icon"*). The ✨ says *a session that does not exist yet* on the row that
     /// names its folder, and no longer rides in front of `Listening...` as well.
     static let sparkleGlyph = Glyphs.emoji("✨", ink: 18)
+    /// **The ⚡ quick question wears the film's ❓, not a ⚡, in front of
+    /// `Asking...`** (2026-10-12, Victor: *"în loc de fulger din fața Asking …
+    /// un semnul întrebării … galben în stilul celui care apare ca efect"*). A
+    /// still of `question-mark.mov`, gold with its first crackle of bolts
+    /// (`tools/build-question-icon.py`) — an emoji ❓ is red and says nothing
+    /// about the halo it opens. Missing file: the plain ⚡, as before.
+    static let questionGlyph: NSImage = {
+        guard let (url, _, _) = CaretHalo.sheetFile(["question-mark-icon.png"], override: "WT_QUESTION_ICON"),
+              let image = NSImage(contentsOf: url)
+        else { return Glyphs.emoji("⚡", ink: iconInk) }
+        image.size = NSSize(width: iconInk, height: iconInk)
+        return image
+    }()
+    /// The picture a collapsed spawn mark is drawn as: the ❓ for a quick
+    /// question (`questionMark`), any other character as its emoji.
+    static let questionMark = "❓"
+    private static func markGlyph(_ mark: String) -> NSImage {
+        mark == questionMark ? questionGlyph : Glyphs.emoji(mark, ink: iconInk)
+    }
 
 
 
@@ -3378,7 +3397,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // because the *other* spawn state (a picked folder, wider chip) drew
         // correctly. Measured, not reasoned: `docs/states/spawn.png`.
         if spawnCollapsed, let mark = spawnMark {
-            out.append(Self.inline(Glyphs.emoji(mark, ink: iconInk), font: hintFont))
+            out.append(Self.inline(Self.markGlyph(mark), font: hintFont))
             out.append(NSAttributedString(string: " ", attributes: [.font: hintFont]))
         }
 
@@ -4237,7 +4256,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // leaves every other glyph transparent, so a spawn dictation's wait was
         // one mark and no word.
         if spawnCollapsed, let mark = spawnMark {
-            out.append(Self.inline(Glyphs.emoji(mark, ink: Self.iconInk), font: hintFont))
+            out.append(Self.inline(Self.markGlyph(mark), font: hintFont))
             out.append(NSAttributedString(string: " ", attributes: [.font: hintFont]))
         }
         let word = Array(transcribeWord)

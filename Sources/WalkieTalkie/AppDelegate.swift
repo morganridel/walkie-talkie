@@ -3714,7 +3714,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // folder (armed at the gesture), a caret sentence says so and outranks
         // the bound terminal for its own length, and a sentence with nothing
         // bound names the gesture that would give it somewhere to go.
-        if quickAsk { overlay.setSpawnDestination("quick answer — \(QuickAsk.shared.model)", mark: "⚡") }
+        if quickAsk { overlay.setSpawnDestination("quick answer — \(QuickAsk.shared.model)", mark: RelayWindow.questionMark) }
         else if pasteMode { overlay.setSpawnDestination("caret", icon: RelayWindow.pinGlyph) }
         else if !spawnPending, !isBound {
             overlay.setSpawnDestination("bind to send", icon: RelayWindow.pinGlyph)

@@ -175,7 +175,7 @@ enum OverlayStates {
                  note: "A clean sentence whose words go to a fast model instead of anywhere on the screen; the answer streams into the reply pop-up beside the pointer, its header the question as heard. The destination row says so, and which model will answer. Words only — no picture, no attachment — so the rows a prompt grows never appear.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
-                o.setSpawnDestination("quick answer — haiku", mark: "⚡")
+                o.setSpawnDestination("quick answer — haiku", mark: RelayWindow.questionMark)
                 o.asking = true
                 o.setListening(true)
             },

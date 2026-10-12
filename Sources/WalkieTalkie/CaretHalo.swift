@@ -2834,8 +2834,9 @@ final class CaretHalo {
     }
 
     /// A bundled sprite sheet and its grid — the lookup `artworkFile` documents,
-    /// shared with the question mark's film.
-    private static func sheetFile(_ names: [String], override env: String) -> (URL, Int, Int)? {
+    /// shared with the question mark's film and its still on the chip
+    /// (`RelayWindow.questionGlyph`).
+    static func sheetFile(_ names: [String], override env: String) -> (URL, Int, Int)? {
         var candidates: [URL] = []
         if let override = ProcessInfo.processInfo.environment[env] {
             candidates.append(URL(fileURLWithPath: override))

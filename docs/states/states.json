@@ -687,7 +687,7 @@
     "slug" : "prompt-long",
     "title" : "A long transcript",
     "when" : "A sentence that does not fit one line — the panel wraps and grows.",
-    "width" : 749
+    "width" : 832
   },
   {
     "alpha" : 1,
