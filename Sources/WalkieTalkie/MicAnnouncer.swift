@@ -387,15 +387,19 @@ private final class BottomTab {
                 out.append(NSAttributedString(string: part, attributes: attrs))
                 continue
             }
-            // The glow's room kerned out on both sides, so the emoji sits where
-            // the bare character would.
-            let pad = ShineGlyph.pad(font)
-            let before = NSMutableAttributedString(string: String(part[..<at]), attributes: attrs)
-            if before.length > 0 { before.addAttribute(.kern, value: -pad, range: NSRange(location: before.length - 1, length: 1)) }
-            out.append(before)
+            // The glow's room spills over the neighbours instead of widening the
+            // line, so the emoji sits where the bare character would (kern could
+            // not do it: it is ignored on an attachment and stops at a space's
+            // own width — 2026-10-12, the wave had 28 pt on one side, 19.5 on
+            // the other, until Victor: "reduce a bit the space to left/right of
+            // the sound wave").
+            out.append(NSAttributedString(string: String(part[..<at]), attributes: attrs))
             let glyph = ShineGlyph.image(String(part[at]), font: font, shine: shine)
-            attach(glyph.image, bounds: glyph.bounds)
-            out.addAttribute(.kern, value: -pad, range: NSRange(location: out.length - 1, length: 1))
+            let a = NSTextAttachment()
+            a.attachmentCell = OverhangCell(glyph.image, bounds: glyph.bounds, overhang: ShineGlyph.pad(font))
+            let s = NSMutableAttributedString(attachment: a)
+            s.addAttributes(attrs, range: NSRange(location: 0, length: s.length))
+            out.append(s)
             out.append(NSAttributedString(string: String(part[part.index(after: at)...]), attributes: attrs))
         }
         return out
@@ -467,6 +471,37 @@ private final class BottomTab {
     private static func screenUnderMouse() -> NSScreen? {
         let p = NSEvent.mouseLocation
         return NSScreen.screens.first { NSMouseInRect(p, $0.frame, false) } ?? NSScreen.main
+    }
+}
+
+/// An attachment whose image runs `overhang` past its slot on the left and
+/// right: the line advances by the slot alone, the image draws over whatever
+/// is beside it. `ShineGlyph`'s glow room, which must not push the words apart.
+final class OverhangCell: NSTextAttachmentCell {
+    private let picture: NSImage, slot: NSRect, overhang: CGFloat
+
+    init(_ picture: NSImage, bounds: NSRect, overhang: CGFloat) {
+        self.picture = picture
+        self.overhang = overhang
+        slot = NSRect(x: 0, y: bounds.minY, width: bounds.width - 2 * overhang, height: bounds.height)
+        super.init(imageCell: nil)
+    }
+    required init(coder: NSCoder) { fatalError("not decoded") }
+
+    override func cellSize() -> NSSize { slot.size }
+    override func cellBaselineOffset() -> NSPoint { NSPoint(x: 0, y: slot.minY) }
+    override func cellFrame(for textContainer: NSTextContainer, proposedLineFragment lineFrag: NSRect,
+                            glyphPosition position: NSPoint, characterIndex charIndex: Int) -> NSRect { slot }
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
+        picture.draw(in: cellFrame.insetBy(dx: -overhang, dy: 0), from: .zero, operation: .sourceOver,
+                     fraction: 1, respectFlipped: true, hints: nil)
+    }
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView?, characterIndex charIndex: Int) {
+        draw(withFrame: cellFrame, in: controlView)
+    }
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView?, characterIndex charIndex: Int,
+                       layoutManager: NSLayoutManager) {
+        draw(withFrame: cellFrame, in: controlView)
     }
 }
 
