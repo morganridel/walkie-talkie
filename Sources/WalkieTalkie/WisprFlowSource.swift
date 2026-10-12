@@ -402,6 +402,7 @@ final class WisprFlowSource: DictationSource {
         let batch = waitingMarkers
         waitingMarkers = []
         said += batch.map(\.said)
+        saidInRecording += batch.map(\.said)
         markerLock.unlock()
         let level = Self.voiceLevel(meter.meterHops)
         for (n, m) in batch.enumerated() {
@@ -546,7 +547,29 @@ final class WisprFlowSource: DictationSource {
     /// What this take's stream really carried, in splice order — the list
     /// `ShotMarker.resolveStrict` holds the transcript to. Reset with the meter.
     private var said: [ShotMarker.Said] = []
+    /// **The share of `said` that is in this app's own WAV too** (2026-10-12):
+    /// spliced in a pause, so the meter wrote it; a marker the stop handed
+    /// straight to the bridge is Wispr's only. What the local model hears when
+    /// it stands in for Wispr (Q14) — `fallbackSaid`. Reset with the meter.
+    private var saidInRecording: [ShotMarker.Said] = []
+    /// **The markers in a WAV the relay handed to the local model**, kept with
+    /// that WAV's path (2026-10-12). The 12:10:56 sentence: Wispr ignored both
+    /// stop chords, the local model transcribed `Screenshot one … Screenshot
+    /// for.`, and with no `said` on its result `resolvingMarkers` read it as a
+    /// sentence nothing was spliced into — the phrases stayed in the words, the
+    /// frames went to the footer. Keyed by path because the next take resets
+    /// `said` while the local model may still be decoding this one.
+    private var fallbackSaid: (wav: URL, said: [ShotMarker.Said])?
     private let markerLock = NSLock()
+
+    /// The markers spoken into `wav` — the WAV `endWithRecording` handed over.
+    /// Empty for any other file.
+    func saidSpliced(into wav: URL) -> [ShotMarker.Said] {
+        markerLock.lock(); defer { markerLock.unlock() }
+        guard let f = fallbackSaid,
+              f.wav.standardizedFileURL.path == wav.standardizedFileURL.path else { return [] }
+        return f.said
+    }
 
     private let watch = WisprWatch()
     private let hotkeys: HotkeyTap
@@ -2592,7 +2615,7 @@ final class WisprFlowSource: DictationSource {
             // often worth carrying. **Held** until Wispr's input runs — From
             // Walkie drops what nobody reads (2026-09-29).
             self.markersInAudio = false
-            self.markerLock.lock(); self.waitingMarkers = []; self.said = []; self.markerLock.unlock()
+            self.markerLock.lock(); self.waitingMarkers = []; self.said = []; self.saidInRecording = []; self.markerLock.unlock()
             if AudioBridge.isEnabled, self.bridge.start(format: MicRecorder.fileFormat, holding: true) {
                 self.meter.onBuffer = { [weak self] buffer in self?.bridge.schedule(buffer) }
                 self.setFeed(.relay)
@@ -3286,6 +3309,11 @@ final class WisprFlowSource: DictationSource {
             self.recording = nil
             let voiced = self.recordingVoiced
             let recHealth = self.recordingHealth
+            if let taken {
+                self.markerLock.lock()
+                self.fallbackSaid = (taken.url, self.saidInRecording)
+                self.markerLock.unlock()
+            }
             DispatchQueue.main.async {
                 if let row { self.watchLateRow(row, pid: pid, closedAt: closed, dismissedAt: dismissedAt) }
                 guard let taken, FileManager.default.fileExists(atPath: taken.url.path) else {

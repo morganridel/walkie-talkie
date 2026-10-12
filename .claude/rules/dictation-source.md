@@ -509,6 +509,11 @@ per modifier, against `keyState` on both keycodes. `evals/test_stale_modifier.py
     `said`). It places every marker, aligned into the formatted words, or places none (the footer
     with clocks), and strips the phrases either way.
   - With nothing said, nothing in a Wispr transcript is rewritten.
+  - **The local model standing in (Q14, ⌘⌃X) gets them too** (2026-10-12): the WAV holds every
+    marker spliced in a pause (`saidInRecording`; one handed over at the stop is Wispr's only), so
+    `endWithRecording` keeps that list by WAV path (`saidSpliced(into:)`), `fallBackToLocal` puts it
+    on the result's `said`, and `resolveStrict` reads the local words (no `asr`). Before, the
+    12:10:56 sentence kept `Screenshot one … Screenshot for.` in its words and the frames in the footer.
   - The dry run is `evals/wispr-markers/dryrun.py`.
 - **Four of his recorded clips are mis-cut** (`screenshot-3`, `selected-text-6`, `selected-text-8`,
   `picked-element-6` also carry the next marker's words). The strict check falls back on the

@@ -86,4 +86,19 @@ final class ShotMarkerStrictTests: XCTestCase {
         XCTAssertTrue(r.clean, r.why)
         XCTAssertEqual(r.text, "call foo() then [📸1] done")
     }
+
+    /// **The local model standing in for Wispr (Q14) reads the markers off its
+    /// own words** (2026-10-12, 12:10:56): Wispr ignored both stop chords, the
+    /// relay's WAV — markers spliced in — went to Whisper, and `Screenshot for.`
+    /// is its *four*. No `asrText`, so the delivered words are what was heard.
+    func testLocalFallbackWordsPlaceEveryMarker() {
+        let text = "Să pot apăsa acest buton. Screenshot one. Dacă apăsăm pe mai multe mailuri să se acumuleze într-un stivă asta unul peste altul. Screenshot two. Și să am buton de cancel aici undeva. Screenshot three. Anulez această dezabonare automatizată.Și după ce se dezabonează, scoate și mail-ul de aicea, marchează, adică arhivează practic. Screenshot for."
+        let toks = [1: "[📸1]", 2: "[📸2✂️]", 3: "[📸3]", 4: "[📸4]"]
+        let r = ShotMarker.resolveStrict(text: text, asr: nil, said: [shot(1), shot(2), shot(3), shot(4)], shots: toks)
+        XCTAssertTrue(r.clean, r.why)
+        XCTAssertEqual(r.shots, [1, 2, 3, 4])
+        XCTAssertFalse(r.text.lowercased().contains("screenshot"), r.text)
+        XCTAssertTrue(r.text.contains("acest buton. [📸1] Dacă"), r.text)
+        XCTAssertTrue(r.text.hasSuffix("practic. [📸4]") || r.text.hasSuffix("practic.[📸4]") || r.text.hasSuffix("practic [📸4]"), r.text)
+    }
 }

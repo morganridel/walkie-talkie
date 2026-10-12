@@ -4401,7 +4401,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // **Its answer goes to the sentence that failed** (Q12), in its turn.
         let owner = contextSentence
-        transcribeLocally(wav: wav, duration: duration, standingInFor: failed, forced: forced) { [weak self] result in
+        // **Wispr's spoken markers are in this WAV too** (2026-10-12): without
+        // them on the result the local words keep `Screenshot one` and the frames
+        // go to the footer. `resolveStrict` reads them off the local text.
+        let said = source === wisprSource ? wisprSource.saidSpliced(into: wav) : []
+        transcribeLocally(wav: wav, duration: duration, standingInFor: failed, forced: forced,
+                          said: said) { [weak self] result in
             guard let self else { return }
             if let owner, owner.finished {
                 Log.info("🗑️ the local model answered for sentence #\(owner.id), which is over — dropped")
@@ -4986,7 +4991,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// handed over at once; running → waited for; planned → started now. Never
     /// a second decode of one take.
     private func transcribeLocally(wav: URL, duration: TimeInterval, standingInFor failed: String,
-                                   forced: Bool = false,
+                                   forced: Bool = false, said: [ShotMarker.Said] = [],
                                    _ done: @escaping (DictationResult?) -> Void) {
         // Read once, at the hand-over: the flag is the clock's, for this take only.
         let byClock = forced && localAutoTake
@@ -5006,7 +5011,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 markersInAudio: true,
                 engineLabel: LocalWhisperSource.modelLabel,
                 // Same WAV the failed engine recorded, so its cues share the ruler.
-                words: r.words))
+                words: r.words,
+                // …and the markers it spoke into it, read back off these words.
+                said: said))
         }
         if let sp = spec, !sp.consumed, sp.phase != .discarded,
            sp.wav.map({ $0.standardizedFileURL.path == wav.standardizedFileURL.path })
