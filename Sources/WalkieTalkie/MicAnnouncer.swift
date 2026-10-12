@@ -241,7 +241,7 @@ private final class BottomTab {
         l.font = Self.font
         l.lineBreakMode = .byTruncatingTail
         l.attributedStringValue = Self.attributed(text)
-        l.frame = labelFrame(width: width)
+        l.frame = labelFrame(width: width, label: l)
         tab.addSubview(l)
         if let icon {
             let iv = NSImageView(frame: NSRect(x: Self.padding, y: ((Self.height - Self.iconSide) / 2).rounded(),
@@ -268,7 +268,7 @@ private final class BottomTab {
                               width: width, height: Self.height), display: true)
         panel.contentView?.frame = NSRect(x: 0, y: 0, width: width, height: Self.height)
         tab.frame = NSRect(x: 0, y: y, width: width, height: Self.height)
-        label.frame = labelFrame(width: width)
+        label.frame = labelFrame(width: width, label: label)
     }
 
     private func startHold(_ hold: TimeInterval) {
@@ -409,18 +409,28 @@ private final class BottomTab {
         let rows = passes.map { attributed(text, pass: $0) }
         let w = ceil(rows.map { $0.size().width }.max() ?? 0) + 2 * padding
         let rowH = height
-        let sheet = NSImage(size: NSSize(width: w, height: rowH * CGFloat(rows.count)))
-        sheet.lockFocus()
-        MicAnnouncer.startupTint.withAlphaComponent(1).setFill()
-        NSRect(origin: .zero, size: sheet.size).fill()
+        // Laid out as the tab lays it out — a real label in `labelFrame`, a
+        // guide through the middle where the icon's centre would be.
+        let sheet = NSView(frame: NSRect(x: 0, y: 0, width: w, height: rowH * CGFloat(rows.count)))
+        sheet.wantsLayer = true
+        sheet.layer?.backgroundColor = MicAnnouncer.startupTint.withAlphaComponent(1).cgColor
         for (k, row) in rows.enumerated() {
-            let size = row.size()
-            row.draw(in: NSRect(x: (w - size.width) / 2, y: sheet.size.height - rowH * CGFloat(k + 1) + (rowH - size.height) / 2,
-                                width: size.width, height: size.height))
+            let cell = NSView(frame: NSRect(x: 0, y: sheet.bounds.height - rowH * CGFloat(k + 1), width: w, height: rowH))
+            let mid = NSView(frame: NSRect(x: 0, y: rowH / 2, width: 8, height: 1))
+            mid.wantsLayer = true
+            mid.layer?.backgroundColor = NSColor.red.cgColor
+            let l = NSTextField(labelWithString: "")
+            l.font = font
+            l.lineBreakMode = .byTruncatingTail
+            l.attributedStringValue = row
+            l.frame = labelFrame(width: w, lead: 0, label: l)
+            cell.addSubview(l)
+            cell.addSubview(mid)
+            sheet.addSubview(cell)
         }
-        sheet.unlockFocus()
-        guard let tiff = sheet.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return }
+        guard let rep = sheet.bitmapImageRepForCachingDisplay(in: sheet.bounds) else { return }
+        sheet.cacheDisplay(in: sheet.bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
         try? png.write(to: URL(fileURLWithPath: path))
     }
 
@@ -435,15 +445,23 @@ private final class BottomTab {
         return max(220, min(hugging, screen.frame.width * 0.6))
     }
 
-    private func labelFrame(width: CGFloat) -> NSRect {
+    private func labelFrame(width: CGFloat, label: NSTextField) -> NSRect {
+        Self.labelFrame(width: width, lead: lead, label: label)
+    }
+
+    /// As tall as the line it holds — the `ShineGlyph`s' glow room makes that
+    /// taller than the font's line (2026-10-12: a field of the font's height
+    /// sank the words and cut them) — and centred on the tab, so the words sit
+    /// on the icon's middle.
+    private static func labelFrame(width: CGFloat, lead: CGFloat, label: NSTextField) -> NSRect {
         let lm = NSLayoutManager()
-        var h = lm.defaultLineHeight(for: Self.font)
-        if let emoji = NSFont(name: "AppleColorEmoji", size: Self.font.pointSize) {
+        var h = lm.defaultLineHeight(for: font)
+        if let emoji = NSFont(name: "AppleColorEmoji", size: font.pointSize) {
             h = max(h, lm.defaultLineHeight(for: emoji))
         }
-        h = ceil(h)
-        return NSRect(x: Self.padding + lead, y: (Self.height - h) / 2,
-                      width: width - 2 * Self.padding - lead, height: h)
+        h = ceil(max(h, label.attributedStringValue.size().height))
+        return NSRect(x: padding + lead, y: ((height - h) / 2).rounded(),
+                      width: width - 2 * padding - lead, height: h)
     }
 
     private static func screenUnderMouse() -> NSScreen? {
