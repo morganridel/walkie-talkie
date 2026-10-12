@@ -145,6 +145,9 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// layer to animate and re-rasterising it at a new size every frame would put
     /// a relayout in the one loop that must not have one.
     private let listenBadge = NSImageView()
+    /// The ❓ of a quick question, playing — `placeQuestion`.
+    private let questionView = NSImageView()
+    private let questionLoop = CALayer()
     /// Whether the badge is currently up, so the pop fires on the edge and not on
     /// every repaint of a full bar.
     private var listenBadgeUp = false
@@ -1408,6 +1411,10 @@ private let heardLabel = NSTextField(labelWithString: "")
         listenBadge.imageScaling = .scaleProportionallyUpOrDown
         listenBadge.wantsLayer = true
         listenBadge.isHidden = true
+        questionView.image = Self.questionGlyph
+        questionView.imageScaling = .scaleProportionallyUpOrDown
+        questionView.wantsLayer = true
+        questionView.isHidden = true
         elapsedLabel.font = hintFont
         elapsedLabel.textColor = .secondaryLabelColor
         elapsedLabel.isHidden = true
@@ -1422,6 +1429,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         engineRow.addSubview(recordDot)
         engineRow.addSubview(engineInfo)
         engineRow.addSubview(listenBadge)
+        engineRow.addSubview(questionView)
         engineRow.addSubview(elapsedLabel)
         engineRow.isHidden = true
         root.addSubview(engineRow)
@@ -2829,21 +2837,37 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **The ⚡ quick question wears the film's ❓, not a ⚡, in front of
     /// `Asking...`** (2026-10-12, Victor: *"în loc de fulger din fața Asking …
     /// un semnul întrebării … galben în stilul celui care apare ca efect"*). A
-    /// still of `question-mark.mov`, gold with its first crackle of bolts
+    /// crop of `question-mark.mov`, gold with its first crackle of bolts
     /// (`tools/build-question-icon.py`) — an emoji ❓ is red and says nothing
-    /// about the halo it opens. Missing file: the plain ⚡, as before.
-    static let questionGlyph: NSImage = {
-        guard let (url, _, _) = CaretHalo.sheetFile(["question-mark-icon.png"], override: "WT_QUESTION_ICON"),
-              let image = NSImage(contentsOf: url)
-        else { return Glyphs.emoji("⚡", ink: iconInk) }
-        image.size = NSSize(width: iconInk, height: iconInk)
-        return image
+    /// about the halo it opens. **It plays the film's loop** (same morning:
+    /// *"este și animat? Mi-ar plăcea"*): 48 cells, 12 fps, on `questionView`.
+    /// Missing file: the plain ⚡, as before.
+    static let questionFrames: [CGImage] = {
+        guard let (url, cols, rows) = CaretHalo.sheetFile(["question-mark-icon-8x6.png"], override: "WT_QUESTION_ICON"),
+              let data = try? Data(contentsOf: url),
+              let sheet = NSBitmapImageRep(data: data)?.cgImage
+        else { return [] }
+        let w = sheet.width / cols, h = sheet.height / rows
+        return (0..<cols * rows).compactMap {
+            sheet.cropping(to: CGRect(x: ($0 % cols) * w, y: ($0 / cols) * h, width: w, height: h))
+        }
     }()
+    /// The loop's first cell — the still the states page photographs, and the
+    /// mark on the `Transcribing...` row, which has no view of its own to play on.
+    static let questionGlyph: NSImage = questionFrames.first.map {
+        NSImage(cgImage: $0, size: NSSize(width: iconInk, height: iconInk))
+    } ?? Glyphs.emoji("⚡", ink: iconInk)
+    /// The ❓'s room in `Asking...`: an attachment draws one picture and never
+    /// another, so the words keep a transparent square where `questionView`
+    /// plays the loop on top.
+    private static let questionHole = NSImage(size: NSSize(width: iconInk, height: iconInk), flipped: false) { _ in true }
     /// The picture a collapsed spawn mark is drawn as: the ❓ for a quick
-    /// question (`questionMark`), any other character as its emoji.
+    /// question (`questionMark`) — its hole when `questionView` plays over it —
+    /// any other character as its emoji.
     static let questionMark = "❓"
-    private static func markGlyph(_ mark: String) -> NSImage {
-        mark == questionMark ? questionGlyph : Glyphs.emoji(mark, ink: iconInk)
+    private static func markGlyph(_ mark: String, played: Bool = false) -> NSImage {
+        guard mark == questionMark else { return Glyphs.emoji(mark, ink: iconInk) }
+        return played && !questionFrames.isEmpty ? questionHole : questionGlyph
     }
 
 
@@ -3397,7 +3421,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // because the *other* spawn state (a picked folder, wider chip) drew
         // correctly. Measured, not reasoned: `docs/states/spawn.png`.
         if spawnCollapsed, let mark = spawnMark {
-            out.append(Self.inline(Self.markGlyph(mark), font: hintFont))
+            out.append(Self.inline(Self.markGlyph(mark, played: true), font: hintFont))
             out.append(NSAttributedString(string: " ", attributes: [.font: hintFont]))
         }
 
@@ -3475,7 +3499,47 @@ private let heardLabel = NSTextField(labelWithString: "")
         engineInfo.attributedStringValue = out
         warmthLit = steps
         placeListenExtras(after: out)
+        placeQuestion(shown: spawnCollapsed && spawnMark == Self.questionMark && !Self.questionFrames.isEmpty)
     }
+
+    /// **The ❓ in front of `Asking...` plays the film's loop** over the hole
+    /// `markGlyph(played:)` leaves in the words. A layer animation, so the ink
+    /// ticker that rewrites this row's string fifteen times a second never
+    /// touches it and nothing relayouts per frame. It plays on a sublayer of
+    /// its own (`questionLoop`), never on the image view's layer, whose contents
+    /// AppKit owns. `RELAY_SHOOT` gets the still instead (the view's image,
+    /// which `cacheDisplay` draws) — the catalogue photographs states.
+    private func placeQuestion(shown: Bool) {
+        questionView.isHidden = !shown
+        guard shown else { questionLoop.removeAnimation(forKey: "loop"); return }
+        let side = Self.iconInk
+        questionView.frame = NSRect(x: engineInfo.frame.minX + Self.questionInset.x,
+                                    y: ((engineRow.frame.height - side) / 2).rounded() + Self.questionInset.y,
+                                    width: side, height: side)
+        guard ProcessInfo.processInfo.environment["RELAY_SHOOT"] == nil, let host = questionView.layer else { return }
+        if questionLoop.superlayer !== host {
+            questionView.image = nil
+            questionLoop.contentsGravity = .resizeAspect
+            questionLoop.contents = Self.questionFrames.first
+            host.addSublayer(questionLoop)
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        questionLoop.frame = host.bounds
+        questionLoop.contentsScale = questionView.window?.backingScaleFactor ?? 2
+        CATransaction.commit()
+        guard questionLoop.animation(forKey: "loop") == nil else { return }
+        let loop = CAKeyframeAnimation(keyPath: "contents")
+        loop.values = Self.questionFrames
+        loop.calculationMode = .discrete
+        loop.duration = 4
+        loop.repeatCount = .infinity
+        loop.isRemovedOnCompletion = false
+        questionLoop.add(loop, forKey: "loop")
+    }
+    /// Where the hole sits in `engineInfo`: the label's text inset, measured
+    /// against the still drawn in place on the states page.
+    private static let questionInset = CGPoint(x: 2, y: 0)
 
     /// **An `HQ` tag pops out at the end of `Listening...` the moment it fills,
     /// and the minutes sit after it.**
