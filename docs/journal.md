@@ -21,6 +21,7 @@ The journal contradicts itself over time, because it was written as things chang
 - *Q7 — F8 on a caret sentence: stays ignored* (2026-09-26) — reversed 2026-10-04: *🔼 ↑ turns a caret sentence into a spawn*, folder menu included
 - *🔼 ↑ turns a caret sentence into a spawn*'s *a sentence already a spawn still ignores the gesture* (2026-10-04) — superseded 2026-10-05 by *🔼 ↑ on a spawn sentence offers the folder menu again*
 - *The oblique wipe: a message replaces a message*, *What the cancel actually looked like…*, *`WT_SHOOT_WIPE` — because this is the least reviewable thing in the app* — **retired 2026-09-18**: `ChipWipe.swift`, its rule file and the `WT_SHOOT_WIPE` harness are deleted; a chip message is swapped in one frame (*The chip swaps in one frame*)
+- *The session's inbox — delivery without keystrokes* (2026-10-08, in `terminal-binding.md`) — off since 2026-10-12 unless `WT_INBOX=1`: it waited for the running turn to end (*Typed again: the inbox waited for the turn to end*)
 - *The DJI receiver is the microphone whenever it is plugged in* (2026-09-01) — superseded 2026-09-19: *automatic* is a ladder, 🎙️ XLR ▸ 🎤 DJI ▸ 🎧 Bose ▸ 💻 built-in, and the receiver is its second rung (*The chip says which microphone, and the menu picks it*)
 - *`raw_transcript` is a finished sentence Wispr never labelled* (2026-09-22) and Q24's *wait without the 30 s cap while `processing`* (2026-09-28) — superseded 2026-09-29 by *fix batch 3*: `raw_transcript` is terminal (Wispr's own code), and a row Wispr will never finish is called dead on the commit that shows it (`WisprState.deadRow`); the rest waits to 40 s, not 300 s
 - *Wispr Flow everywhere (2026-09-12)*, and every later line making Wispr one of the engines — superseded 2026-09-22 by *Wispr Flow leaves the Engine list*: it is not selectable at all any more, and keeps only 🔽 →. The wrap sections are **not** retired — they still describe the mechanism accurately and it is what the row would come back to
@@ -15431,3 +15432,25 @@ typed at :55 and the session closed its own window.
 
 The harness's `cleanup()` used to unbind at the end of every run ("no bind" — written for the lab);
 at the desk it left Victor unbound after each one. It now puts back the binding it found.
+
+## Typed again: the inbox waited for the turn to end (2026-10-12)
+
+Victor, 12:56: *"Modul ăsta cu channel-uri mi se pare că întârzie mult momentul când primește
+efectiv mesajele mele"*, then 13:00: *"hai să ne întoarcem la mecanismul care funcționa înainte, și
+anume introducerea de taste direct acolo … pe mine mă doare acum să nu aștept să termine tura …
+vreau ca modul să proceseze orice prompt vine, fie cel de deschidere, fie unul livrat intermediar"*.
+
+The delay was never the transport (54 ms from `.msg` to claim). `$.prompt.submit` runs a plugin's
+prompt once the session is idle: the 2.1.296 API types say so in as many words, and no flag folds
+one into a running turn. The only deliveries that reach a running turn are a peer's message and a
+channel's, and neither reads as his own words. At 12:56 the `workspace` session was 5 min 25 s into
+a turn, so his sentence waited at least that long. A prompt typed during a turn is queued by Claude Code and folded in after the
+next tool result.
+
+So `deliverToInbox` is off unless `WT_INBOX=1`, and the mod's job shrank to its `prompt.submit` hook,
+now run on every non-plugin prompt whose footer carries `[Dictated in RO or EN]` (`splitTyped`).
+That also covers the spawn's first sentence, which travels in argv and had never gone through the
+inbox (the "why didn't the mod work here" at 12:58: that session was spawned, ttys005).
+Proven in a detached tmux session (`claude --model haiku`): the argv prompt and one pasted during a
+`sleep 20` both showed in the transcript as the words plus `🎙️ · 📸 ×1`, and the model listed the hidden
+clauses back. While it waits in the queue, the queue preview still shows the raw text.

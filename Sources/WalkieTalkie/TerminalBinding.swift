@@ -845,12 +845,20 @@ final class TerminalBinding {
     /// `.taken`; a message not claimed within `inboxTakeWait` is withdrawn the
     /// same way, and whichever rename lands first owns it — so a slow mod and the
     /// typed fallback can never both deliver one sentence. Withdrawn → nil, and
-    /// the caller types it as before. `WT_INBOX=0` turns the route off.
+    /// the caller types it as before.
+    ///
+    /// **Off unless `WT_INBOX=1`** (2026-10-12, Victor: *"pe mine mă doare acum
+    /// să nu aștept să termine tura … hai să ne întoarcem la … introducerea de
+    /// taste direct acolo"*). `$.prompt.submit` runs a plugin's prompt only once
+    /// the session is idle — no mod API folds one into a running turn — so a
+    /// sentence spoken during a five-minute turn waited five minutes. Typed, it
+    /// is read after the next tool result. The mod stays installed: it now hides
+    /// the envelope of every prompt that carries one, typed or argv.
     static let inboxRoot = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".walkie-talkie/inbox")
     private static let inboxFresh: TimeInterval = 6
     private static let inboxTakeWait: TimeInterval = 3
-    private static let inboxOff = ProcessInfo.processInfo.environment["WT_INBOX"] == "0"
+    private static let inboxOff = ProcessInfo.processInfo.environment["WT_INBOX"] != "1"
 
     /// Whether a live `walkie-inbox` listens on this tty — `GET /test/state`.
     static func inboxListening(tty: String) -> Bool {
