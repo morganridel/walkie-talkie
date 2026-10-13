@@ -326,16 +326,24 @@ final class ScreenFilm {
 /// through; `sharingType = .none` keeps it out of the frames it frames
 /// (checked on a 10:16 film the same day: no red in any frame).
 ///
-/// **A red dot in each corner, blinking with it** (2026-10-08, Victor: *"there
-/// should be a red dot also blinking in line with the red border across the
-/// borders whenever the screen is getting recorded"*). The dots are sublayers of
-/// the border's own layer, so the one animation blinks both — in step by
-/// construction, never by two timers agreeing — and the same `sharingType`
-/// keeps them out of the frames.
+/// **A red dot in each corner, blinking with it** (2026-10-08) — superseded
+/// 2026-10-13 by the camcorder badge below.
+///
+/// **One `● REC` in the top-right corner, like a camcorder's viewfinder**
+/// (2026-10-13, Victor: *"the record circles in the corners should be like three
+/// x large and be blinking slowly … say REC … It should only appear in the top
+/// right. To resemble a VCR camera"*). The dot is 3 × the old 14 pt and blinks
+/// on its own slow clock — a hard step, a second lit and a second dark — while
+/// `REC` stays lit beside it, the way a viewfinder does it. It sits under the
+/// menu bar, which would otherwise draw over it. The border keeps its own
+/// half-second blink, so the two are separate layers now.
 enum FilmBorder {
     private static var panel: NSPanel?
     static let width: CGFloat = 5
-    static let dot: CGFloat = 14
+    static let dot: CGFloat = 42
+    /// The dot's whole cycle, half lit, half dark.
+    static let slowBlink: CFTimeInterval = 2.0
+    private static let ink = NSColor.systemRed
 
     static func show(on screen: NSScreen) {
         guard Thread.isMainThread else { DispatchQueue.main.async { show(on: screen) }; return }
@@ -350,34 +358,63 @@ enum FilmBorder {
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         p.sharingType = .none
         p.hidesOnDeactivate = false
-        let v = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
-        v.wantsLayer = true
-        v.layer?.borderWidth = width
-        v.layer?.borderColor = NSColor.systemRed.cgColor
-        // Just inside the border, one per corner.
-        let inset = width + 4
-        let size = screen.frame.size
-        for origin in [NSPoint(x: inset, y: inset),
-                       NSPoint(x: size.width - inset - dot, y: inset),
-                       NSPoint(x: inset, y: size.height - inset - dot),
-                       NSPoint(x: size.width - inset - dot, y: size.height - inset - dot)] {
-            let d = CALayer()
-            d.frame = CGRect(origin: origin, size: CGSize(width: dot, height: dot))
-            d.cornerRadius = dot / 2
-            d.backgroundColor = NSColor.systemRed.cgColor
-            v.layer?.addSublayer(d)
-        }
-        let blink = CAKeyframeAnimation(keyPath: "opacity")
-        blink.values = [1.0, 0.5]
-        blink.keyTimes = [0, 0.5]
-        blink.calculationMode = .discrete
-        blink.duration = 1.0
-        blink.repeatCount = .infinity
-        v.layer?.add(blink, forKey: "blink")
-        p.contentView = v
+        p.contentView = content(size: screen.frame.size,
+                                menuBar: screen.frame.maxY - screen.visibleFrame.maxY,
+                                scale: screen.backingScaleFactor)
         p.setFrame(screen.frame, display: true)
         p.orderFrontRegardless()
         panel = p
+    }
+
+    /// The drawing, also rendered by `FilmBorderTests` (`FILM_BORDER_PNG=<dir>`)
+    /// — the panel is out of every screenshot.
+    static func content(size: CGSize, menuBar: CGFloat, scale: CGFloat) -> NSView {
+        let v = NSView(frame: NSRect(origin: .zero, size: size))
+        v.wantsLayer = true
+        let border = CALayer()
+        border.frame = CGRect(origin: .zero, size: size)
+        border.borderWidth = width
+        border.borderColor = ink.cgColor
+        border.add(blink(values: [1.0, 0.5], duration: 1.0), forKey: "blink")
+        v.layer?.addSublayer(border)
+
+        let font = NSFont.monospacedSystemFont(ofSize: 40, weight: .heavy)
+        let text = NSAttributedString(string: "REC", attributes: [.font: font, .foregroundColor: ink])
+        let textSize = text.size()
+        let gap: CGFloat = 12
+        let margin = width + 16
+        let top = size.height - menuBar - margin
+        let textX = size.width - margin - ceil(textSize.width)
+        let rec = CATextLayer()
+        rec.string = text
+        rec.contentsScale = scale
+        rec.frame = CGRect(x: textX, y: top - dot + (dot - ceil(textSize.height)) / 2,
+                           width: ceil(textSize.width), height: ceil(textSize.height))
+        let d = CALayer()
+        d.frame = CGRect(x: textX - gap - dot, y: top - dot, width: dot, height: dot)
+        d.cornerRadius = dot / 2
+        d.backgroundColor = ink.cgColor
+        d.add(blink(values: [1.0, 0.0], duration: slowBlink), forKey: "blink")
+        // A dark halo so the red reads on a white page as well as on a terminal.
+        for layer in [d, rec] {
+            layer.shadowColor = NSColor.black.cgColor
+            layer.shadowOpacity = 0.6
+            layer.shadowRadius = 3
+            layer.shadowOffset = .zero
+            v.layer?.addSublayer(layer)
+        }
+        return v
+    }
+
+    /// A hard step, no ease: the first value for the first half, the second after.
+    private static func blink(values: [Double], duration: CFTimeInterval) -> CAAnimation {
+        let a = CAKeyframeAnimation(keyPath: "opacity")
+        a.values = values
+        a.keyTimes = [0, 0.5]
+        a.calculationMode = .discrete
+        a.duration = duration
+        a.repeatCount = .infinity
+        return a
     }
 
     static func hide() {

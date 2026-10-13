@@ -436,8 +436,9 @@ yields to `--label`).
   `poster.jpg` (the middle frame, 800 px, `FilmSheet.poster`); `AppDelegate` hands `films: [(poster,
   seconds)]` to `showSentPrompt`; `stripShots` appends them after the screenshots. Red 1 pt rim and a
   `● 4.2s` pill (`filmBadge`) where a screenshot carries its m:ss. Shot `prompt-film`. While
-  recording, `FilmBorder` draws a red dot in each corner as sublayers of the blinking border, so
-  they blink in step with it and stay out of the frames (`sharingType = .none`; a 2026-10-08 film
+  recording, `FilmBorder` draws one camcorder `● REC` in the top-right corner (2026-10-13 — four
+  corner dots until then): a 42 pt dot blinking slowly (1 s lit, 1 s dark), `REC` steady, both out
+  of the frames (`sharingType = .none`; a 2026-10-08 film
   checked: no red in any frame).
 - **Dictating is not a panel state.** The panel is for what the model heard while Cancel can still
   stop it; the shot receipt is a number in the recording row, not a `flash(_:)`, because a flash

@@ -206,3 +206,10 @@ recorded, and blinking 50% transparent to 100% opaque"*. 5 pt `systemRed` round 
 (the one resolved at `start`), a **hard step** 100 % ↔ 50 % every 0.5 s (discrete keyframes — no
 ease), click-through, `sharingType = .none`. Up at `ScreenFilm.start`, down at `stop` and at the 30 s
 ceiling. Not yet seen in a frame — if `CGDisplayCreateImage` ever draws it, that is the bug to chase.
+
+**`● REC` top-right, like a camcorder** (2026-10-13, Victor: *"the record circles in the corners should
+be like three x large and be blinking slowly … say REC … only appear in the top right. To resemble a
+VCR camera"*). One 42 pt red dot (3 × the old 14 pt corner dots, all four gone), a hard step 1 s lit /
+1 s dark (`slowBlink` 2 s), `REC` (40 pt monospaced heavy, red) steady to its right, a dark 3 pt halo
+on both, under the menu bar. The border blinks on its own layer at its old pace. Review:
+`FILM_BORDER_PNG=<dir> swift test --filter FilmBorderTests`.
