@@ -220,6 +220,11 @@ me to dismiss it explicitly"*.
   că au terminat … un pic abuz"*. Then, the same night: *"exclusiv când eu întreb ceva. Atât … Niciodată
   să nu fie folosit ca să mă întrebe Claude pe mine ceva"* — **only the answer to his question; never
   a question for him, never a completion notice.**
+- **Not when the sender is the terminal in front** (2026-10-13, Victor: *"if I'm focusing the window,
+  don't use the reply pop-up"*): `POST /reply` asks `TerminalBinding.focusedTTY()` (Terminal.app's
+  focused tab when Terminal is frontmost, or VS Code's terminal holding the caret) and, when it is the
+  answer's tty, shows nothing — the agent's answer is already on screen there. Answers `200 {shown:
+  false, reason: "sender in front"}`; log `💬 answer from … not shown — ttysNNN is the terminal in front`.
 - **Every corner resizes it** (2026-10-09, Victor: *"make the dialog window … resizable by the right
   or left bottom corner? Actually all the corners … in case there's a longer response"*): a press
   within 12 pt of a corner (`ReplyRoot.Grip`, the system's diagonal resize cursor there — macOS 15's

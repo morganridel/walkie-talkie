@@ -2203,6 +2203,26 @@ final class TerminalBinding {
         return claudePromptOn(tty: tab.tty) ? tab.tty : nil
     }
 
+    /// **The terminal he is looking at, as `ttysNNN`** (2026-10-13): Terminal.app's
+    /// focused tab when it is the app in front, or VS Code's terminal holding the
+    /// caret; nil for anything else. The reply pop-up asks it — an answer from the
+    /// terminal in front is already on screen there.
+    ///
+    /// Runs `osascript` — call it off the main thread.
+    static func focusedTTY() -> String? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let bundleID = app.bundleIdentifier
+        var tty: String?
+        if bundleID == "com.apple.Terminal" {
+            tty = frontTerminalTab().tab?.tty
+        } else if let bundleID, IDEBridge.kind(bundleID: bundleID) == "vscode",
+                  caretInVSCodeTerminal(pid: app.processIdentifier),
+                  let shell = IDEBridge.focusedTerminalShellPID(bundleID: bundleID) {
+            tty = self.tty(ofPID: shell)
+        }
+        return tty.map { ($0 as NSString).lastPathComponent }
+    }
+
     /// **Questions 2 and 3 alone, of any tty**: a non-shell in front on it and a
     /// live Claude Code published there. The late kamikaze asks it again before
     /// typing the word into a tab whose session may have ended since its prompt

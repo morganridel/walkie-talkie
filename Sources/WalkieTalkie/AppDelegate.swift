@@ -2044,6 +2044,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     label = "\(base) · \(tty)"
                 }
+                // **Not over the terminal he is looking at** (2026-10-13, Victor:
+                // *"if I'm focusing the window, don't use the reply pop-up"*): the
+                // agent's answer is already on screen there.
+                if TerminalBinding.focusedTTY() == (tty as NSString).lastPathComponent {
+                    Log.info("💬 answer from \(label ?? tty) not shown — \(tty) is the terminal in front")
+                    return (200, ["ok": true, "shown": false, "reason": "sender in front", "from": label ?? NSNull()])
+                }
             }
             ReplyPanel.show(text, from: label, tty: (body["tty"] as? String).flatMap { $0.isEmpty ? nil : $0 },
                             images: images)
