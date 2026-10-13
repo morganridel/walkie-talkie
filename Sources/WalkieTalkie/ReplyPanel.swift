@@ -127,9 +127,10 @@ enum ReplyPanel {
     /// *"if I fire the question, or if it's a Kamikaze session, the skull should
     /// show up red … so that I can't really kill an already killed session … from
     /// a Claude session that has ended by now … the skull should show it's dead"*).
-    /// Dead is a ⚡ quick answer (its `claude -p` is gone), a session told
-    /// `kamikaze` (`doom`), or a tty with no agent left on it — asked when the
-    /// pop-up opens and every `watchEvery` while it stays. Never back to alive.
+    /// Dead is a session told `kamikaze` (`doom`), or a tty with no agent left
+    /// on it — asked when the pop-up opens and every `watchEvery` while it
+    /// stays. Never back to alive. A ⚡ quick answer has no ☠️ at all: its
+    /// `claude -p` was one-shot, never meant to survive (2026-10-13, evening).
     static var agentRunning: ((String) -> Bool)?
     private static var shownDead = false
     private static weak var skullButton: ReplyCloseButton?
@@ -334,7 +335,7 @@ enum ReplyPanel {
         shownImages = images
         openLabel = label
         arrivedAt = NSEvent.mouseLocation
-        shownDead = label?.hasPrefix(quickMark) == true || tty.map(isDoomed) == true
+        shownDead = tty.map(isDoomed) == true
         let root = build(text, from: label, tty: tty, images: images)
 
         let p = NSPanel(contentRect: root.frame, styleMask: [.borderless, .nonactivatingPanel],
@@ -565,9 +566,7 @@ enum ReplyPanel {
         root.addSubview(icon)
         let textX = pad + iconSide + 6
         let pinned = tty.map { !(isBound?($0) ?? false) } ?? false
-        // A ⚡ answer has a ☠️ too — dead from the start, nothing to kill.
-        let quick = tty == nil && label?.hasPrefix(quickMark) == true
-        let buttons: CGFloat = tty == nil ? (quick ? 2 : 1) : (pinned ? 3 : 2)
+        let buttons: CGFloat = tty == nil ? 1 : (pinned ? 3 : 2)
         header.frame = NSRect(x: textX, y: height - pad - headerH + 3,
                               width: inner - (textX - pad) - buttons * (iconSide + 6), height: 20)
         root.addSubview(header)
@@ -613,12 +612,6 @@ enum ReplyPanel {
         root.addSubview(x)
         var hot = [x.frame] + thumbs
         if tty != nil { hot.append(icon.frame) }
-        if quick {
-            let skull = ReplyCloseButton(frame: x.frame.offsetBy(dx: -(iconSide + 6), dy: 0))
-            skull.glyph = "☠️"
-            skull.dead = true
-            root.addSubview(skull)
-        }
         if let tty = tty {
             let skull = ReplyCloseButton(frame: x.frame.offsetBy(dx: -(iconSide + 6), dy: 0))
             skull.glyph = "☠️"

@@ -255,13 +255,14 @@ me to dismiss it explicitly"*.
   Log `💬 the answer's ☠️ clicked`, `☠️ kamikaze — sent from the answer panel to ttysNNN`.
 - **A ☠️ that cannot kill is red, as if already pressed** (2026-10-13, Victor: *"if I fire the
   question, or if it's a Kamikaze session, the skull should show up red … so that I can't really kill
-  an already killed session"*). Dead = a ⚡ quick answer (it gets a ☠️ now, red from the start), a
-  tty that was delivered `kamikaze` (`TerminalBinding.saysKamikaze` on a `.delivered` outcome →
+  an already killed session"*). Dead = a tty that was delivered `kamikaze` (`TerminalBinding.saysKamikaze` on a `.delivered` outcome →
   `ReplyPanel.doom`, kept ≤ 10 min or until seen dead), or a tty with no agent left
   (`TerminalBinding.agentRunning`: nothing on it, or only a shell in front) — asked when the pop-up
   opens and every 2 s while it stays; never back to alive. Red fill, arrow cursor, a click does
   nothing (a press still drags). Log `💬 no agent left on ttysNNN — the reply pop-up's ☠️ shows it
-  dead`. Tests: `KamikazeWordTests`.
+  dead`. Tests: `KamikazeWordTests`. **A ⚡ quick answer has no ☠️ at all** (2026-10-13 evening,
+  Victor: *"you don't have to display the dead skull in red, because that's never meant to survive.
+  It's a one shot question"*) — it had a red one for a few hours that morning.
 - **The panel is a surface, not a document** (2026-10-08, *"drag the little window … by clicking on the
   text and the text shouldn't be selectable"*): the words are an `InertLabel` (not selectable, no hit),
   a press anywhere off the four clickables is `performDrag`; `ReplyRoot` sets the **arrow** over the
