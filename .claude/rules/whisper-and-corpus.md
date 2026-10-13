@@ -331,7 +331,7 @@ never include a bare `dji mic`, which is the transmitter's name (`DJI Mic Mini-B
   *"use this"* — flat lead-in, sharp zigzag peaks with round joins, flat lead-out, aspect 1.4 — the
   light running along that polyline), written `MicAnnouncer.wave`
   (U+E000) in the text and `〰` in logs and `startupBanner`. **The green tab names the engine too**,
-  after the same wave: `Listening 🎤 〰 Wispr ☁️` (`MicAnnouncer.engine`, read on main). **A glint runs
+  after the same wave: `🎤 〰 Wispr ☁️` (no `Listening` prefix since 2026-10-13) (`MicAnnouncer.engine`, read on main). **A glint runs
   along it, microphone → engine** (same day, *"a bright section moving, from left to right … something
   gentle"*): the bars sit at 50 % white and a light runs **the wave's own trajectory** **once per tab**
   (`BottomTab.startGlint(after:lasting:)`, `WaveGlyph.image(glint:)`, redrawn at 30 fps while the tab is up):

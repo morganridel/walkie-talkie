@@ -1,7 +1,7 @@
 import Cocoa
 import CoreAudio
 
-/// **"(walkie) Listening 🎤"** — a green tab that rises from the
+/// **"(walkie) 🎤 〰 engine"** — a green tab that rises from the
 /// bottom edge of the screen under the mouse when the microphone this app would
 /// record through changes, holds ~2.5 s and falls away (2026-09-23).
 ///
@@ -30,8 +30,10 @@ import CoreAudio
 ///
 /// **Same words as addons' pill, behind the app's own icon** (2026-09-26,
 /// Victor: *"walkie talkie sa aiba acelasi mesaj, dar precedat de iconul lui
-/// cu portocaliu in jur"*). Both apps now say `Listening 🎤`; the orange-ringed
-/// `walkie-bound` device in front is what says *which* app is saying it.
+/// cu portocaliu in jur"*). The orange-ringed `walkie-bound` device in front
+/// is what says *which* app is saying it. **No `Listening` prefix** (2026-10-13,
+/// Victor: *"sometimes it says listening, but sometimes it just says the device
+/// … remove the listening prefix"*) — the launch tab never had one.
 final class MicAnnouncer {
 
     static let settle: TimeInterval = 0.6
@@ -135,9 +137,9 @@ final class MicAnnouncer {
     /// The resolved device as a comparable key and the tab's copy.
     private static func current() -> (key: String, text: String) {
         let r = InputDevice.resolve()
-        if let k = r.known { return ("\(k.id) \(r.device?.name ?? "")", cardText(glyph: k.glyph)) }
+        if let k = r.known { return ("\(k.id) \(r.device?.name ?? "")", k.glyph) }
         guard let name = r.device?.name else { return ("", "") }
-        return (name, cardText(glyph: "🎙️ \(name)"))
+        return (name, "🎙️ \(name)")
     }
 
     /// `WT_SHOOT_TAB` — see `BottomTab.shoot`. `WT_TAB_TEXT` overrides the
@@ -148,10 +150,6 @@ final class MicAnnouncer {
             ?? "🎤 \(wave) \(StatusItem.cloud) ElevenLabs Scribe"
         BottomTab.shoot(text, to: path)
     }
-
-    /// The exact copy — `Listening 🎤`, Victor Addons' wording. A device none
-    /// of `known` names passes `🎙️ <its name>`, the only thing that says which.
-    static func cardText(glyph: String) -> String { "Listening \(glyph)" }
 }
 
 /// Victor Addons' `BottomTabBanner`, cut down to what the announcer uses: one
