@@ -131,6 +131,9 @@ enum ReplyPanel {
     /// on it — asked when the pop-up opens and every `watchEvery` while it
     /// stays. Never back to alive. A ⚡ quick answer has no ☠️ at all: its
     /// `claude -p` was one-shot, never meant to survive (2026-10-13, evening).
+    /// **Dead shows as a 🪦, not a red ☠️** (2026-10-13, late: *"replace that
+    /// emoji with a tombstone … saying to me: the terminal died already"*) —
+    /// on hover it says so (`deadHint`).
     static var agentRunning: ((String) -> Bool)?
     private static var shownDead = false
     private static weak var skullButton: ReplyCloseButton?
@@ -146,7 +149,7 @@ enum ReplyPanel {
         let short = (tty as NSString).lastPathComponent
         DispatchQueue.main.async {
             doomed[short] = Date()
-            Log.info("💬 \(short) was told kamikaze — its answers' ☠️ shows it dead")
+            Log.info("💬 \(short) was told kamikaze — its answers show a 🪦")
             if shownTTY.map({ ($0 as NSString).lastPathComponent }) == short { markDead() }
         }
     }
@@ -177,7 +180,7 @@ enum ReplyPanel {
                 let alive = ask(tty)
                 DispatchQueue.main.async {
                     guard !alive, shownTTY == tty, !shownDead else { return }
-                    Log.info("💬 no agent left on \(tty) — the reply pop-up's ☠️ shows it dead")
+                    Log.info("💬 no agent left on \(tty) — the reply pop-up shows a 🪦")
                     doomed[(tty as NSString).lastPathComponent] = nil
                     markDead()
                 }
@@ -322,6 +325,7 @@ enum ReplyPanel {
 
     /// The header of every ⚡ quick answer starts with it (`AppDelegate.askQuick`).
     static let quickMark = "⚡ "
+    static let deadHint = "The terminal died already"
 
     /// The ⚡ pop-up is still being written.
     private(set) static var liveOpen = false
@@ -616,12 +620,26 @@ enum ReplyPanel {
             let skull = ReplyCloseButton(frame: x.frame.offsetBy(dx: -(iconSide + 6), dy: 0))
             skull.glyph = "☠️"
             skull.dead = shownDead
+            // **The 🪦's words, on hover** — drawn under it: a tooltip never
+            // shows on a panel of an app that is not active.
+            let hint = InertLabel(labelWithString: deadHint)
+            hint.font = .systemFont(ofSize: 12)
+            hint.textColor = .white
+            hint.alignment = .center
+            hint.wantsLayer = true
+            hint.layer?.backgroundColor = NSColor(white: 0.25, alpha: 1).cgColor
+            hint.layer?.cornerRadius = 5
+            let hintW = ceil(hint.intrinsicContentSize.width) + 14
+            hint.frame = NSRect(x: x.frame.maxX - hintW, y: skull.frame.minY - 24, width: hintW, height: 20)
+            hint.isHidden = true
+            skull.onHover = { [weak hint, weak skull] inside in hint?.isHidden = !(inside && skull?.dead == true) }
             skull.onClick = {
                 Log.info("💬 the reply pop-up's ☠️ clicked — kamikaze to \(tty), pop-up closed")
                 close()
                 onKamikaze?(tty)
             }
             root.addSubview(skull)
+            root.addSubview(hint)
             skullButton = skull
             hot.append(skull.frame)
             // **📍 left of the ☠️, only while another terminal is bound** — the
@@ -1049,27 +1067,28 @@ private final class InertLabel: NSTextField {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// The ✕ (and, with a `glyph`, the ☠️) — drawn, not an `NSButton`: a button in
+/// The ✕ (and, with a `glyph`, the ☠️ — a 🪦 once `dead`) — drawn, not an `NSButton`: a button in
 /// a non-activating panel looks disabled and eats the first click.
 private final class ReplyCloseButton: NSView {
     var onClick: (() -> Void)?
     var glyph: String?
     /// A drawn picture in place of the glyph (the 📍's map pin).
     var image: NSImage?
-    /// **Pressed for good** — the ☠️ of a session already gone: red, no hand,
-    /// a click does nothing (a press still drags the pop-up).
-    var dead = false { didSet { needsDisplay = true; window?.invalidateCursorRects(for: self) } }
+    /// **A session already gone** — the ☠️ turns 🪦, no hand, a click does
+    /// nothing (a press still drags the pop-up).
+    var dead = false { didSet { needsDisplay = true; window?.invalidateCursorRects(for: self); onHover?(hot) } }
+    /// The pointer came in (true) or left (false).
+    var onHover: ((Bool) -> Void)?
     private var hot = false
     override func draw(_ dirtyRect: NSRect) {
-        (dead ? NSColor.systemRed.withAlphaComponent(0.8)
-              : NSColor.white.withAlphaComponent(hot ? 0.25 : 0.1)).setFill()
+        NSColor.white.withAlphaComponent(hot && !dead ? 0.25 : 0.1).setFill()
         NSBezierPath(ovalIn: bounds.insetBy(dx: 1, dy: 1)).fill()
         if let image = image {
             image.draw(in: NSRect(x: bounds.midX - image.size.width / 2, y: bounds.midY - image.size.height / 2,
                                   width: image.size.width, height: image.size.height))
             return
         }
-        if let glyph = glyph {
+        if let glyph = dead ? "🪦" : glyph {
             let a: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: bounds.height * 0.55)]
             let size = (glyph as NSString).size(withAttributes: a)
             (glyph as NSString).draw(at: NSPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2), withAttributes: a)
@@ -1091,16 +1110,16 @@ private final class ReplyCloseButton: NSView {
     }
     private var hand: NSCursor { dead ? .arrow : .pointingHand }
     override func cursorUpdate(with event: NSEvent) { hand.set() }
-    override func mouseEntered(with event: NSEvent) { hot = true; needsDisplay = true; hand.set() }
+    override func mouseEntered(with event: NSEvent) { hot = true; needsDisplay = true; hand.set(); onHover?(true) }
     override func mouseMoved(with event: NSEvent) { hand.set() }
-    override func mouseExited(with event: NSEvent) { hot = false; needsDisplay = true; NSCursor.arrow.set() }
+    override func mouseExited(with event: NSEvent) { hot = false; needsDisplay = true; NSCursor.arrow.set(); onHover?(false) }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     private var press = PressOrDrag()
     override func mouseDown(with event: NSEvent) { press.down(window) }
     override func mouseDragged(with event: NSEvent) { press.dragged(window) }
     override func mouseUp(with event: NSEvent) {
         guard press.up() else { return }
-        if dead { Log.info("💬 the ☠️ of a session already gone clicked — nothing to kill"); return }
+        if dead { Log.info("💬 the 🪦 of a session already gone clicked — nothing to kill"); return }
         onClick?()
     }
 }

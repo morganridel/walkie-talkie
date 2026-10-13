@@ -268,6 +268,10 @@ me to dismiss it explicitly"*.
   dead`. Tests: `KamikazeWordTests`. **A ⚡ quick answer has no ☠️ at all** (2026-10-13 evening,
   Victor: *"you don't have to display the dead skull in red, because that's never meant to survive.
   It's a one shot question"*) — it had a red one for a few hours that morning.
+  **Dead shows a 🪦, not a red ☠️** (2026-10-13 late, Victor: *"replace that emoji with a tombstone
+  … saying to me: the terminal died already"*): same grey disc as the live ☠️; hovering it shows
+  `The terminal died already` in a small label drawn under it (`ReplyPanel.deadHint`) — not an
+  `NSView.toolTip`, which never shows on a panel of an inactive app. Log `… shows a 🪦`.
 - **The panel is a surface, not a document** (2026-10-08, *"drag the little window … by clicking on the
   text and the text shouldn't be selectable"*): the words are an `InertLabel` (not selectable, no hit),
   a press anywhere off the four clickables is `performDrag`; `ReplyRoot` sets the **arrow** over the
