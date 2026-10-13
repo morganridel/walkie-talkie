@@ -1482,6 +1482,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ReplyPanel.onPresent = { tty in
             DispatchQueue.global(qos: .userInitiated).async { TerminalBinding.presentOnRetina(tty: tty) }
         }
+        ReplyPanel.agentRunning = { TerminalBinding.agentRunning(onTTY: $0) }
         ReplyPanel.onKamikaze = { [weak self] tty in
             DispatchQueue.global(qos: .userInitiated).async {
                 let target = self?.terminal.resolve(tty: tty)

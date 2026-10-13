@@ -123,6 +123,69 @@ enum ReplyPanel {
     /// answer was the last thing he needed from it. Closes the panel.
     static var onKamikaze: ((String) -> Void)?
 
+    /// **A ☠️ that cannot kill: red, as if already pressed** (2026-10-13, Victor:
+    /// *"if I fire the question, or if it's a Kamikaze session, the skull should
+    /// show up red … so that I can't really kill an already killed session … from
+    /// a Claude session that has ended by now … the skull should show it's dead"*).
+    /// Dead is a ⚡ quick answer (its `claude -p` is gone), a session told
+    /// `kamikaze` (`doom`), or a tty with no agent left on it — asked when the
+    /// pop-up opens and every `watchEvery` while it stays. Never back to alive.
+    static var agentRunning: ((String) -> Bool)?
+    private static var shownDead = false
+    private static weak var skullButton: ReplyCloseButton?
+    private static var watchTimer: Timer?
+    private static let watchEvery: TimeInterval = 2
+    /// Short tty → when it was told `kamikaze`. Forgotten once seen dead, or
+    /// after `doomFor` — the kernel hands the number to the next tab.
+    private static var doomed: [String: Date] = [:]
+    private static let doomFor: TimeInterval = 600
+
+    /// `kamikaze` was delivered to this tty — any thread.
+    static func doom(_ tty: String) {
+        let short = (tty as NSString).lastPathComponent
+        DispatchQueue.main.async {
+            doomed[short] = Date()
+            Log.info("💬 \(short) was told kamikaze — its answers' ☠️ shows it dead")
+            if shownTTY.map({ ($0 as NSString).lastPathComponent }) == short { markDead() }
+        }
+    }
+
+    private static func isDoomed(_ tty: String) -> Bool {
+        let short = (tty as NSString).lastPathComponent
+        guard let since = doomed[short] else { return false }
+        if Date().timeIntervalSince(since) < doomFor { return true }
+        doomed[short] = nil
+        return false
+    }
+
+    private static func markDead() {
+        guard !shownDead else { return }
+        shownDead = true
+        skullButton?.dead = true
+        watchTimer?.invalidate()
+        watchTimer = nil
+    }
+
+    /// Asks the open pop-up's tty now, then every `watchEvery` until it is dead or closed.
+    private static func watchSender() {
+        watchTimer?.invalidate()
+        watchTimer = nil
+        guard let tty = shownTTY, !shownDead, let ask = agentRunning else { return }
+        let check = {
+            DispatchQueue.global(qos: .utility).async {
+                let alive = ask(tty)
+                DispatchQueue.main.async {
+                    guard !alive, shownTTY == tty, !shownDead else { return }
+                    Log.info("💬 no agent left on \(tty) — the reply pop-up's ☠️ shows it dead")
+                    doomed[(tty as NSString).lastPathComponent] = nil
+                    markDead()
+                }
+            }
+        }
+        check()
+        watchTimer = Timer.scheduledTimer(withTimeInterval: watchEvery, repeats: true) { _ in check() }
+    }
+
     static func show(_ raw: String, from label: String?, tty: String? = nil, images: [URL] = []) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { show(raw, from: label, tty: tty, images: images) }
@@ -271,6 +334,7 @@ enum ReplyPanel {
         shownImages = images
         openLabel = label
         arrivedAt = NSEvent.mouseLocation
+        shownDead = label?.hasPrefix(quickMark) == true || tty.map(isDoomed) == true
         let root = build(text, from: label, tty: tty, images: images)
 
         let p = NSPanel(contentRect: root.frame, styleMask: [.borderless, .nonactivatingPanel],
@@ -289,6 +353,7 @@ enum ReplyPanel {
         p.orderFrontRegardless()
         panel = p
         zoom(p, around: arrivedAt)
+        watchSender()
         Log.info("💬 answer from \(label ?? "agent") — \(text.count) chars\(images.isEmpty ? "" : ", \(images.count) picture(s)"); up until the ✕\(queue.isEmpty ? "" : ", \(queue.count) waiting")")
     }
 
@@ -500,7 +565,9 @@ enum ReplyPanel {
         root.addSubview(icon)
         let textX = pad + iconSide + 6
         let pinned = tty.map { !(isBound?($0) ?? false) } ?? false
-        let buttons: CGFloat = tty == nil ? 1 : (pinned ? 3 : 2)
+        // A ⚡ answer has a ☠️ too — dead from the start, nothing to kill.
+        let quick = tty == nil && label?.hasPrefix(quickMark) == true
+        let buttons: CGFloat = tty == nil ? (quick ? 2 : 1) : (pinned ? 3 : 2)
         header.frame = NSRect(x: textX, y: height - pad - headerH + 3,
                               width: inner - (textX - pad) - buttons * (iconSide + 6), height: 20)
         root.addSubview(header)
@@ -546,15 +613,23 @@ enum ReplyPanel {
         root.addSubview(x)
         var hot = [x.frame] + thumbs
         if tty != nil { hot.append(icon.frame) }
+        if quick {
+            let skull = ReplyCloseButton(frame: x.frame.offsetBy(dx: -(iconSide + 6), dy: 0))
+            skull.glyph = "☠️"
+            skull.dead = true
+            root.addSubview(skull)
+        }
         if let tty = tty {
             let skull = ReplyCloseButton(frame: x.frame.offsetBy(dx: -(iconSide + 6), dy: 0))
             skull.glyph = "☠️"
+            skull.dead = shownDead
             skull.onClick = {
                 Log.info("💬 the reply pop-up's ☠️ clicked — kamikaze to \(tty), pop-up closed")
                 close()
                 onKamikaze?(tty)
             }
             root.addSubview(skull)
+            skullButton = skull
             hot.append(skull.frame)
             // **📍 left of the ☠️, only while another terminal is bound** — the
             // caret's map pin (`Glyphs.mapPin`), not 💬.
@@ -634,6 +709,9 @@ enum ReplyPanel {
         liveOpen = false
         shown = nil
         shownTTY = nil
+        shownDead = false
+        watchTimer?.invalidate()
+        watchTimer = nil
         shownImages = []
         userSize = nil
         pictureCache = [:]
@@ -985,9 +1063,13 @@ private final class ReplyCloseButton: NSView {
     var glyph: String?
     /// A drawn picture in place of the glyph (the 📍's map pin).
     var image: NSImage?
+    /// **Pressed for good** — the ☠️ of a session already gone: red, no hand,
+    /// a click does nothing (a press still drags the pop-up).
+    var dead = false { didSet { needsDisplay = true; window?.invalidateCursorRects(for: self) } }
     private var hot = false
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.white.withAlphaComponent(hot ? 0.25 : 0.1).setFill()
+        (dead ? NSColor.systemRed.withAlphaComponent(0.8)
+              : NSColor.white.withAlphaComponent(hot ? 0.25 : 0.1)).setFill()
         NSBezierPath(ovalIn: bounds.insetBy(dx: 1, dy: 1)).fill()
         if let image = image {
             image.draw(in: NSRect(x: bounds.midX - image.size.width / 2, y: bounds.midY - image.size.height / 2,
@@ -1014,15 +1096,20 @@ private final class ReplyCloseButton: NSView {
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
                                        owner: self))
     }
-    override func cursorUpdate(with event: NSEvent) { NSCursor.pointingHand.set() }
-    override func mouseEntered(with event: NSEvent) { hot = true; needsDisplay = true; NSCursor.pointingHand.set() }
-    override func mouseMoved(with event: NSEvent) { NSCursor.pointingHand.set() }
+    private var hand: NSCursor { dead ? .arrow : .pointingHand }
+    override func cursorUpdate(with event: NSEvent) { hand.set() }
+    override func mouseEntered(with event: NSEvent) { hot = true; needsDisplay = true; hand.set() }
+    override func mouseMoved(with event: NSEvent) { hand.set() }
     override func mouseExited(with event: NSEvent) { hot = false; needsDisplay = true; NSCursor.arrow.set() }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     private var press = PressOrDrag()
     override func mouseDown(with event: NSEvent) { press.down(window) }
     override func mouseDragged(with event: NSEvent) { press.dragged(window) }
-    override func mouseUp(with event: NSEvent) { if press.up() { onClick?() } }
+    override func mouseUp(with event: NSEvent) {
+        guard press.up() else { return }
+        if dead { Log.info("💬 the ☠️ of a session already gone clicked — nothing to kill"); return }
+        onClick?()
+    }
 }
 
 /// **A picture the agent sent** (2026-10-09): drawn to fill its box, rounded,

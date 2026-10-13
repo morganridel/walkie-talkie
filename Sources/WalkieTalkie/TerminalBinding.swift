@@ -734,6 +734,35 @@ final class TerminalBinding {
     /// A target found gone lets go of the binding only when it **is** the
     /// binding — a latched A that died must not unbind the B bound since.
     func deliver(_ text: String, to latched: Target? = nil) -> Outcome {
+        let outcome = typeIn(text, to: latched)
+        // **A session told `kamikaze` is dead already** (2026-10-13): its next
+        // answer's ☠️ shows it, before the window has had time to close.
+        if case .delivered = outcome, Self.saysKamikaze(text), let tty = (latched ?? target)?.handle.tty {
+            ReplyPanel.doom(tty)
+        }
+        return outcome
+    }
+
+    /// The words — before the envelope's bracketed clauses — end with the
+    /// word `kamikaze`, or a line of their own is just that word.
+    static func saysKamikaze(_ text: String) -> Bool {
+        let words = text.components(separatedBy: "\n\n[").first ?? text
+        let bare = { (s: Substring) in s.trimmingCharacters(in: .punctuationCharacters.union(.whitespaces)).lowercased() }
+        if words.split(separator: "\n").contains(where: { bare($0) == "kamikaze" }) { return true }
+        return words.split(whereSeparator: { $0.isWhitespace }).last.map(bare) == "kamikaze"
+    }
+
+    /// **Is an agent still running on this tty?** (2026-10-13, the reply pop-up's
+    /// ☠️) — something other than a shell in front. A closed tab has nothing on
+    /// it, an ended session leaves its shell at the prompt; a carrier or a pager
+    /// counts as alive, so the doubt falls on the side of a ☠️ still offered.
+    /// Runs `ps` — off the main thread.
+    static func agentRunning(onTTY tty: String) -> Bool {
+        guard let command = foregroundCommand(onTTY: tty) else { return false }
+        return !isShell(command)
+    }
+
+    private func typeIn(_ text: String, to latched: Target?) -> Outcome {
         guard let target = latched ?? target else { return .noTarget }
         let unbind: () -> Void = { [weak self] in self?.unbind(ifAddress: target.address) }
         let line = Self.singleLine(text)
