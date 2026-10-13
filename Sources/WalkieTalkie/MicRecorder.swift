@@ -300,6 +300,12 @@ final class MicRecorder {
     /// Written only on `restartQueue` under `lifecycle`; read under `lifecycle`
     /// (`start`, `close`) or on `restartQueue` (the watchdog), never racing.
     private var engine = AVAudioEngine()
+    /// Where a closed engine waits out `reopenSpacing` before it is released
+    /// (see `close`), and when the last one closed — `start` waits out the
+    /// rest of that spacing before opening the device again. Under `lifecycle`.
+    private static let graveyard = DispatchQueue(label: "mic.retire", qos: .utility)
+    private static let reopenSpacing: TimeInterval = 0.3
+    private var lastClosedAt: Date?
     private var file: AVAudioFile?
     private var converter: AVAudioConverter?
     private var outputFormat: AVAudioFormat?
@@ -678,6 +684,14 @@ final class MicRecorder {
                       + "so \(destination.lastPathComponent) is not written in silence")
             let (orphan, _) = close()
             if let orphan, orphan != destination { try? FileManager.default.removeItem(at: orphan) }
+        }
+
+        // The rest of `reopenSpacing` since the last close, so a device just put
+        // down is not opened again while its old IO thread may still be leaving
+        // (see `close`). Never on main — a ring is not worth a frozen app.
+        if let closed = lastClosedAt, !Thread.isMainThread {
+            let wait = Self.reopenSpacing - Date().timeIntervalSince(closed)
+            if wait > 0 { Thread.sleep(forTimeInterval: wait) }
         }
 
         let input = engine.inputNode
@@ -1079,6 +1093,18 @@ final class MicRecorder {
 
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        // **A stopped engine is never started again** (2026-10-13): the next
+        // session gets a fresh AUHAL, and this one is released only after the
+        // HAL's IO thread has had time to leave its IOProc. Re-aiming and
+        // restarting the same unit ~1 s after a stop, then stopping it again,
+        // crashed the app at 18:29:44 — CoreAudio's IO thread called a NULL
+        // IOProc while `AudioOutputUnitStop` waited for it (the Wispr feed
+        // hand-over: stop → his own sentence → start → ⌃Escape → stop).
+        // `AudioBridge` and `restartTap(.rebuild)` already worked this way.
+        let retired = engine
+        engine = AVAudioEngine()
+        lastClosedAt = Date()
+        Self.graveyard.asyncAfter(deadline: .now() + Self.reopenSpacing) { withExtendedLifetime(retired) {} }
 
         lock.lock()
         // `AVAudioFile` finalises the RIFF header when it is released, so the

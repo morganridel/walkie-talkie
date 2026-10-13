@@ -518,8 +518,8 @@ never include a bare `dji mic`, which is the transmitter's name (`DJI Mic Mini-B
   starve the relay with no configuration change. Hardware inputs have no such path. Sources and the
   probe: `evals/plan/vm/wispr/report-wave3-2026-09-28.md` *Open question — BlackHole only?*
 - **`mic: closed — <device>: N buffers, peak P, R tap restart(s), S s[ — DEAF]`** is logged for every
-  recording, on every engine. `engine` is a `var` now: it is written only on `restartQueue` under
-  `lifecycle`, and the config observer is re-registered on each new engine.
+  recording, on every engine. `engine` is a `var` now: written under `lifecycle` (on `restartQueue`
+  for a rebuild, by `close()` for every session), and the config observer is re-registered on each new engine.
 
 ## The menu row
 
@@ -595,6 +595,13 @@ gate*.
 
 ## Do not
 
+- **Never start an `AVAudioEngine` that has already been stopped** (2026-10-13). `close()` swaps in a
+  fresh engine and releases the old one on `mic.retire` 0.3 s later; `start` waits out the rest of
+  that 0.3 s (off main). Re-aiming and restarting one AUHAL ~1 s after its stop, then stopping it
+  again, crashed the app: CoreAudio's IO thread called a NULL IOProc while `AudioOutputUnitStop`
+  waited for it (Wispr feed hand-over, 18:29:44). `AudioBridge` and `restartTap(.rebuild)` already
+  did this. The full review of this class, with the findings still open (blocking `WisprWatch` IPC
+  on main/tap, `ShotMarker` without `WTTry`, unguarded `installTap`): `docs/audio-lifecycle-review-2026-10-13.md`.
 - **Never hold `MicRecorder.lock` across a call into `AVAudioEngine`** (2026-09-24). The tap
   callback runs inside AVFAudio's realtime-messenger mutex and takes `lock` in `append`;
   `removeTap` waits for that mutex. `stop()` holding `lock` across `removeTap` froze the whole app
