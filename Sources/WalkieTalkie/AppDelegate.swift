@@ -76,6 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// microfonul care apare jos pe centrul ecranului, aș dori ca fulgerele să
     /// pulseze în același ritm al discuției"*.
     private let caretHalo = CaretHalo()
+    /// The orange outline round the window a caret sentence will be typed into,
+    /// and the caret in it for the heads (2026-10-13) — see `FocusFrame`.
+    private let focusFrame = FocusFrame()
 
     /// **`⌘⇧P`, shown for five seconds after every delivered sentence** — see
     /// `PasteHint`. Until 2026-09-23 it was faint and said only after a caret
@@ -3344,6 +3347,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // …and from here on nothing of its may stand at the pointer between
         // sentences — see `CaretHalo.startIdleSweep` (2026-09-15).
         caretHalo.startIdleSweep()
+        // The heads converge on the receiving caret, which only the outline's
+        // reads can name (2026-10-13).
+        focusFrame.onCaret = { [weak self] caret in self?.caretHalo.headsAt = caret }
 
         // Nothing is bound yet, and a marker left by a relay that was killed
         // rather than quit would claim otherwise until the first bind.
@@ -7420,6 +7426,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **Where it converges** (2026-09-30): the window the words land in —
         // pushed only while settling, so the settle's end (which clears the
         // sentence's aim) does not pull the fading tunnel back onto the pointer.
+        // **The window the caret sentence lands in wears an orange outline, and
+        // the heads converge on its caret** (2026-10-13, Victor: *"highlight in
+        // an orange line … the window which is receiving currently my prompt …
+        // The same should happen for the plain dictation"*). The prompt at the
+        // caret and the plain sentence both, from the first word to the ⌘V; not
+        // a ⚡ question (typed nowhere), not Wispr's own sentence (`atCaret`).
+        focusFrame.setActive(atCaret && !quickAsk && (listening || speculative || settling))
         if settling { caretHalo.rewindAim = settleAim }
         // **A ⚡ quick question has one effect** (2026-10-09): Reverse tunnel
         // while he asks, then the collapse into the pointer — no rewind, no
@@ -7989,6 +8002,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // The two windows as they are, beside the flags as they claim to be
             // (2026-09-15) — the reading the idle sweep acts on.
             "halo": caretHalo.windowsReport(),
+            // The orange outline and the caret the heads aim at (2026-10-13).
+            "focusFrame": focusFrame.report,
             "pasteHint": pasteHint.report,
             // **Which microphone the halo is breathing on**, because *the effect
             // looks dead* and *the effect is being fed silence* are the same

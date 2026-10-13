@@ -273,6 +273,31 @@ fulgerul să arate că cineva ascultă"*.
 - **`DropArrow.picture()` is posed, not animated** (`ChipWipe.shoot`'s rule) — the middle ring lit,
   the only frame that shows what the sweep is doing. → journal: *Six heads closing in, instead of one arrow hanging above (2026-09-12)*
 
+## The heads converge on the caret, and its window wears an orange outline (2026-10-13)
+
+Victor: *"When I'm dictating at caret … highlight in an orange line … the window which is receiving
+currently my prompt … The same should happen for the plain dictation … only show this border if the
+window … is visible … the arrow heads … should be centered on where the cursor is currently, which
+will receive the input … [if it is] a hidden terminal … don't display the arrowheads."*
+
+- **`FocusFrame`** — driven from `syncBorrowedGestures` on `atCaret && !quickAsk && (listening ||
+  speculative || settling)`: the forward-click prompt at the caret and the plain sentence, from the
+  first word to the ⌘V. Every 0.2 s it reads the frontmost app's focused window
+  (`TerminalBinding.focusedWindow(pid:)`, AX then the window server) and its caret
+  (`TerminalBinding.caret(pid:in:)`), off main, one read in flight at a time.
+- **Visible or nothing.** The window must be in the on-screen window list at the same frame (not
+  minimised, not on another Space) and not wholly covered by layer-0 windows in front (9 × 9 sample
+  grid); the caret must be on a screen and uncovered. Not visible → no outline and no heads.
+- **The outline is 4 pt orange, drawn inside the window's edge** (10 pt corners) — a maximised or tiled
+  window has no outside. `.floating`, click-through, `sharingType = .none`.
+- **`CaretHalo.headsAt`** replaces the pointer as the heads' centre (`placeHeads`, `headsOrigin`);
+  **nil → the heads stay down** (`armed` requires it): no caret found (VS Code's lazy AX tree), or not
+  visible. The ring still rides the pointer; the heads' schedule (silence, then `hold` in flight) is
+  unchanged.
+- Log `🟧 the words go to <app> — window W×H at (x, y), outlined[, no caret found in it — no heads]`;
+  `GET /test/state.focusFrame {active, visible, shown, app, window, caret}`. Desk:
+  `POST /test/dictation/start {"clean": true}` → read it → `POST /test/cancel`.
+
 ## The heads stay up while the words travel to the caret (2026-09-15)
 
 Victor: *"dacă dictez la caret, după ce dictarea se oprește, fulgerul dispare, doar că rămân

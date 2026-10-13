@@ -1139,7 +1139,8 @@ final class CaretHalo {
         // **`delivering` holds the heads past the microphone's close.** The
         // dictation is over as far as `live` is concerned and the words are not
         // there yet, which is the whole of the state `setDelivering` names.
-        arrow.armed = (on && atCaret) || (delivering && !rewinding)
+        // …and only where there is a caret to point at (2026-10-13) — see `headsAt`.
+        arrow.armed = ((on && atCaret) || (delivering && !rewinding)) && headsAt != nil
         guard live != on else { return }
         live = on
         // Both edges, for the reason the selection watcher logs both: "why did
@@ -1246,12 +1247,12 @@ final class CaretHalo {
             return
         }
         // **The rewind replaces them** (2026-09-23) — see `setRewind`.
-        guard !rewinding else { return }
+        guard !rewinding, let o = headsOrigin else { return }
         arrow.armed = true
         // Placed from here as well as from `follow`: the pointer may not move
         // again between the stop gesture and the delivery, and the heads have to
         // be up either way.
-        arrow.hold(at: Self.origin())
+        arrow.hold(at: o)
     }
 
     // MARK: - The rewind (2026-09-23)
@@ -2333,7 +2334,8 @@ final class CaretHalo {
         // every frame instead of sampling it once.
         // **And through the delivery**, where the ring's own window is already
         // out and the heads are the only thing left: they are what says *the
-        // words are landing here*, so they have to go on meaning the pointer.
+        // words are landing here* — on the caret since 2026-10-13 (`headsAt`),
+        // re-placed here as well as on every caret reading.
         // Docked on the prompt panel, the ring no longer rides the pointer.
         guard dock == nil, live || closing || delivering, let panel = panel else { return }
         // **A screen-sized panel stays put and the pointer is handed in.**
@@ -2348,14 +2350,15 @@ final class CaretHalo {
             }
             if frame.origin != panel.frame.origin { panel.setFrameOrigin(frame.origin) }
             aimEffectAtPointer()
-            delivering && !rewinding ? arrow.hold(at: Self.origin()) : arrow.place(at: Self.origin())
+            placeHeads()
             return
         }
         // A preset's square is bigger than the ring's, so the origin is the
-        // frame's rather than `Self.origin()`, which the arrow keeps.
+        // frame's rather than `Self.origin()`. The heads have their own centre,
+        // the caret (`headsAt`, 2026-10-13).
         // An `anchored` preset's square stays where `show` put it; only the arrow rides the pointer.
         if drawn.isAnchored, anchor != nil {
-            delivering && !rewinding ? arrow.hold(at: Self.origin()) : arrow.place(at: Self.origin())
+            placeHeads()
             return
         }
         let wanted = drawn.preset != nil ? panelFrame().origin : Self.origin()
@@ -2385,12 +2388,9 @@ final class CaretHalo {
                     screen.map(String.init) ?? "none", NSScreen.screens.count))
             }
         }
-        // The arrow's window rides the same origin, in the same call — see
-        // `DropArrow` for why it is a window and why it is not its own monitor.
-        // `hold` while the words are in flight rather than `place`: it is
-        // idempotent after the first call and it is also what raises them again
-        // if the pointer's first move is what wakes this.
-        delivering && !rewinding ? arrow.hold(at: Self.origin()) : arrow.place(at: Self.origin())
+        // The arrow's window is placed in the same call — on the caret, not on
+        // this origin, since 2026-10-13 (`headsAt`). See `placeHeads`.
+        placeHeads()
     }
 
     /// Where a panel the size of this one has to sit for its centre to be the
@@ -2398,6 +2398,37 @@ final class CaretHalo {
     /// How many disagreements this dictation may still report — see `follow`.
     /// Reset when the ring comes up, so every sentence gets a fresh few.
     private static var followTraceLeft = 6
+
+    /// **Where the heads converge: the caret the words will be typed at, not
+    /// the pointer** (2026-10-13). Victor: *"the arrow heads that move towards
+    /// the mouse should be centered on where the cursor is currently, which will
+    /// receive the input … If … a hidden terminal or a text file [not] visible
+    /// on the screen, don't display the arrowheads."* Written by `FocusFrame`
+    /// (via `AppDelegate`) from Accessibility, ~5 times a second while a caret
+    /// sentence is open; **nil — no caret found, or its window not visible —
+    /// and the heads stay down**: an arrow at the pointer would point at a
+    /// place the words are not going, the very thing he asked to stop. The
+    /// orange outline round the window still says which one it is.
+    var headsAt: NSPoint? {
+        didSet {
+            guard headsAt != oldValue else { return }
+            let wanted = ((live && atCaret) || (delivering && !rewinding)) && headsAt != nil
+            arrow.armed = wanted
+            if wanted { placeHeads() }
+        }
+    }
+
+    /// `headsAt` as the origin of a panel the size of the ring's.
+    private var headsOrigin: NSPoint? {
+        headsAt.map { NSPoint(x: ($0.x - Self.side / 2).rounded(), y: ($0.y - Self.side / 2).rounded()) }
+    }
+
+    /// `hold` while the words are in flight rather than `place`: it is
+    /// idempotent after the first call and it is also what raises them again.
+    private func placeHeads() {
+        guard let o = headsOrigin else { return }
+        delivering && !rewinding ? arrow.hold(at: o) : arrow.place(at: o)
+    }
 
     private static func origin() -> NSPoint {
         let p = NSEvent.mouseLocation
@@ -2425,7 +2456,7 @@ final class CaretHalo {
             // The page's own alpha is 1 (see `show`); the coast is the one
             // thing allowed over it, because it is not about the voice.
             panel.alphaValue = coastFactor
-            arrow.refresh(quiet: quietSeconds?() ?? 0, at: Self.origin())
+            if let o = headsOrigin { arrow.refresh(quiet: quietSeconds?() ?? 0, at: o) }
             return
         }
         let loud = CGFloat(max(0, min(1, level?() ?? 0)))
@@ -2438,7 +2469,7 @@ final class CaretHalo {
             let q = CGFloat(quietSeconds?() ?? 0)
             let t = min(max((q - Self.questionQuiet.lowerBound) / (Self.questionQuiet.upperBound - Self.questionQuiet.lowerBound), 0), 1)
             panel.alphaValue = Self.questionLoud * loud * (1 - t * t * (3 - 2 * t)) * coastFactor
-            arrow.refresh(quiet: quietSeconds?() ?? 0, at: Self.origin())
+            if let o = headsOrigin { arrow.refresh(quiet: quietSeconds?() ?? 0, at: o) }
             return
         }
         let floor = Self.opacity(Self.rest), ceiling = Self.opacity(Self.loud)
@@ -2451,7 +2482,7 @@ final class CaretHalo {
         let s = 1 + Self.swellScale * loud
         pulse?.transform = CATransform3DMakeScale(s, s, 1)
         CATransaction.commit()
-        arrow.refresh(quiet: quietSeconds?() ?? 0, at: Self.origin())
+        if let o = headsOrigin { arrow.refresh(quiet: quietSeconds?() ?? 0, at: o) }
     }
 
     // MARK: - Designs

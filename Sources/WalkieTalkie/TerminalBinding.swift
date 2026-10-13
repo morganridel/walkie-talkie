@@ -1517,6 +1517,12 @@ final class TerminalBinding {
         default: pid = NSRunningApplication.runningApplications(withBundleIdentifier: target!.bundleID).first?.processIdentifier
         }
         guard let pid else { return nil }
+        return caret(pid: pid, in: window)
+    }
+
+    /// `receivingCaret` for an app already named — `FocusFrame` asks it ~5 times
+    /// a second for the frontmost one, read on the main thread and handed in.
+    static func caret(pid: pid_t, in window: CGRect) -> NSPoint? {
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, 0.3)
         var focused: CFTypeRef?
@@ -1566,7 +1572,7 @@ final class TerminalBinding {
     /// would put a confidently wrong repo on the chip, which is worse than a
     /// vaguer true one. The window title is what the app itself says it is
     /// showing, and for both IDEs that begins with the project.
-    private static func focusedWindow(pid: pid_t) -> (frame: CGRect?, title: String?) {
+    static func focusedWindow(pid: pid_t) -> (frame: CGRect?, title: String?) {
         let ax = axFocusedWindow(pid: pid)
         guard ax.frame == nil else { return ax }
         // **The window server is the fallback, and VS Code is why.** Electron
