@@ -55,7 +55,7 @@ final class FocusFrame {
         var caret: NSPoint?
         /// **Nowhere to type** (2026-10-14): where the crossed-out pin goes —
         /// the window's middle when its focus is known to take no text
-        /// (`TerminalBinding.focusTakesText` false), the pointer's screen's
+        /// (`TerminalBinding.focusTakesNoText`), the pointer's screen's
         /// middle when the app has no window at all. Nil when there is a caret,
         /// or when Accessibility cannot tell.
         var noCaret: NSPoint?
@@ -131,9 +131,10 @@ final class FocusFrame {
         probing = true
         let pid = app.processIdentifier
         let name = app.localizedName
+        let bundle = app.bundleIdentifier
         let screen = (RelayWindow.screenUnderMouse() ?? NSScreen.main).map { NSPoint(x: $0.frame.midX, y: $0.frame.midY) }
         queue.async { [weak self] in
-            let r = Self.read(pid: pid, app: name, screenMiddle: screen)
+            let r = Self.read(pid: pid, app: name, bundle: bundle, screenMiddle: screen)
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.probing = false
@@ -146,7 +147,7 @@ final class FocusFrame {
     private struct ServerWindow { let pid: pid_t; let layer: Int; let alpha: Double; let frame: CGRect }
 
     /// Off the main thread.
-    static func read(pid: pid_t, app: String?, screenMiddle: NSPoint? = nil) -> Reading {
+    static func read(pid: pid_t, app: String?, bundle: String? = nil, screenMiddle: NSPoint? = nil) -> Reading {
         var r = Reading(app: app)
         guard let window = TerminalBinding.focusedWindow(pid: pid).frame else {
             // No window anywhere: a ⌘V lands nowhere (the desktop, an app with
@@ -174,7 +175,7 @@ final class FocusFrame {
         }
         guard r.visible else { return r }
         guard let caret = TerminalBinding.caret(pid: pid, in: window), uncovered(caret) else {
-            if TerminalBinding.focusTakesText(pid: pid) == false {
+            if TerminalBinding.focusTakesNoText(pid: pid, bundle: bundle) {
                 r.noCaret = NSPoint(x: window.midX, y: window.midY)
             }
             return r

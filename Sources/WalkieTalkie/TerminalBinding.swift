@@ -1560,32 +1560,31 @@ final class TerminalBinding {
         return window.insetBy(dx: -4, dy: -4).contains(point) ? point : nil
     }
 
-    /// **Would a keystroke land anywhere in this app — as far as Accessibility
-    /// can say?** (2026-10-14). `true` for a text role, or anything inside an
-    /// editable web region; `false` for a focused element that is neither (a
-    /// Chrome page with no field focused, a Finder list); **nil when it cannot
-    /// tell** — no focused element (VS Code without `AXManualAccessibility`) or
-    /// no role (IntelliJ) — which must never be read as *nowhere*. Off main.
-    static func focusTakesText(pid: pid_t) -> Bool? {
+    /// **Is it known that a keystroke would land nowhere?** (2026-10-14). `true`
+    /// only where Accessibility says so outright: a web page with no field
+    /// focused (`AXWebArea` with no `AXEditableAncestor` — Chrome, Safari,
+    /// Electron), or Finder outside a rename. **Not "no text role"**: Word
+    /// reports its document as an `AXSplitGroup` while the caret blinks in it
+    /// (measured 2026-10-14), so an unknown role is *cannot tell*, never
+    /// *nowhere* — and neither is VS Code's missing focus (`-25212`) or
+    /// IntelliJ's missing role. Off main.
+    static func focusTakesNoText(pid: pid_t, bundle: String?) -> Bool {
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, 0.3)
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let f = focused, CFGetTypeID(f) == AXUIElementGetTypeID() else { return nil }
+              let f = focused, CFGetTypeID(f) == AXUIElementGetTypeID() else { return false }
         let element = unsafeBitCast(f, to: AXUIElement.self)
         var roleRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
-              let role = roleRef as? String else { return nil }
+              let role = roleRef as? String else { return false }
         let textRoles: Set<String> = [kAXTextAreaRole, kAXTextFieldRole, kAXComboBoxRole,
                                       "AXSearchField", "AXSecureTextField"]
-        if textRoles.contains(role) { return true }
+        if textRoles.contains(role) { return false }
         var ancestor: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, "AXEditableAncestor" as CFString, &ancestor) == .success,
-           ancestor != nil { return true }
-        var settable: DarwinBoolean = false
-        if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success,
-           settable.boolValue, role != kAXSliderRole as String, role != kAXCheckBoxRole as String { return true }
-        return false
+           ancestor != nil { return false }
+        return role == "AXWebArea" || bundle == "com.apple.finder"
     }
 
     /// The focused window of an app with no scripting surface — VS Code,

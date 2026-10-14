@@ -2485,8 +2485,8 @@ final class CaretHalo {
     /// go to (or of the pointer's screen when the app has no window), from
     /// `FocusFrame`. The pin stands there grey and crossed out
     /// (`DropArrow.crossed`). Nil while a caret is found — and while
-    /// Accessibility cannot tell (VS Code, IntelliJ), which is not the same as
-    /// *nowhere*.
+    /// Accessibility cannot tell (VS Code, IntelliJ, Word), which is not the
+    /// same as *nowhere* (`TerminalBinding.focusTakesNoText`).
     var noCaretAt: NSPoint? {
         didSet { if noCaretAt != oldValue { pinMoved() } }
     }

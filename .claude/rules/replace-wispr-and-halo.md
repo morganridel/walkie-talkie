@@ -319,11 +319,13 @@ tell that visually somehow"*. **Supersedes the six heads** in the two sections a
   a cut at the ⌘V as before. **It stays through the rewind** (`rewindHidesHeads` is gone): the
   effect says which window, the pin where in it.
 - **Nowhere to type → grey pin, red ✕, no shine** (`DropArrow.crossed`, `CaretHalo.noCaretAt`):
-  `FocusFrame` finds no caret **and** `TerminalBinding.focusTakesText` says *false* — the focused
-  element has a role that is not a text role, no `AXEditableAncestor`, no settable value (a Chrome
-  page with no field focused) → the window's middle; the frontmost app has no window at all → the
-  pointer's screen's middle. **nil (cannot tell) is not *nowhere***: VS Code (`-25212`, no focused
-  element without `AXManualAccessibility`) and IntelliJ (no role) show no pin, as before. Log
+  `FocusFrame` finds no caret **and** `TerminalBinding.focusTakesNoText` — the focused element is
+  an `AXWebArea` with no `AXEditableAncestor` (a page with no field focused: Chrome, Safari,
+  Electron) or Finder outside a rename → the window's middle; the frontmost app has no window at all
+  → the pointer's screen's middle. **Anything else is *cannot tell*, never *nowhere***: Word reports
+  its document as an `AXSplitGroup` while its caret blinks (measured 2026-10-14 — the first build
+  crossed out every Word sentence), VS Code has no focused element (`-25212`, no
+  `AXManualAccessibility`), IntelliJ no role; they show no pin, as before. Log
   `🟧 … nothing in it takes text — the pin crossed out`; `GET /test/state.focusFrame.noCaret`,
   `halo.heads.crossed` / `.shine`.
 - `WT_SHOOT_HALO`'s `…-arrow.png` has four columns: `quiet + pin`, `words in flight`, `full voice`
