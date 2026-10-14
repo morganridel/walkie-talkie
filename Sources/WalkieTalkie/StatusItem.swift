@@ -1952,7 +1952,10 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // **`Wispr`, not `Wispr Flow`, on the tab** (2026-10-06, Victor: *"numește
         // Wispr în loc de „Wispr Flow" în overlay-ul care se ridică pe jumătate"*).
         if id == "wispr" { return "\(Self.cloud) Wispr" }
-        return engineShortTitle(id)   // `☁️ ElevenLabs + Live`, `💻 v3-turbo 1.5 GB`
+        // **No RAM on the tab** (2026-10-14, Victor: *"I don't want to see the
+        // gigabytes"*) — the footprint stays in the menu's Engine row.
+        if id == "eleven" || id == "eleven-live" { return engineShortTitle(id) }
+        return "\(Self.local) " + WhisperModels.displayName(WhisperModels.selected)
     }
 
     private func engineShortTitle(_ id: String) -> String {

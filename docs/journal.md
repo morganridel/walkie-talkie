@@ -15454,3 +15454,12 @@ inbox (the "why didn't the mod work here" at 12:58: that session was spawned, tt
 Proven in a detached tmux session (`claude --model haiku`): the argv prompt and one pasted during a
 `sleep 20` both showed in the transcript as the words plus `🎙️ · 📸 ×1`, and the model listed the hidden
 clauses back. While it waits in the queue, the queue preview still shows the raw text.
+
+## 2026-10-14 — the green mic tab is gone, and the GB off the bottom tab
+
+Victor at 08:41, right after the green tab rose with `🎤 〰 💻 Local LoRA 2.2 GB`: *"I don't want to
+see the gigabytes and the notification overlay coming from the bottom center."* It had risen three
+times that morning (08:41, 10:50, 11:10). `MicAnnouncer.settled` now only logs `🎤 mic → … (tab not
+shown)`; the blue launch tab stays — it is the restart signal asked for on 2026-09-28 — and
+`engineBannerTitle` no longer carries the RAM (`💻 Local LoRA`). The footprint remains in the menu's
+Engine row.

@@ -127,10 +127,13 @@ final class MicAnnouncer {
         let now = Self.current()
         guard !now.key.isEmpty, now.key != last else { return }
         last = now.key
-        DispatchQueue.main.async { [weak self, tab] in
+        // **Logged, no longer shown** (2026-10-14, Victor: *"I don't want to see the
+        // gigabytes and the notification overlay coming from the bottom center"*) —
+        // the green tab rose three times that morning over his work. The launch tab
+        // (blue, `announceStartup`) still rises: it is the restart signal he asked for.
+        DispatchQueue.main.async { [weak self] in
             let text = [now.text, self?.engine?()].compactMap { $0 }.joined(separator: " \(Self.wave) ")
-            Log.info("🎤 mic → \(Self.readable(text))")
-            tab.show(text, tint: Self.tint, hold: Self.hold)
+            Log.info("🎤 mic → \(Self.readable(text)) (tab not shown)")
         }
     }
 
