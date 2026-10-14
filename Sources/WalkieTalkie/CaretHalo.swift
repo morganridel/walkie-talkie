@@ -900,6 +900,7 @@ final class CaretHalo {
         // The docked panel is about to be replaced: back in its own geometry
         // first, so the retiring copy is not left over the prompt panel.
         settleDock()
+        settleLanding()
         Self.styleChangedAt = CFAbsoluteTimeGetCurrent()
         renderTimer?.invalidate(); renderTimer = nil
         timer?.invalidate(); timer = nil
@@ -1140,7 +1141,7 @@ final class CaretHalo {
         // dictation is over as far as `live` is concerned and the words are not
         // there yet, which is the whole of the state `setDelivering` names.
         // …and only where there is a caret to point at (2026-10-13) — see `headsAt`.
-        arrow.armed = ((on && atCaret) || (delivering && !rewinding)) && headsAt != nil
+        arrow.armed = ((on && atCaret) || (delivering && !rewindHidesHeads)) && headsAt != nil
         guard live != on else { return }
         live = on
         // Both edges, for the reason the selection watcher logs both: "why did
@@ -1247,7 +1248,7 @@ final class CaretHalo {
             return
         }
         // **The rewind replaces them** (2026-09-23) — see `setRewind`.
-        guard !rewinding, let o = headsOrigin else { return }
+        guard !rewindHidesHeads, let o = headsOrigin else { return }
         arrow.armed = true
         // Placed from here as well as from `follow`: the pointer may not move
         // again between the stop gesture and the delivery, and the heads have to
@@ -1327,7 +1328,7 @@ final class CaretHalo {
         anchorStart = anchoredFlight ? anchor : nil
         fitApproach(to: rewindAim ?? NSEvent.mouseLocation)
         rewinding = true
-        arrow.armed = false
+        if rewindHidesHeads { arrow.armed = false }
         Log.info(String(format: "⏪ the rewind: %.1f s of his voice, backwards at %.1f×, fitted to %.2f s on %@ (chip's ceiling %.1f s, visible from %.2f s), on %@%@",
                         seconds, rewindSpeed, predicted, DecodeRate.activeEngine, estimate,
                         flies || anchoredFlight ? 0 : Self.rewindVisibleFrom, rewindStyle.rawValue,
@@ -1338,6 +1339,11 @@ final class CaretHalo {
     }
 
     private(set) var rewinding = false
+    /// **The rewind stands in for the heads — except under the plain
+    /// dictation's puzzle** (2026-10-14): it zooms into the receiving window,
+    /// which says *which window*, and the heads go on saying *where in it* —
+    /// the caret (`headsAt`).
+    private var rewindHidesHeads: Bool { rewinding && !(destination == .wispr && anchoredFlight) }
 
     /// **The rewind converges on the middle of the window the words go to, not
     /// on the pointer** (2026-09-30). Victor: *"the reverse tunnel … shouldn't be
@@ -1597,11 +1603,56 @@ final class CaretHalo {
     /// `SpawnTerminal.predictedFrame` (the pointer when there is no lateral
     /// display); a ring that flew there is not docked on the panel.
     var spawnLanding: NSPoint?
+    /// **The plain dictation's puzzle zooms into the receiving window, inside
+    /// its orange outline — not onto the caret** (2026-10-14, Victor: *"at the
+    /// end of the dictation the puzzle effect should zoom into the receiving
+    /// border, not on the cursor that receives but on the receiving border of
+    /// the application that we input. And also display … the arrowheads going
+    /// towards where the cursor is placed"*). Written by `AppDelegate.aimRewind`
+    /// with the window's frame (Cocoa); nil → the caret / the middle, as before.
+    var rewindLanding: NSRect?
+    /// The puzzle lands in the window with `coverFlight` — the dock's move —
+    /// instead of sliding and shrinking: the window's frame becomes the
+    /// receiving window's, inset by `FocusFrame.lineWidth` so the outline stays
+    /// in sight round it, and the picture is scaled to cover it.
+    private var landsInWindow: Bool { destination == .wispr && anchorStart != nil && rewindLanding != nil }
+    /// The window's own size while it wears a landing's frame — `settleLanding`
+    /// gives it back.
+    private var landingSize: NSSize?
+
+    private func land(_ panel: NSPanel, from: NSRect, in window: NSRect, p: CGFloat) {
+        guard let view = panel.contentView, let layer = view.layer else { return }
+        if landingSize == nil {
+            landingSize = from.size
+            view.autoresizesSubviews = false
+            Log.info(String(format: "⏪ the puzzle zooms into the receiving window — %.0f×%.0f at (%.0f, %.0f)",
+                            window.width, window.height, window.minX, window.minY))
+        }
+        let seen = Self.seenPart(of: from)
+        let visible = seen.offsetBy(dx: -from.minX, dy: -from.minY)
+        let to = window.insetBy(dx: FocusFrame.lineWidth, dy: FocusFrame.lineWidth)
+        Self.coverFlight(panel, layer, from: from, focus: CGPoint(x: visible.midX, y: visible.midY),
+                         visible: visible, to: to, u: p)
+    }
+
+    /// **Before anything else puts the panel somewhere**, like `settleDock`: a
+    /// window still in a landing's frame gets its own size and scale back.
+    private func settleLanding() {
+        guard let size = landingSize else { return }
+        landingSize = nil
+        guard let panel else { return }
+        panel.contentView?.layer?.sublayerTransform = CATransform3DIdentity
+        panel.contentView?.autoresizesSubviews = true
+        panel.setFrame(NSRect(origin: panel.frame.origin, size: size), display: false)
+    }
+
     /// Moves an anchored dress's square towards `anchoredTarget` — `anchor`
     /// itself, so the fade at the end stays where it got to.
     private func flyAnchor() {
-        guard let panel, let from = anchorStart, let to = anchoredTarget else { return }
+        guard let panel, let from = anchorStart else { return }
         let p = CGFloat(RewindTimeline.flight(elapsed: CFAbsoluteTimeGetCurrent() - rewindFrom, predicted: rewindEstimate))
+        if landsInWindow, let window = rewindLanding { land(panel, from: from, in: window, p: p); return }
+        guard let to = anchoredTarget else { return }
         let c = NSPoint(x: from.midX + (to.x - from.midX) * p, y: from.midY + (to.y - from.midY) * p)
         let f = NSRect(x: (c.x - from.width / 2).rounded(), y: (c.y - from.height / 2).rounded(),
                        width: from.width, height: from.height)
@@ -1714,7 +1765,7 @@ final class CaretHalo {
                 : Self.seeded(Self.tailed(Self.lift(Self.undoInputGain(self.samples?() ?? nil ?? [Float](repeating: 0, count: 1024)))))
             web?.feed(samples)
             if (self.rewinding && self.rewindApproaches) || Self.approachDemo > 0 { web?.approach(scale: self.approachScale.scale, alpha: self.approachScale.alpha) }
-            else if self.rewinding && !self.flies { web?.approach(scale: self.sparksShrink, alpha: 1) }
+            else if self.rewinding && !self.flies { web?.approach(scale: self.landsInWindow ? 1 : self.sparksShrink, alpha: 1) }
             // Tendrils and the other straight flyers shrink to a fifth on the way (2026-10-08).
             else if self.rewinding && !self.rewindStyle.hasTrail {
                 web?.approach(scale: CGFloat(RewindTimeline.flightScale(elapsed: CFAbsoluteTimeGetCurrent() - self.rewindFrom,
@@ -1740,6 +1791,7 @@ final class CaretHalo {
         // A ring opening while the last sentence's is still docked on the
         // prompt panel takes the panel back to the pointer, in a cut.
         settleDock()
+        settleLanding()
         orbitFading = false
         let panel = self.panel ?? makePanel()
         // **A collapse still in the air is taken back whole**, before anything
@@ -2097,13 +2149,7 @@ final class CaretHalo {
             return
         }
         let from = panel.frame
-        // The visible part: the window clipped to the screen it is mostly on.
-        let screen = NSScreen.screens.max { a, b in
-            a.frame.intersection(from).width * a.frame.intersection(from).height
-                < b.frame.intersection(from).width * b.frame.intersection(from).height
-        }
-        var seen = screen.map { $0.frame.intersection(from) } ?? from
-        if seen.isEmpty { seen = from }
+        let seen = Self.seenPart(of: from)
         let visible = seen.offsetBy(dx: -from.minX, dy: -from.minY)
         // Where the effect is centred: the pointer (or the tunnel's window) for
         // everything that rides it, the middle of what is seen for an anchored
@@ -2159,17 +2205,38 @@ final class CaretHalo {
         let landed = elapsed >= Self.dockFlight
         if landed, d.landedOn == to { return }
         let t = CGFloat(min(1, elapsed / Self.dockFlight))
-        let u = t * t * (3 - 2 * t)
-        // Cover the panel with what was seen, never grow past full size.
-        let fill = min(1, max(to.width / max(d.visible.width, 1), to.height / max(d.visible.height, 1)))
+        Self.coverFlight(panel, layer, from: d.from, focus: d.focus, visible: d.visible, to: to, u: t * t * (3 - 2 * t))
+        if landed { dock?.landedOn = to }
+    }
+
+    /// The part of a window's frame that is on a screen: clipped to the screen
+    /// it is mostly on (the whole frame when it is on none).
+    private static func seenPart(of from: NSRect) -> NSRect {
+        let screen = NSScreen.screens.max { a, b in
+            a.frame.intersection(from).width * a.frame.intersection(from).height
+                < b.frame.intersection(from).width * b.frame.intersection(from).height
+        }
+        let seen = screen.map { $0.frame.intersection(from) } ?? from
+        return seen.isEmpty ? from : seen
+    }
+
+    /// **One frame of a flight that ends covering `to`**, `u` of the way (0…1):
+    /// the window's frame goes from `from` to `to`, the content is scaled so
+    /// what was `visible` covers `to` (never past full size — the window clips
+    /// the rest), and its `focus` slides onto `to`'s middle. The dock onto the
+    /// prompt panel and the puzzle's landing in the receiving window
+    /// (2026-10-14) are the same move.
+    private static func coverFlight(_ panel: NSPanel, _ layer: CALayer, from: NSRect, focus: CGPoint,
+                                    visible: NSRect, to: NSRect, u: CGFloat) {
+        let fill = min(1, max(to.width / max(visible.width, 1), to.height / max(visible.height, 1)))
         let k = 1 + (fill - 1) * u
         func mix(_ a: CGFloat, _ b: CGFloat) -> CGFloat { a + (b - a) * u }
-        let frame = NSRect(x: mix(d.from.minX, to.minX), y: mix(d.from.minY, to.minY),
-                           width: mix(d.from.width, to.width), height: mix(d.from.height, to.height)).integral
+        let frame = NSRect(x: mix(from.minX, to.minX), y: mix(from.minY, to.minY),
+                           width: mix(from.width, to.width), height: mix(from.height, to.height)).integral
         // Where the effect's centre is on screen: from where it was, to the
-        // middle of the panel.
-        let focusOnScreen = CGPoint(x: mix(d.from.minX + d.focus.x, to.midX),
-                                    y: mix(d.from.minY + d.focus.y, to.midY))
+        // middle of the target.
+        let focusOnScreen = CGPoint(x: mix(from.minX + focus.x, to.midX),
+                                    y: mix(from.minY + focus.y, to.midY))
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         if panel.frame != frame { panel.setFrame(frame, display: false) }
@@ -2178,11 +2245,10 @@ final class CaretHalo {
         // so the focus lands on `focusOnScreen` in window coordinates.
         let local = CGPoint(x: focusOnScreen.x - frame.minX, y: focusOnScreen.y - frame.minY)
         let a = CGPoint(x: layer.anchorPoint.x * layer.bounds.width, y: layer.anchorPoint.y * layer.bounds.height)
-        let tx = local.x - a.x - k * (d.focus.x - a.x)
-        let ty = local.y - a.y - k * (d.focus.y - a.y)
+        let tx = local.x - a.x - k * (focus.x - a.x)
+        let ty = local.y - a.y - k * (focus.y - a.y)
         layer.sublayerTransform = CATransform3DScale(CATransform3DMakeTranslation(tx, ty, 0), k, k, 1)
         CATransaction.commit()
-        if landed { dock?.landedOn = to }
     }
 
     /// The panel went (`now: false`): fade out over `dockFade`, then put the
@@ -2412,7 +2478,7 @@ final class CaretHalo {
     var headsAt: NSPoint? {
         didSet {
             guard headsAt != oldValue else { return }
-            let wanted = ((live && atCaret) || (delivering && !rewinding)) && headsAt != nil
+            let wanted = ((live && atCaret) || (delivering && !rewindHidesHeads)) && headsAt != nil
             arrow.armed = wanted
             if wanted { placeHeads() }
         }
@@ -2427,7 +2493,7 @@ final class CaretHalo {
     /// idempotent after the first call and it is also what raises them again.
     private func placeHeads() {
         guard let o = headsOrigin else { return }
-        delivering && !rewinding ? arrow.hold(at: o) : arrow.place(at: o)
+        delivering && !rewindHidesHeads ? arrow.hold(at: o) : arrow.place(at: o)
     }
 
     private static func origin() -> NSPoint {

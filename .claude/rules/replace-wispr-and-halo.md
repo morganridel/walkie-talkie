@@ -498,6 +498,18 @@ fade out foarte repede, după ce dictarea s-a injectat cu succes. În timp cât 
   clock onto the caret, else the window's middle — for a spawn onto the pointer latched at the close
   (its terminal does not exist yet) — while it shrinks at `sparksShrink`. Log `⏪ the rewind: … —
   shrinking onto the caret` / `… onto the pointer`. `WT_HALO_FLIGHT=0` brings the tunnel back.
+- **The plain dictation's puzzle zooms into the receiving window, and the heads stay on its caret**
+  (2026-10-14, Victor: *"the puzzle effect should zoom into the receiving border, not on the cursor
+  … but on the receiving border of the application that we input. And also display … the arrowheads
+  going towards where the cursor is placed"*). Supersedes the bullet above for `.wispr` only:
+  `AppDelegate.aimRewind` writes the window frame to `CaretHalo.rewindLanding`, and `flyAnchor` then
+  runs `coverFlight` (the dock's move, shared with `dockTick`) on `flight`'s clock — the panel's frame
+  goes from the square to the window inset by `FocusFrame.lineWidth` (the orange outline stays in
+  sight round it), the picture scaled to cover it, no `sparksShrink` inside. `settleLanding` (in
+  `show`/`rebuild`) gives the panel its size back. **The heads are not replaced by this rewind**
+  (`rewindHidesHeads` false for `.wispr` + anchored): they hold on `headsAt` (the caret) through the
+  transcription, above the puzzle (`.statusBar` over `.statusBar − 1`). No window found → the old
+  caret/middle slide. Log `⏪ the puzzle zooms into the receiving window — W×H at (x, y)`.
 - **A spawn's stars fly straight onto the new terminal — one journey** (2026-10-10, Victor: *"am
   văzut acum două mișcări … vreau să fac o singură mișcare de la unde era către unde se duce la
   dictarea în terminal nou"*). They shrank onto the pointer, then docked on the prompt panel, and the

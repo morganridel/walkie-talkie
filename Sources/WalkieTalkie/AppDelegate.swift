@@ -5207,6 +5207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let screenAim = Self.pointerScreenMiddle()
         caretHalo.rewindOrbitRadius = nil
         caretHalo.rewindCaret = nil
+        caretHalo.rewindLanding = nil
         caretHalo.spawnLanding = nil
         guard latchedAtCaret || target != nil else {
             Log.info(String(format: "⏪ the rewind aims at the middle of the pointer's screen (%.0f, %.0f) — no window to land in",
@@ -5250,6 +5251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.settleAim = NSPoint(x: frame.midX, y: frame.midY)
                 self.caretHalo.rewindOrbitRadius = RewindTimeline.orbitRadius(for: frame.size)
                 self.caretHalo.rewindCaret = caret
+                self.caretHalo.rewindLanding = frame
                 self.caretHalo.rewindAim = self.settleAim
             }
         }

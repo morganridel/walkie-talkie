@@ -66,7 +66,7 @@ final class FocusFrame {
     /// against every theme a window can have, and amber on a light page is the
     /// one the heads already needed a shadow for.
     private static let ink = NSColor(srgbRed: 1.0, green: 0.50, blue: 0.0, alpha: 1)
-    private static let lineWidth: CGFloat = 4
+    static let lineWidth: CGFloat = 4
     private static let corner: CGFloat = 10
     private static let fadeIn: TimeInterval = 0.15
 
