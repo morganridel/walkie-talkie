@@ -453,18 +453,6 @@
     "alpha" : 0.80000000000000004,
     "group" : "Flashes",
     "height" : 46,
-    "image" : "flash-kamikaze-offer.png",
-    "note" : "Never after a plain sentence, nor after a prompt that already carries the word.",
-    "shape" : "flash",
-    "slug" : "flash-kamikaze-offer",
-    "title" : "Flash — kamikaze offered",
-    "when" : "Three seconds, the moment a prompt (🔼, 🔼 →, 🔼 ↑) has landed in a terminal (2026-10-07). 🔼 ↓ in that window sends `kamikaze` alone to the same session.",
-    "width" : 133
-  },
-  {
-    "alpha" : 0.80000000000000004,
-    "group" : "Flashes",
-    "height" : 46,
     "image" : "flash-kamikaze-queued.png",
     "note" : "The word goes alone the moment the prompt lands, by the route it took. Again = `☠️ Kamikaze taken back`. On a sentence held for a bind the flash says `☠️ Kamikaze — goes with it at the bind`; with no prompt anywhere, `☠️ No prompt to kamikaze`.",
     "shape" : "flash",
@@ -512,7 +500,7 @@
   {
     "alpha" : 0.80000000000000004,
     "group" : "Flashes",
-    "height" : 46,
+    "height" : 117,
     "image" : "flash-model-failed.png",
     "note" : "The longest flash there is, because it is the only one that means the next thing he tries will not work at all. This is the only recogniser the relay has.",
     "shape" : "flash",
@@ -704,7 +692,7 @@
   {
     "alpha" : 1,
     "group" : "The held prompt",
-    "height" : 203,
+    "height" : 251,
     "image" : "prompt-hover.png",
     "note" : "The ✕ appears — end the session. It exists only on the panel: an end-session button on something that moves away as you reach for it means nothing, which is why the chip has none and the menu bar keeps one that stays put.",
     "shape" : "panel",

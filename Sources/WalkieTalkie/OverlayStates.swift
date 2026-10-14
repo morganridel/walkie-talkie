@@ -437,14 +437,6 @@ enum OverlayStates {
                 o.flash("📨 held — bind a terminal to send it", duration: 60)
             },
 
-            Shot(slug: "flash-kamikaze-offer", group: "Flashes", title: "Flash — kamikaze offered",
-                 when: "Three seconds, the moment a prompt (🔼, 🔼 →, 🔼 ↑) has landed in a terminal (2026-10-07). 🔼 ↓ in that window sends `kamikaze` alone to the same session.",
-                 note: "Never after a plain sentence, nor after a prompt that already carries the word.",
-                 shape: "flash", alpha: 0.80) { o in
-                o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
-                o.flash("☠️ Kamikaze?", duration: 60)
-            },
-
             Shot(slug: "flash-kamikaze-queued", group: "Flashes", title: "Flash — kamikaze queued on a prompt on its way",
                  when: "1.5 s, on 🔼 ↓ after the words are done but before the prompt has landed — a spawn opening, a bound delivery still typing, a caret prompt still pressing Return (2026-10-10).",
                  note: "The word goes alone the moment the prompt lands, by the route it took. Again = `☠️ Kamikaze taken back`. On a sentence held for a bind the flash says `☠️ Kamikaze — goes with it at the bind`; with no prompt anywhere, `☠️ No prompt to kamikaze`.",

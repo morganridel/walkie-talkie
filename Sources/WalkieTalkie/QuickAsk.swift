@@ -177,6 +177,16 @@ final class QuickAsk {
     /// True while a question is being answered.
     var isAnswering: Bool { queue.sync { current != nil } }
 
+    /// **Who will answer the next question** (2026-10-14, Victor: *"I don't know
+    /// who's answering me"*): the pop-up is signed with it before the first word,
+    /// under `Replying from training data…`. The model the last process said it
+    /// ran (`Opus 5.5`), kept across launches per setting; else the setting's
+    /// own name (`Opus`). `onDone` still signs with the one that answered.
+    var answererName: String {
+        UserDefaults.standard.string(forKey: servedKey).map(Self.displayName) ?? Self.displayName(model)
+    }
+    private var servedKey: String { "WTQuickServed.\(model)" }
+
     /// `claude-opus-5-5` → `Opus 5.5`, for the signature under the answer.
     static func displayName(_ id: String) -> String {
         var parts = id.replacingOccurrences(of: "[1m]", with: "").split(separator: "-").map(String.init)
@@ -247,6 +257,7 @@ final class QuickAsk {
                 if first == nil { first = CFAbsoluteTimeGetCurrent() - started }
                 DispatchQueue.main.async { onText(text) }
             }, onDone: { answer, error in
+                if let served = w.servedModel { UserDefaults.standard.set(served, forKey: self.servedKey) }
                 let name = w.servedModel.map(Self.displayName) ?? modelName
                 DispatchQueue.main.async { onDone(answer, error, first, name) }
                 guard let checks, let answer, let web else { return self.endLocked(run) }

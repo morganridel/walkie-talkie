@@ -37,6 +37,6 @@ final class QuickAskCitedTests: XCTestCase {
     }
 
     func testTheRunningDotsReadAsAnEllipsis() {
-        XCTAssertEqual(ReplyPanel.plain("— Opus 5.5 · 🔎 searching" + ReplyPanel.dots), "— Opus 5.5 · 🔎 searching…")
+        XCTAssertEqual(ReplyPanel.plain("— Opus 5.5 · 🌐 searching" + ReplyPanel.dots), "— Opus 5.5 · 🌐 searching…")
     }
 }

@@ -349,3 +349,13 @@ can"*, on his subscription; *"the key to bind it to. I think forward and left"*.
   before it runs; 120 s each. **The ✕ — or 🔼 ← — stops everything** (`ReplyPanel.onLiveDismissed`
   → `QuickAsk.cancel`); the pop-up stays `liveOpen` until the review is done. Measured: answer
   ~2 s, 🔎 at ~11–19 s, 🧐 at ~20–38 s.
+
+- **The pop-up opens the moment he has asked, already signed** (2026-10-14, Victor: *"immediately
+  after asking a question … the reply window should immediately show … replying from training data
+  placeholder until the response comes"*, then *"I don't know who's answering me"*): `Replying from
+  training data` + the running dots (`AppDelegate.quickPlaceholder`), `— Opus 5.5` under it from the
+  first frame (`QuickAsk.answererName`: the model the last process reported, kept in UserDefaults per
+  `WT_QUICK_MODEL`; else `Opus`). Reverses 2026-10-09's *no pop-up until the answer starts*. The
+  footer's steps read `🌐 searching…` / `🌐 searched` (*"put the globe to mean searching internet"*)
+  and `🧐 adversarial reviewing…` / `🧐 adversarial reviewed` (*"instead of reviewed, say adversarial
+  reviewed"*) — the 🔎 / `reviewed` wording above is superseded.

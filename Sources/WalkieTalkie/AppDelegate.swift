@@ -6203,6 +6203,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `🧐 Reviewing…` → an adversarial reviewer's, all in the same pop-up; its ✕
     /// stops them. `checked` is the desk route's too, once everything is over.
     private var quickToken = 0
+    static let quickPlaceholder = "Replying from training data" + ReplyPanel.dots
     private func askQuick(_ question: String,
                           done: ((String?, String?, TimeInterval?, TimeInterval) -> Void)? = nil,
                           checked: ((_ web: String?, _ review: String?) -> Void)? = nil) {
@@ -6215,20 +6216,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // answers each replace the one before; the footer says which one it is
         // and what is still running, so ✕ at any moment keeps a whole answer.
         // **One line, under it** (same day, Victor: *"totul inline, nu pe rânduri
-        // separate"*): `— Opus 5.5 · 🔎 searching…` → `· 🔎 searched · 🧐
-        // reviewing…` → `· 🧐 reviewed`, the running one's dots animated
-        // (`ReplyPanel.dots`); ✏️ after a step that changed the answer.
-        var answer = "", signature = ""
+        // separate"*): `— Opus 5.5 · 🌐 searching…` → `· 🌐 searched · 🧐
+        // adversarial reviewing…` → `· 🧐 adversarial reviewed` (*"instead of
+        // reviewed, say adversarial reviewed"*, 2026-10-14), the running one's dots animated
+        // (`ReplyPanel.dots`); ✏️ after a step that changed the answer. **🌐, not
+        // 🔎** (2026-10-14, Victor: *"stick with searching and then put the globe
+        // to mean searching internet"*).
+        var answer = Self.quickPlaceholder, signature = QuickAsk.shared.answererName
         var steps: [String] = []
         var searched: String?, reviewed: String?
         func compose() -> String {
             guard !signature.isEmpty else { return answer }
             return answer + "\n— " + ([signature] + steps).joined(separator: " · ")
         }
-        // **No pop-up until the answer starts** (2026-10-09, Victor: *"there
-        // should be no prompt preview because it's super fast"*): it opened at
-        // once with the question alone, a preview of his own words for the
-        // second before the model's arrived. The first words open it.
+        // **The pop-up opens the moment he has asked** (2026-10-14, Victor:
+        // *"immediately after asking a question, the reply window should
+        // immediately show … replying from training data placeholder until the
+        // response comes"* — reverses 2026-10-09's *no pop-up until the answer
+        // starts*): `Replying from training data` + the running dots, replaced
+        // by the first words — **already signed** (*"I don't know who's
+        // answering me"*): `— Opus 5.5` under it from the first frame.
         var painted: CFAbsoluteTime = 0
         func paint(force: Bool = false) {
             // ≤ 20 repaints a second; the last words of each stage are forced.
@@ -6237,6 +6244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             painted = now
             ReplyPanel.live(compose(), from: label, question: token)
         }
+        ReplyPanel.live(compose(), from: label, question: token)
         ReplyPanel.onLiveDismissed = {
             if QuickAsk.shared.cancel() { Log.info("⚡ ✕ on the quick answer — the checks are stopped") }
         }
@@ -6245,12 +6253,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let checks = QuickAsk.Checks(web: { text, isDone in
             guard isDone else { return }
             if text.hasPrefix("⚠️") {
-                steps = ["🔎 failed", "🧐 reviewing" + ReplyPanel.dots]
+                steps = ["🌐 failed", "🧐 adversarial reviewing" + ReplyPanel.dots]
             } else {
                 let c = QuickAsk.cited(text)
                 answer = c.text
                 // No ✏️ on the search (same day, *"scoate creionul din Search"*).
-                steps = ["🔎 searched", "🧐 reviewing" + ReplyPanel.dots]
+                steps = ["🌐 searched", "🧐 adversarial reviewing" + ReplyPanel.dots]
                 searched = ReplyPanel.plain(c.text)
             }
             Log.info(String(format: "⚡ 🔎 web answer at %.1f s — %@", CFAbsoluteTimeGetCurrent() - started,
@@ -6263,7 +6271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 let c = QuickAsk.cited(text)
                 answer = c.text
-                steps[steps.count - 1] = c.changed ? "🧐 reviewed ✏️" : "🧐 reviewed"
+                steps[steps.count - 1] = c.changed ? "🧐 adversarial reviewed ✏️" : "🧐 adversarial reviewed"
                 reviewed = ReplyPanel.plain(c.text)
             }
             Log.info(String(format: "⚡ 🧐 reviewed answer at %.1f s — %@", CFAbsoluteTimeGetCurrent() - started,
@@ -6279,10 +6287,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }, onDone: { text, error, first, model in
             let total = CFAbsoluteTimeGetCurrent() - started
             answer = text ?? "⚠️ \(error ?? "no answer")"
-            if text != nil {
-                signature = model
-                steps = ["🔎 searching" + ReplyPanel.dots]
-            }
+            signature = model
+            if text != nil { steps = ["🌐 searching" + ReplyPanel.dots] }
             paint(force: true)
             if let text {
                 Log.info(String(format: "⚡ quick answer (%@) — first word %@, whole %.2f s, %d chars",
@@ -9241,13 +9247,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// gesture for Kamikaze, the last terminal that has received a prompt would
     /// be sent a Kamikaze signal. Even if it's much later than the window
     /// allowed, the label disappears after a while, but then I can still."* So
-    /// the three seconds are the `☠️ Kamikaze?` flash only; the offer stands
+    /// the three seconds were the `☠️ Kamikaze?` flash only (no flash at all
+    /// since 2026-10-14 — he knows the drill); the offer stands
     /// until it is taken or a newer prompt lands — one carrying the word
     /// already withdraws it, since the last terminal prompted is then on its way
     /// out. Each route re-checks its terminal at the flick, because by then the
     /// session may have ended (`kamikazeNotSent`).
     private var kamikazeOffer: (send: () -> Void, destination: String, serial: Int)?
-    private static let kamikazeOfferSeconds: TimeInterval = 3
 
     private static func endsInKamikaze(_ text: String?) -> Bool {
         (text ?? "").hasSuffix("\n\nkamikaze")
@@ -9272,8 +9278,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             _ = takeKamikazeOffer(after: settle)
             return
         }
-        overlay.flash("☠️ Kamikaze?", duration: Self.kamikazeOfferSeconds)
-        Log.info("☠️ kamikaze offered — the prompt landed in \(destination); the flash lasts \(Int(Self.kamikazeOfferSeconds)) s, the offer until the next prompt")
+        // **No `☠️ Kamikaze?` flash** (2026-10-14, Victor: *"you don't need to hint
+        // me … I know the drill … Don't show it up so visible"*): the offer
+        // stands silently until the next prompt.
+        Log.info("☠️ kamikaze offered (silently) — the prompt landed in \(destination); the offer stands until the next prompt")
     }
 
     /// True when the flick was the offer's.
