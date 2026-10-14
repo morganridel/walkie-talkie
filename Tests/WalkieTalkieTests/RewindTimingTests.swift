@@ -244,6 +244,29 @@ final class RewindTimelineTests: XCTestCase {
         XCTAssertEqual(quarter.y, -r, accuracy: 1e-9)                  // clockwise
     }
 
+    /// 2026-10-14: the dust sweeps from the caret to 20 % of the screen's width right of it.
+    func testDustSweepsTheLaneRightOfTheCaret() {
+        let caret = CGPoint(x: 300, y: 500)
+        let lane = RewindTimeline.caretLane(caret: caret, screenWidth: 1728)
+        XCTAssertEqual(lane.centre.x - lane.rx, caret.x, accuracy: 1e-9)          // starts at the caret
+        XCTAssertEqual(lane.centre.x + lane.rx, caret.x + 1728 * 0.2, accuracy: 1e-9)
+        XCTAssertEqual(lane.centre.y, caret.y)
+        XCTAssertGreaterThan(lane.period, RewindTimeline.orbitPeriod)             // same pace, longer sweep
+        // Clipped at the window's right edge, never under the minimum.
+        XCTAssertEqual(RewindTimeline.caretLane(caret: caret, screenWidth: 1728, rightEdge: 450).rx, 75, accuracy: 1e-9)
+        XCTAssertEqual(RewindTimeline.caretLane(caret: caret, screenWidth: 1728, rightEdge: 310).rx,
+                       RewindTimeline.laneMinWidth / 2, accuracy: 1e-9)
+        // Lands on the lane where the pointer is nearest, and stays on it.
+        let a = RewindTimeline.entryAngle(on: lane, from: CGPoint(x: 0, y: 500))
+        let entry = RewindTimeline.orbit(on: lane, since: 0, from: a)
+        XCTAssertEqual(entry.x, caret.x, accuracy: 1e-9)
+        for t in [0.4, 1.3, 2.9] {
+            let p = RewindTimeline.orbit(on: lane, since: t, from: a)
+            let e = pow((p.x - lane.centre.x) / lane.rx, 2) + pow((p.y - lane.centre.y) / lane.ry, 2)
+            XCTAssertEqual(e, 1, accuracy: 1e-9)
+        }
+    }
+
     /// 2026-10-04: the ring starts as tall as the screen.
     func testRingStartsAsTallAsTheScreen() {
         let restRing = 0.66 * 0.317

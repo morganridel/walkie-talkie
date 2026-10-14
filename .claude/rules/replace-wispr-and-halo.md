@@ -489,6 +489,13 @@ fade out foarte repede, după ce dictarea s-a injectat cu succes. În timp cât 
   the window. A caret outside the window frame is dropped. `CaretHalo.rewindCaret` → the dust's ring
   centre, radius `RewindTimeline.caretOrbitRadius` 70 pt (`WT_CARET_ORBIT`); every other dress keeps
   the window. Log `⏪ the rewind aims at the middle of … — its caret at (x, y)` / `— no caret found in it`.
+- **The dust sweeps the lane right of the caret, not the caret itself** (2026-10-14, Victor: *"the
+  target of the dust shouldn't be exactly the cursor, but cursor plus twenty percent … of the width of
+  the screen to the right … That's where the text will usually land"*). Supersedes the 70 pt ring of
+  the bullet above: `RewindTimeline.caretLane` — an ellipse from the caret to `laneShare` 0.2 × the
+  caret's screen width right of it, clipped at the receiving window's right edge (`rewindLanding`),
+  ≥ `laneMinWidth` 80 pt, `laneHalfHeight` 36 pt; the period stretched to keep the old ring's pace.
+  Flight lands on the lane's nearest point (`entryAngle(on:from:)`). No caret → the window ring as before.
 - **Tendrils lands on the caret too; the puzzle and the stars shrink onto it** (2026-10-10, Victor:
   *"și tendrils … să se ducă la poziția carrot-ului similar. Iar dictation-ul simplu să se micșoreze
   … puzzle … să se ducă … pe poziția cursorului. Și la fel și stars"*). A straight flyer aims at

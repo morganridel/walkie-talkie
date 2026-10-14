@@ -1428,10 +1428,20 @@ final class CaretHalo {
             let flightTime = max(rewindEstimate * RewindTimeline.dustArriveShare, RewindTimeline.minimumSpan)
             let span = flightTime
             let p = RewindTimeline.flight(elapsed: t, predicted: flightTime)
-            // Round the caret when one was found, round the window's middle else (2026-10-10).
-            let to = rewindCaret ?? to
-            let r = rewindCaret != nil ? RewindTimeline.caretOrbitRadius
-                : rewindOrbitRadius ?? RewindTimeline.orbitRadiusFallback
+            // Along the lane right of the caret, where the words land (2026-10-14).
+            if let caret = rewindCaret {
+                let screen = NSScreen.screens.first(where: { NSMouseInRect(caret, $0.frame, false) }) ?? NSScreen.main
+                let lane = RewindTimeline.caretLane(caret: caret, screenWidth: screen?.frame.width ?? 1440,
+                                                    rightEdge: rewindLanding?.maxX)
+                let angle = RewindTimeline.entryAngle(on: lane, from: from)
+                if t < span {
+                    let entry = RewindTimeline.orbit(on: lane, since: 0, from: angle)
+                    return NSPoint(x: from.x + (entry.x - from.x) * CGFloat(p), y: from.y + (entry.y - from.y) * CGFloat(p))
+                }
+                return RewindTimeline.orbit(on: lane, since: t - span, from: angle)
+            }
+            // Round the window's middle when no caret was found (2026-10-10).
+            let r = rewindOrbitRadius ?? RewindTimeline.orbitRadiusFallback
             // Straight to the ring's nearest point, and round from there (2026-10-09).
             let angle = RewindTimeline.entryAngle(around: to, from: from)
             if t < span {

@@ -260,6 +260,46 @@ enum RewindTimeline {
     }()
     static let orbitPeriod: TimeInterval = 1.2
 
+    /// **The dust circles where the words will land, not the caret itself**
+    /// (2026-10-14, Victor: *"the target of the dust shouldn't be exactly the
+    /// cursor, but cursor plus twenty percent … of the width of the screen to
+    /// the right should be oscillating in that area. That's where the text will
+    /// usually land"*). An ellipse from the caret to `laneShare` of the caret's
+    /// screen width right of it — clipped at the receiving window's right edge,
+    /// never under `laneMinWidth` — `laneHalfHeight` tall each way, so it sweeps
+    /// along the line the sentence is about to fill. The turn is slowed to keep
+    /// the 70 pt ring's pace (`caretOrbitRadius` per `orbitPeriod`), so a wider
+    /// lane is a longer sweep rather than a faster one.
+    struct Lane {
+        let centre: CGPoint
+        let rx: CGFloat
+        let ry: CGFloat
+        let period: TimeInterval
+    }
+    static let laneShare: CGFloat = 0.2
+    static let laneMinWidth: CGFloat = 80
+    static let laneHalfHeight: CGFloat = 36
+    static func caretLane(caret: CGPoint, screenWidth: CGFloat, rightEdge: CGFloat? = nil) -> Lane {
+        var width = screenWidth * laneShare
+        if let edge = rightEdge { width = min(width, edge - caret.x) }
+        width = max(width, laneMinWidth)
+        let rx = width / 2, ry = laneHalfHeight
+        // Ramanujan's perimeter, against the ring's.
+        let h = pow(rx - ry, 2) / pow(rx + ry, 2)
+        let perimeter = Double.pi * Double(rx + ry) * (1 + 3 * Double(h) / (10 + (4 - 3 * Double(h)).squareRoot()))
+        let period = orbitPeriod * max(1, perimeter / (2 * Double.pi * Double(caretOrbitRadius)))
+        return Lane(centre: CGPoint(x: caret.x + rx, y: caret.y), rx: rx, ry: ry, period: period)
+    }
+    /// The angle on the lane nearest the pointer, in the ellipse's own angle.
+    static func entryAngle(on lane: Lane, from p: CGPoint) -> Double {
+        let dx = Double((p.x - lane.centre.x) / lane.rx), dy = Double((p.y - lane.centre.y) / lane.ry)
+        return dx == 0 && dy == 0 ? 0 : atan2(dy, dx)
+    }
+    static func orbit(on lane: Lane, since t: TimeInterval, from start: Double = 0) -> CGPoint {
+        let angle = start - 2 * Double.pi * max(t, 0) / lane.period
+        return CGPoint(x: lane.centre.x + lane.rx * CGFloat(cos(angle)), y: lane.centre.y + lane.ry * CGFloat(sin(angle)))
+    }
+
     /// **Sparks shrinks at the tunnel's own rate** (2026-10-02, Victor: *"dacă
     /// … Stars se micșorează în același stil în care se micșorează și Reverse
     /// Tunnel … în loc să rămână activ pe tot ecranul, să se micșoreze în timp
