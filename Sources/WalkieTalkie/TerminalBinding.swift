@@ -1560,6 +1560,34 @@ final class TerminalBinding {
         return window.insetBy(dx: -4, dy: -4).contains(point) ? point : nil
     }
 
+    /// **Would a keystroke land anywhere in this app — as far as Accessibility
+    /// can say?** (2026-10-14). `true` for a text role, or anything inside an
+    /// editable web region; `false` for a focused element that is neither (a
+    /// Chrome page with no field focused, a Finder list); **nil when it cannot
+    /// tell** — no focused element (VS Code without `AXManualAccessibility`) or
+    /// no role (IntelliJ) — which must never be read as *nowhere*. Off main.
+    static func focusTakesText(pid: pid_t) -> Bool? {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.3)
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let f = focused, CFGetTypeID(f) == AXUIElementGetTypeID() else { return nil }
+        let element = unsafeBitCast(f, to: AXUIElement.self)
+        var roleRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
+              let role = roleRef as? String else { return nil }
+        let textRoles: Set<String> = [kAXTextAreaRole, kAXTextFieldRole, kAXComboBoxRole,
+                                      "AXSearchField", "AXSecureTextField"]
+        if textRoles.contains(role) { return true }
+        var ancestor: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, "AXEditableAncestor" as CFString, &ancestor) == .success,
+           ancestor != nil { return true }
+        var settable: DarwinBoolean = false
+        if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success,
+           settable.boolValue, role != kAXSliderRole as String, role != kAXCheckBoxRole as String { return true }
+        return false
+    }
+
     /// The focused window of an app with no scripting surface — VS Code,
     /// IntelliJ — read through Accessibility, which the relay already holds a
     /// grant for.

@@ -32,31 +32,10 @@ enum Glyphs {
     static func mapPin(height: CGFloat, fill: NSColor = .systemRed) -> NSImage {
         let width = height * 0.696
         return NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            let radius = height * 0.348
-            // AppKit counts y up, the proportions above count it down from the top.
-            let centre = CGPoint(x: width / 2, y: height - radius)
-            let tip = CGPoint(x: width / 2, y: 0)
-
-            // Where the tangents touch: with the tip at distance d below the
-            // centre, the touch points sit at angle acos(R/d) either side of the
-            // line joining them.
-            let d = centre.y - tip.y
-            guard d > radius else { return false }
-            let phi = acos(radius / d)
-            let left = -CGFloat.pi / 2 - phi      // measured from the +x axis
-            let right = -CGFloat.pi / 2 + phi
-
+            guard let ctx = NSGraphicsContext.current?.cgContext,
+                  let shape = mapPinShape(height: height) else { return false }
             ctx.setFillColor(fill.cgColor)
-            ctx.beginPath()
-            ctx.move(to: tip)
-            ctx.addLine(to: CGPoint(x: centre.x + radius * cos(right),
-                                    y: centre.y + radius * sin(right)))
-            // Anticlockwise from the right touch point, over the top, to the left
-            // one — the long way round, which is the body of the head.
-            ctx.addArc(center: centre, radius: radius,
-                       startAngle: right, endAngle: left + 2 * .pi, clockwise: false)
-            ctx.closePath()
+            ctx.addPath(shape.body)
             ctx.fillPath()
 
             // The hole. Punched with `.clear` rather than filled white: the chip
@@ -64,12 +43,43 @@ enum Glyphs {
             // would be a white disc on all of them. Cleared, it shows whatever is
             // behind — which is what a hole is.
             ctx.setBlendMode(.clear)
-            ctx.fillEllipse(in: CGRect(x: centre.x - height * 0.196,
-                                       y: centre.y - height * 0.196,
-                                       width: height * 0.392, height: height * 0.392))
+            ctx.fillEllipse(in: shape.hole)
             ctx.setBlendMode(.normal)
             return true
         }
+    }
+
+    /// **The pin's outline and its hole, as geometry** — shared by `mapPin` and
+    /// the pin `DropArrow` stands on the caret (2026-10-14), so the big one is
+    /// the chip's own shape and not a second drawing of it. Bottom-left origin,
+    /// the tip at `(width / 2, 0)`; nil only for a height too small to have one.
+    static func mapPinShape(height: CGFloat) -> (body: CGPath, hole: CGRect)? {
+        let width = height * 0.696
+        let radius = height * 0.348
+        // AppKit counts y up, the proportions above count it down from the top.
+        let centre = CGPoint(x: width / 2, y: height - radius)
+        let tip = CGPoint(x: width / 2, y: 0)
+
+        // Where the tangents touch: with the tip at distance d below the
+        // centre, the touch points sit at angle acos(R/d) either side of the
+        // line joining them.
+        let d = centre.y - tip.y
+        guard d > radius else { return nil }
+        let phi = acos(radius / d)
+        let left = -CGFloat.pi / 2 - phi      // measured from the +x axis
+        let right = -CGFloat.pi / 2 + phi
+
+        let body = CGMutablePath()
+        body.move(to: tip)
+        body.addLine(to: CGPoint(x: centre.x + radius * cos(right),
+                                 y: centre.y + radius * sin(right)))
+        // Anticlockwise from the right touch point, over the top, to the left
+        // one — the long way round, which is the body of the head.
+        body.addArc(center: centre, radius: radius,
+                    startAngle: right, endAngle: left + 2 * .pi, clockwise: false)
+        body.closeSubpath()
+        let h = height * 0.196
+        return (body, CGRect(x: centre.x - h, y: centre.y - h, width: 2 * h, height: 2 * h))
     }
 
     /// A small filled badge with a word written into it — `HQ`, the mark that

@@ -53,10 +53,18 @@ final class FocusFrame {
         var window: CGRect?
         var visible = false
         var caret: NSPoint?
+        /// **Nowhere to type** (2026-10-14): where the crossed-out pin goes —
+        /// the window's middle when its focus is known to take no text
+        /// (`TerminalBinding.focusTakesText` false), the pointer's screen's
+        /// middle when the app has no window at all. Nil when there is a caret,
+        /// or when Accessibility cannot tell.
+        var noCaret: NSPoint?
     }
 
-    /// The caret the heads should converge on, or nil — main thread.
+    /// The caret the pin should stand on, or nil — main thread.
     var onCaret: ((NSPoint?) -> Void)?
+    /// Where the crossed-out pin should stand, or nil — main thread.
+    var onNoCaret: ((NSPoint?) -> Void)?
 
     private(set) var active = false
     private(set) var reading = Reading()
@@ -96,6 +104,7 @@ final class FocusFrame {
             reading = Reading()
             hide()
             onCaret?(nil)
+            onNoCaret?(nil)
             Log.info("🟧 focus frame off")
         }
     }
@@ -105,6 +114,7 @@ final class FocusFrame {
                                 "shown": panel?.isVisible ?? false, "app": reading.app ?? ""]
         if let w = reading.window { r["window"] = [w.minX, w.minY, w.width, w.height] }
         if let c = reading.caret { r["caret"] = [c.x, c.y] }
+        if let n = reading.noCaret { r["noCaret"] = [n.x, n.y] }
         return r
     }
 
@@ -121,8 +131,9 @@ final class FocusFrame {
         probing = true
         let pid = app.processIdentifier
         let name = app.localizedName
+        let screen = (RelayWindow.screenUnderMouse() ?? NSScreen.main).map { NSPoint(x: $0.frame.midX, y: $0.frame.midY) }
         queue.async { [weak self] in
-            let r = Self.read(pid: pid, app: name)
+            let r = Self.read(pid: pid, app: name, screenMiddle: screen)
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.probing = false
@@ -135,9 +146,14 @@ final class FocusFrame {
     private struct ServerWindow { let pid: pid_t; let layer: Int; let alpha: Double; let frame: CGRect }
 
     /// Off the main thread.
-    static func read(pid: pid_t, app: String?) -> Reading {
+    static func read(pid: pid_t, app: String?, screenMiddle: NSPoint? = nil) -> Reading {
         var r = Reading(app: app)
-        guard let window = TerminalBinding.focusedWindow(pid: pid).frame else { return r }
+        guard let window = TerminalBinding.focusedWindow(pid: pid).frame else {
+            // No window anywhere: a ⌘V lands nowhere (the desktop, an app with
+            // every window closed) — the crossed pin on the pointer's screen.
+            r.noCaret = screenMiddle
+            return r
+        }
         r.window = window
         let list = serverWindows()
         // The focused window as the window server has it: the first ordinary
@@ -156,7 +172,13 @@ final class FocusFrame {
                                   y: window.minY + window.height * (CGFloat(j) + 0.5) / CGFloat(steps)))
             }
         }
-        guard r.visible, let caret = TerminalBinding.caret(pid: pid, in: window), uncovered(caret) else { return r }
+        guard r.visible else { return r }
+        guard let caret = TerminalBinding.caret(pid: pid, in: window), uncovered(caret) else {
+            if TerminalBinding.focusTakesText(pid: pid) == false {
+                r.noCaret = NSPoint(x: window.midX, y: window.midY)
+            }
+            return r
+        }
         r.caret = caret
         return r
     }
@@ -187,18 +209,20 @@ final class FocusFrame {
     private func apply(_ r: Reading) {
         let old = reading
         reading = r
-        if r.window != old.window || r.visible != old.visible || r.app != old.app {
+        if r.window != old.window || r.visible != old.visible || r.app != old.app || (r.noCaret == nil) != (old.noCaret == nil) {
             if let w = r.window {
                 Log.info(String(format: "🟧 the words go to %@ — window %.0f×%.0f at (%.0f, %.0f), %@%@",
                                 r.app ?? "?", w.width, w.height, w.minX, w.minY,
-                                r.visible ? "outlined" : "not visible — no outline, no heads",
-                                r.visible ? (r.caret == nil ? ", no caret found in it — no heads" : "") : ""))
+                                r.visible ? "outlined" : "not visible — no outline, no pin",
+                                r.visible ? (r.caret != nil ? "" : r.noCaret != nil ? ", nothing in it takes text — the pin crossed out"
+                                                                                    : ", no caret found in it — no pin") : ""))
             } else {
-                Log.info("🟧 the words go to \(r.app ?? "nothing") — no focused window, nothing outlined")
+                Log.info("🟧 the words go to \(r.app ?? "nothing") — no focused window, nothing outlined\(r.noCaret != nil ? ", the pin crossed out on the screen" : "")")
             }
         }
         if let w = r.window, r.visible { show(around: w) } else { hide() }
         if r.caret != old.caret { onCaret?(r.caret) }
+        if r.noCaret != old.noCaret { onNoCaret?(r.noCaret) }
     }
 
     private func show(around window: CGRect) {

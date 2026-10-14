@@ -1840,6 +1840,19 @@ private let heardLabel = NSTextField(labelWithString: "")
         return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
     }
 
+    /// **Where the prompt panel is about to come up, before it has** (2026-10-14):
+    /// the top-left corner `showSentPrompt` will pick — the pointer's screen,
+    /// `margin` in — with a short prompt's size, since the rows are not measured
+    /// yet. A spawn's stars fly here at the close; the dock then fits them onto
+    /// the real panel.
+    func promptCornerEstimate() -> NSRect? {
+        guard let screen = Self.screenUnderMouse() ?? NSScreen.main else { return nil }
+        let area = screen.visibleFrame
+        let size = NSSize(width: min(area.width / 3, 520), height: 200)
+        return NSRect(x: area.minX + margin, y: area.maxY - margin - size.height,
+                      width: size.width, height: size.height)
+    }
+
     // MARK: - Layout
 
     /// Manual layout in one pass: build the visible rows top-down with their

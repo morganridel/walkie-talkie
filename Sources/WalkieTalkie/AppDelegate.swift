@@ -3353,6 +3353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The heads converge on the receiving caret, which only the outline's
         // reads can name (2026-10-13).
         focusFrame.onCaret = { [weak self] caret in self?.caretHalo.headsAt = caret }
+        focusFrame.onNoCaret = { [weak self] spot in self?.caretHalo.noCaretAt = spot }
 
         // Nothing is bound yet, and a marker left by a relay that was killed
         // rather than quit would claim otherwise until the first bind.
@@ -5216,22 +5217,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.info(String(format: "⏪ the rewind aims at the middle of the pointer's screen (%.0f, %.0f) — no window to land in",
                             screenAim.x, screenAim.y))
             settleAim = screenAim
-            // **A spawn's Sparks flies straight onto the window about to open**
-            // (2026-10-10) — `SpawnTerminal.predictedFrame`, the slot its launch
-            // will pick; no lateral display → onto the pointer, as before.
-            if spawnPending {
-                let near = NSEvent.mouseLocation
-                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                    let frame = SpawnTerminal.predictedFrame(near: near)
-                    DispatchQueue.main.async {
-                        guard let self, token == self.rewindAimToken, self.settling else { return }
-                        if let frame {
-                            Log.info(String(format: "⏪ the stars fly to where the new terminal will open — %.0f×%.0f at (%.0f, %.0f)",
-                                            frame.width, frame.height, frame.minX, frame.minY))
-                        }
-                        self.caretHalo.spawnLanding = frame.map { NSPoint(x: $0.midX, y: $0.midY) } ?? near
-                    }
-                }
+            // **A spawn's Sparks flies into the corner where the prompt panel is
+            // about to come up** (2026-10-14, Victor: *"the stars effect … should
+            // go into the corner … where the preview prompt window appears in a
+            // moment … Rather than going directly to where the new terminal will
+            // land, you don't know where the new terminal is going to land"*).
+            // Supersedes 2026-10-10's `SpawnTerminal.predictedFrame` — a guess at
+            // Terminal's placement that it did not always honour. The dock then
+            // fits the stars onto the real panel; the send flight carries the
+            // panel on to the window.
+            if spawnPending, let corner = overlay.promptCornerEstimate() {
+                Log.info(String(format: "⏪ the stars fly to the prompt panel's corner — (%.0f, %.0f)", corner.midX, corner.midY))
+                caretHalo.spawnLanding = NSPoint(x: corner.midX, y: corner.midY)
             }
             return
         }

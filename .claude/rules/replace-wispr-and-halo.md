@@ -298,6 +298,37 @@ will receive the input … [if it is] a hidden terminal … don't display the ar
   `GET /test/state.focusFrame {active, visible, shown, app, window, caret}`. Desk:
   `POST /test/dictation/start {"clean": true}` → read it → `POST /test/cancel`.
 
+## The heads became a map pin on the caret, and a crossed pin says *nowhere* (2026-10-14)
+
+Victor: *"there should be the same icon as the one displayed in the tooltip but larger like a pin on
+Google Maps, which is pointing exactly to where the caret is … if that … cursor location changes, [it]
+should follow it. And that can allow you to replace the arrows … when I am silent. By making the pin
+… glow … shining diagonally"*; then *"when you don't have where to put the pin, there is no cursor,
+tell that visually somehow"*. **Supersedes the six heads** in the two sections above and below
+(their schedule stands; what it drives changed).
+
+- **`DropArrow` draws the pin now** (name kept, every entry point kept): `Glyphs.mapPinShape` — the
+  chip's `caret` glyph, shared with `Glyphs.mapPin` — 46 pt, red with a dark rim and a short black
+  shadow, **its tip `tipLift` 8 pt above `headsAt`** (the caret line's middle), so it stands on the
+  line. Placed by `CaretHalo.placeHeads` on every `FocusFrame` reading (5 Hz) and pointer event.
+- **Up for the whole caret sentence**, not only the silence: `refresh(quiet:)` shows it plain while
+  he talks; `patience` + `swell` of quiet now ramps **the shine** — an amber glow breathing round it
+  (1.6 s) and a white band sweeping it bottom-left → top-right (0.7 s, then 0.9 s dark), clipped to
+  the pin — and the shine goes in `recall` 0.18 s when he talks again.
+- **Words in flight: ×1.3 (`holdScale`, about the tip — a doubled pin is in the way), shine at full**;
+  a cut at the ⌘V as before. **It stays through the rewind** (`rewindHidesHeads` is gone): the
+  effect says which window, the pin where in it.
+- **Nowhere to type → grey pin, red ✕, no shine** (`DropArrow.crossed`, `CaretHalo.noCaretAt`):
+  `FocusFrame` finds no caret **and** `TerminalBinding.focusTakesText` says *false* — the focused
+  element has a role that is not a text role, no `AXEditableAncestor`, no settable value (a Chrome
+  page with no field focused) → the window's middle; the frontmost app has no window at all → the
+  pointer's screen's middle. **nil (cannot tell) is not *nowhere***: VS Code (`-25212`, no focused
+  element without `AXManualAccessibility`) and IntelliJ (no role) show no pin, as before. Log
+  `🟧 … nothing in it takes text — the pin crossed out`; `GET /test/state.focusFrame.noCaret`,
+  `halo.heads.crossed` / `.shine`.
+- `WT_SHOOT_HALO`'s `…-arrow.png` has four columns: `quiet + pin`, `words in flight`, `full voice`
+  (plain), `no caret`.
+
 ## The heads stay up while the words travel to the caret (2026-09-15)
 
 Victor: *"dacă dictez la caret, după ce dictarea se oprește, fulgerul dispare, doar că rămân
@@ -526,6 +557,13 @@ fade out foarte repede, după ce dictarea s-a injectat cu succes. În timp cât 
   the pointer); `anchoredTarget` holds still until it lands. The ring is then **not docked** on the
   panel. Log `⏪ the stars fly to where the new terminal will open — W×H at (x, y)` (Cocoa) beside the
   launch's `tiled at` (AppleScript), `◯ halo not docked … — the stars end where the new terminal opens`.
+  **Superseded 2026-10-14: into the prompt panel's corner instead** (Victor: *"the stars … should go
+  into the corner … where the preview prompt window appears in a moment … you don't know where the
+  new terminal is going to land"*). `aimRewind` writes the middle of `RelayWindow.promptCornerEstimate()`
+  (the pointer's screen's top-left, `margin` in, ≤ 520 × 200) to `spawnLanding` at once — no
+  AppleScript; `SpawnTerminal.predictedFrame` is deleted — and the ring **is docked** on the real
+  panel when it comes up; the send flight carries the panel on to the window. Log `⏪ the stars fly to
+  the prompt panel's corner — (x, y)`.
 - **The circling dust fades out still circling** (2026-10-09, Victor: *"când dustul dispare din
   mișcarea ei de rotație să se facă fade, nu să dispară brusc când transcrierea este terminată și
   injectată"*). At the words' landing a flying dress with a trail (`hasTrail`, page engine) sets

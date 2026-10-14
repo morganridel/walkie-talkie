@@ -1140,8 +1140,9 @@ final class CaretHalo {
         // **`delivering` holds the heads past the microphone's close.** The
         // dictation is over as far as `live` is concerned and the words are not
         // there yet, which is the whole of the state `setDelivering` names.
-        // …and only where there is a caret to point at (2026-10-13) — see `headsAt`.
-        arrow.armed = ((on && atCaret) || (delivering && !rewindHidesHeads)) && headsAt != nil
+        // …and only where there is a caret to point at (2026-10-13) — see `headsAt`
+        // — or a window known to have none (`noCaretAt`, 2026-10-14).
+        arrow.armed = ((on && atCaret) || delivering) && pinAt != nil
         guard live != on else { return }
         live = on
         // Both edges, for the reason the selection watcher logs both: "why did
@@ -1237,9 +1238,8 @@ final class CaretHalo {
     func setDelivering(_ on: Bool) {
         guard delivering != on else { return }
         delivering = on
-        Log.info(on ? (rewinding ? "⬇︎ the words travel to the caret — the rewind stands in for the heads"
-                                 : "⬇︎ the heads stay up while the words travel to the caret")
-                    : "⬇︎ the heads go — the words landed")
+        Log.info(on ? "⬇︎ the pin stays up while the words travel to the caret"
+                    : "⬇︎ the pin goes — the words landed")
         guard on else {
             // `armed` going down hides them; the monitors only outlive the
             // collapse for their sake, so they go too unless the ring is up.
@@ -1247,8 +1247,10 @@ final class CaretHalo {
             releaseMonitorsIfIdle()
             return
         }
-        // **The rewind replaces them** (2026-09-23) — see `setRewind`.
-        guard !rewindHidesHeads, let o = headsOrigin else { return }
+        // **Through the rewind too, since 2026-10-14** — the effect says which
+        // window, the pin says where in it. (2026-09-23 to 10-13 the rewind
+        // replaced the heads.)
+        guard let o = headsOrigin else { return }
         arrow.armed = true
         // Placed from here as well as from `follow`: the pointer may not move
         // again between the stop gesture and the delivery, and the heads have to
@@ -1328,7 +1330,6 @@ final class CaretHalo {
         anchorStart = anchoredFlight ? anchor : nil
         fitApproach(to: rewindAim ?? NSEvent.mouseLocation)
         rewinding = true
-        if rewindHidesHeads { arrow.armed = false }
         Log.info(String(format: "⏪ the rewind: %.1f s of his voice, backwards at %.1f×, fitted to %.2f s on %@ (chip's ceiling %.1f s, visible from %.2f s), on %@%@",
                         seconds, rewindSpeed, predicted, DecodeRate.activeEngine, estimate,
                         flies || anchoredFlight ? 0 : Self.rewindVisibleFrom, rewindStyle.rawValue,
@@ -1339,11 +1340,6 @@ final class CaretHalo {
     }
 
     private(set) var rewinding = false
-    /// **The rewind stands in for the heads — except under the plain
-    /// dictation's puzzle** (2026-10-14): it zooms into the receiving window,
-    /// which says *which window*, and the heads go on saying *where in it* —
-    /// the caret (`headsAt`).
-    private var rewindHidesHeads: Bool { rewinding && !(destination == .wispr && anchoredFlight) }
 
     /// **The rewind converges on the middle of the window the words go to, not
     /// on the pointer** (2026-09-30). Victor: *"the reverse tunnel … shouldn't be
@@ -1590,8 +1586,8 @@ final class CaretHalo {
     /// transcription instead of the Reverse tunnel: its square slides from
     /// where it stood to the target on `flight`'s clock while it shrinks at the
     /// tunnel's rate (`sparksShrink`). The target is the receiving window's caret
-    /// (else its middle) for the plain dictation, the pointer latched at the
-    /// close for a spawn — its terminal does not exist yet.
+    /// (else its middle) for the plain dictation, the prompt panel's corner
+    /// for a spawn — its terminal does not exist yet (`spawnLanding`).
     private var anchoredFlight: Bool {
         (destination == .wispr || destination == .spawn) && !Self.flightOff
             && HaloStyle.current(for: destination).preset?.anchored == true
@@ -1601,17 +1597,16 @@ final class CaretHalo {
     private var anchorStart: NSRect?
     private var anchoredTarget: NSPoint? {
         guard destination == .spawn else { return rewindCaret ?? rewindAim }
-        // Holds still until the landing is known — a few hundred ms of
-        // AppleScript, a hair of `flight`'s smoothstep.
+        // Holds still when there is no landing (no screen to estimate on).
         return spawnLanding ?? anchorStart.map { NSPoint(x: $0.midX, y: $0.midY) }
     }
-    /// **Where a spawn's Sparks flies: the middle of the window about to open**
-    /// (2026-10-10, Victor: *"vreau să fac o singură mișcare de la unde era
-    /// către unde se duce la dictarea în terminal nou"*) — it shrank onto the
-    /// pointer, docked on the prompt panel, and the outline flew on from there:
-    /// two journeys. Written by `AppDelegate.aimRewind` from
-    /// `SpawnTerminal.predictedFrame` (the pointer when there is no lateral
-    /// display); a ring that flew there is not docked on the panel.
+    /// **Where a spawn's Sparks flies: the corner where the prompt panel is
+    /// about to come up** (2026-10-14, Victor: *"rather than going directly to
+    /// where the new terminal will land, you don't know where the new terminal
+    /// is going to land"*). One journey from where the stars stood to the
+    /// corner (`RelayWindow.promptCornerEstimate`), then the dock fits them onto
+    /// the real panel. Supersedes 2026-10-10's flight onto the terminal's
+    /// predicted slot, which was never docked. Written by `AppDelegate.aimRewind`.
     var spawnLanding: NSPoint?
     /// **The plain dictation's puzzle zooms into the receiving window, inside
     /// its orange outline — not onto the caret** (2026-10-14, Victor: *"at the
@@ -2149,11 +2144,6 @@ final class CaretHalo {
             Log.info("◯ halo not docked on the prompt panel — the \(drawn == Self.tunnelStyle ? "reverse tunnel" : "flight") ends on the window that got the words")
             return
         }
-        // **Nor a spawn's Sparks that flew onto the new terminal** (2026-10-10).
-        if destination == .spawn, spawnLanding != nil, anchoredFlight {
-            Log.info("◯ halo not docked on the prompt panel — the stars end where the new terminal opens")
-            return
-        }
         guard live || closing || now - hiddenAt < Self.dockLate else {
             Log.info(String(format: "◯ halo not docked on the prompt panel — it went down %.1f s ago", now - hiddenAt))
             return
@@ -2486,24 +2476,41 @@ final class CaretHalo {
     /// place the words are not going, the very thing he asked to stop. The
     /// orange outline round the window still says which one it is.
     var headsAt: NSPoint? {
-        didSet {
-            guard headsAt != oldValue else { return }
-            let wanted = ((live && atCaret) || (delivering && !rewindHidesHeads)) && headsAt != nil
-            arrow.armed = wanted
-            if wanted { placeHeads() }
-        }
+        didSet { if headsAt != oldValue { pinMoved() } }
     }
 
-    /// `headsAt` as the origin of a panel the size of the ring's.
+    /// **No caret, and Accessibility says there is nowhere to type** (2026-10-14,
+    /// Victor: *"when you don't have where to put the pin, there is no cursor,
+    /// tell that visually somehow"*): the middle of the window the words would
+    /// go to (or of the pointer's screen when the app has no window), from
+    /// `FocusFrame`. The pin stands there grey and crossed out
+    /// (`DropArrow.crossed`). Nil while a caret is found — and while
+    /// Accessibility cannot tell (VS Code, IntelliJ), which is not the same as
+    /// *nowhere*.
+    var noCaretAt: NSPoint? {
+        didSet { if noCaretAt != oldValue { pinMoved() } }
+    }
+
+    /// Where the pin stands: the caret, else the no-caret mark.
+    private var pinAt: NSPoint? { headsAt ?? noCaretAt }
+
+    private func pinMoved() {
+        arrow.crossed = headsAt == nil && noCaretAt != nil
+        let wanted = ((live && atCaret) || delivering) && pinAt != nil
+        arrow.armed = wanted
+        if wanted { placeHeads() }
+    }
+
+    /// `pinAt` as the origin of a panel the size of the ring's.
     private var headsOrigin: NSPoint? {
-        headsAt.map { NSPoint(x: ($0.x - Self.side / 2).rounded(), y: ($0.y - Self.side / 2).rounded()) }
+        pinAt.map { NSPoint(x: ($0.x - Self.side / 2).rounded(), y: ($0.y - Self.side / 2).rounded()) }
     }
 
     /// `hold` while the words are in flight rather than `place`: it is
     /// idempotent after the first call and it is also what raises them again.
     private func placeHeads() {
         guard let o = headsOrigin else { return }
-        delivering && !rewindHidesHeads ? arrow.hold(at: o) : arrow.place(at: o)
+        delivering ? arrow.hold(at: o) : arrow.place(at: o)
     }
 
     private static func origin() -> NSPoint {
@@ -3746,17 +3753,20 @@ extension CaretHalo {
         // the heads double. It is the one state of this shape that is on screen
         // for a fixed short stretch of every caret dictation and can therefore
         // never be looked at for long enough to judge.
-        let states: [(String, CGFloat, CGFloat, CGFloat)] = [
-            ("quiet + arrow", rest, 1, 1),
-            ("words in flight", rest, 1, DropArrow.holdScale),
-            ("full voice", loud, 1 + swellScale, 0),
+        // **The pin since 2026-10-14**: up while he talks (plain), shining in
+        // the quiet and in flight, grey and crossed where nothing takes text.
+        let states: [(String, CGFloat, CGFloat, CGFloat, Bool, Bool)] = [
+            ("quiet + pin", rest, 1, 1, true, false),
+            ("words in flight", rest, 1, DropArrow.holdScale, true, false),
+            ("full voice", loud, 1 + swellScale, 1, false, false),
+            ("no caret", rest, 1, 1, false, true),
         ]
         let sheet = NSImage(size: NSSize(width: cell.width * CGFloat(states.count),
                                          height: cell.height * CGFloat(grounds.count)))
         sheet.lockFocus()
         for (row, ground) in grounds.enumerated() {
             for (col, state) in states.enumerated() {
-                let (name, alpha, scale, arrowScale) = state
+                let (name, alpha, scale, arrowScale, shining, crossed) = state
                 let box = NSRect(x: cell.width * CGFloat(col),
                                  y: cell.height * CGFloat(grounds.count - 1 - row),
                                  width: cell.width, height: cell.height)
@@ -3785,7 +3795,7 @@ extension CaretHalo {
                 if arrowScale > 0 {
                     let arrowHost = NSView(frame: NSRect(origin: .zero, size: cell))
                     arrowHost.wantsLayer = true
-                    arrowHost.layer?.addSublayer(DropArrow.picture(scale: arrowScale))
+                    arrowHost.layer?.addSublayer(DropArrow.picture(scale: arrowScale, shining: shining, crossed: crossed))
                     if let rep = arrowHost.bitmapImageRepForCachingDisplay(in: arrowHost.bounds) {
                         arrowHost.cacheDisplay(in: arrowHost.bounds, to: rep)
                         NSImage(size: cell, flipped: false) { r in rep.draw(in: r) }
