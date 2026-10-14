@@ -387,6 +387,12 @@ and source should be selectable via menu too. those unavailable disabled"* — a
   nothing when not live. **Asked of Addons (`GET 127.0.0.1:55123/test/dji/state`), never read off the
   receiver** — its vendor USB interface is exclusive and Addons holds it for its low-battery banner.
   `DjiBattery.refresh` at `menuWillOpen`; the row shows the last reading, then repaints in the open menu.
+- **`Local`, `Local LoRA`, `Local LoRA Large` since 2026-10-14** (Victor: *"it says something like V3
+  Large Victor, which is not nice to read. Instead, just [write] there, Local LoRA … the same … in the
+  engine selection"*). Same single source (`WhisperModels.name(_:)`): turbo goes unsaid, a word that
+  is not Whisper's own (`victor`) makes it `LoRA`, no `turbo` makes it `Large`. The envelope reads
+  `💻 Local Whisper LoRA` (no second *Local*). **Supersedes the names in the bullet below** (and in
+  the Engine-list bullet above); the mechanism there still holds.
 - **One name per model, everywhere, since 2026-10-07: `v3-turbo`, `v3-victor`, `v3-turbo-victor`**
   (Victor: *"I want to unify them all … V3 Turbo Victor. No LoRA, it just takes space … small caps
   with kebab case … in the menu, in the submenu, when it starts … in the prompt preview panel

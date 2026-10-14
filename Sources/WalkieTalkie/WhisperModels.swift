@@ -84,8 +84,9 @@ enum WhisperModels {
 
         /// **The model's one name, wherever it is shown** — the Engine list,
         /// the top-level `Engine:` row, the menu bar's launch tab, About and the
-        /// prompt panel's `Local Whisper (…)` line: `v3-turbo`, `v3-victor`,
-        /// `v3-turbo-victor` (2026-10-07, Victor: *"I want to unify them all …
+        /// prompt panel's `Local Whisper …` line: `Local`, `Local LoRA`,
+        /// `Local LoRA Large` since 2026-10-14 (`name(_:)`); `v3-turbo`, `v3-victor`,
+        /// `v3-turbo-victor` from 2026-10-07, Victor: *"I want to unify them all …
         /// V3 Turbo Victor. No LoRA, it just takes space … small caps with kebab
         /// case … everywhere the same name"*). Until then the row said `Large
         /// V3-turbo Victor LoRA`, the top-level row `Turbo LoRA Victor` and the
@@ -185,15 +186,21 @@ enum WhisperModels {
         return name((id as NSString).lastPathComponent)
     }
 
-    /// `whisper-large-v3-turbo` → `v3-turbo`, `whisper-turbo-victor` →
-    /// `v3-turbo-victor`, `whisper-large-victor` → `v3-victor`: lower case,
-    /// kebab, `whisper` / `large` / `lora` dropped and `v3` in front — for a
-    /// name that is a Whisper V3 at all; anything else is left as it is.
+    /// `whisper-large-v3-turbo` → `Local`, `whisper-turbo-victor` → `Local LoRA`,
+    /// `whisper-large-victor` → `Local LoRA Large` (2026-10-14, Victor: *"it says
+    /// something like V3 Large Victor, which is not nice to read. Instead, just
+    /// [write] there, Local LoRA … the same … in the engine selection"*) —
+    /// supersedes 2026-10-07's kebab `v3-turbo` / `v3-turbo-victor` / `v3-victor`.
+    /// Turbo is the default size and goes unsaid; a word that is not Whisper's
+    /// own (`victor`) means weights trained on top of it, a LoRA. A name that
+    /// is not a Whisper V3 at all is left as it is.
     static func name(_ raw: String) -> String {
         let tokens = raw.lowercased().split(separator: "-").map(String.init)
+        let whispers = ["whisper", "large", "v3", "turbo", "lora"]
         guard tokens.contains(where: { ["whisper", "large", "v3", "turbo"].contains($0) }) else { return raw }
-        let rest = tokens.filter { !["whisper", "large", "v3", "lora"].contains($0) }
-        return (["v3"] + rest).joined(separator: "-")
+        let lora = tokens.contains("lora") || tokens.contains { !whispers.contains($0) }
+        let large = !tokens.contains("turbo")
+        return (["Local"] + (lora ? ["LoRA"] : []) + (large ? ["Large"] : [])).joined(separator: " ")
     }
 
     static func abbreviated(_ path: String) -> String {

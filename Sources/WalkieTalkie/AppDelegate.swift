@@ -430,7 +430,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func engineName(via: String, engineLabel: String) -> String {
         let wispr = via.hasPrefix("wispr") || via == "pasteboard"
         // The ☁️ / 💻 first, as everywhere an engine is named (`StatusItem.cloud`).
-        let local = "\(StatusItem.local) Local Whisper" + (engineLabel.isEmpty ? "" : " (\(engineLabel))")
+        // `💻 Local Whisper LoRA` — the model's name (`Local LoRA`) without
+        // saying *Local* twice (2026-10-14); a name of another shape in brackets.
+        let model = engineLabel.hasPrefix("Local") ? String(engineLabel.dropFirst(5)) : (engineLabel.isEmpty ? "" : " (\(engineLabel))")
+        let local = "\(StatusItem.local) Local Whisper" + model
         let engine: String
         switch via {
         case "elevenlabs-scribe": engine = "\(StatusItem.cloud) ElevenLabs " + (engineLabel.isEmpty ? "Scribe" : engineLabel)
