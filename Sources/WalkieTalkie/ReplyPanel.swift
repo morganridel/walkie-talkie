@@ -120,7 +120,8 @@ enum ReplyPanel {
     /// **The ☠️ left of the ✕ sends that session `kamikaze`** (2026-10-08,
     /// Victor: *"to the left of the X … an emoji with a skull … with a click, it
     /// sends kamikaze back to the session that sent this message"*) — the
-    /// answer was the last thing he needed from it. Closes the panel.
+    /// answer was the last thing he needed from it. The panel explodes from the
+    /// skull (`ReplyBurst.Style.explode`, 2026-10-14).
     static var onKamikaze: ((String) -> Void)?
 
     /// **A ☠️ that cannot kill: red, as if already pressed** (2026-10-13, Victor:
@@ -633,9 +634,10 @@ enum ReplyPanel {
             hint.frame = NSRect(x: x.frame.maxX - hintW, y: skull.frame.minY - 24, width: hintW, height: 20)
             hint.isHidden = true
             skull.onHover = { [weak hint, weak skull] inside in hint?.isHidden = !(inside && skull?.dead == true) }
+            let blast = CGPoint(x: skull.frame.midX, y: skull.frame.midY)
             skull.onClick = {
-                Log.info("💬 the reply pop-up's ☠️ clicked — kamikaze to \(tty), pop-up closed")
-                close()
+                Log.info("💬 the reply pop-up's ☠️ clicked — kamikaze to \(tty), pop-up blown up")
+                shatter(.explode(from: blast))
                 onKamikaze?(tty)
             }
             root.addSubview(skull)
@@ -687,13 +689,13 @@ enum ReplyPanel {
 
     /// **Closed by 🔼 → over it: the pop-up bursts to the right** (2026-10-09) —
     /// `ReplyBurst`, his focus sent on to the terminal. The queue moves on as on
-    /// any close.
-    static func shatter() {
+    /// any close. **☠️ blows it up** instead (`.explode(from:)`, 2026-10-14).
+    static func shatter(_ style: ReplyBurst.Style = .dissolve) {
         guard let p = panel, let image = snapshot(p) else { return close() }
         let frame = p.frame, level = p.level
         close()
         guard ProcessInfo.processInfo.environment["RELAY_SHOOT"] == nil else { return }
-        ReplyBurst.play(image: image.cg, scale: image.scale, from: frame, level: level)
+        ReplyBurst.play(image: image.cg, scale: image.scale, from: frame, level: level, style: style)
     }
 
     /// The pop-up as it looks, rendered from its layer tree (the rounded dark

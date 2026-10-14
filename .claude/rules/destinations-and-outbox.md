@@ -200,8 +200,18 @@ the terms on this"*) — not *answer panel*; logs say `💬 the reply pop-up's �
   antialiasing — fractional edges drew a grid), each starting at its own moment (left edge first plus
   a random scatter, ≤ 0.3 s), easing in, drifting ≤ 70 pt right and a little up, shrinking to 0.3 and
   fading, 0.75 s in all. Timer-driven (`apply(u)`), so `REPLY_BURST_PNG=<dir> swift test --filter
-  ReplyBurstTests` renders it at six moments. Only `replyBack` dissolves; ✕, ☠️, 📍 and the name still
+  ReplyBurstTests` renders it at six moments. Only `replyBack` dissolves; ✕, 📍 and the name still
   just close.
+- **☠️ blows the pop-up up from the skull** (2026-10-14, Victor: *"the dialogue should explode …
+  breaking down into pieces and exploding out"* — the explosion he refused for 🔼 → is what he wants
+  for a kill). `ReplyPanel.shatter(.explode(from: skull centre))` → `ReplyBurst.Style.explode`: the
+  picture cracks into triangles on a jittered grid (cell ≥ 30 pt, ≤ ~90 cells; each shard its own
+  clipped image grown ½ pt so no seam shows — a layer mask would not survive `render(in:)`); a
+  radial white→orange flash at the skull (~0.22 s); each shard leaves when the blast front reaches it
+  (dist / 2600 pt/s), ≤ 1900 pt/s nearest fastest, ±0.6 rad off its ray, drag 1.9/s, gravity
+  900 pt/s², spin ≤ 12 rad/s, 1 → 1.25 scale, fading over the second half of 0.9 s. Its window
+  overhangs the pop-up 520 pt each side, 320 above, 720 below. A 🪦 (dead) click does nothing, so
+  never explodes. `REPLY_BURST_PNG` renders it too (`blast-*.png`).
 - **The wrong terminal came forward because AX's focused window was stale**: `raise(pid:)` raised
   `kAXFocusedWindow` right after AppleScript put the tab's window at index 1, which can still be the
   previous key window. `bringToFront` and `presentOnRetina` now answer the window's top-left and

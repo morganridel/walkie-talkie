@@ -36,13 +36,37 @@ final class ReplyBurstTests: XCTestCase {
         XCTAssertTrue(tiles.allSatisfy { $0.transform.m41 > 20 }, "every grain drifted right")
     }
 
-    /// `REPLY_BURST_PNG=<dir> swift test --filter ReplyBurstTests` — the burst at
-    /// six moments, over a desktop-grey background, to look at.
+    /// ☠️ (2026-10-14): whole at the start, gone at the end, every shard thrown
+    /// away from the skull — left of it to the left, right of it to the right.
+    func testTheSkullBlowsItApart() {
+        let panel = CGSize(width: 380, height: 110), skull = CGPoint(x: 310, y: 92)
+        let b = ReplyBurst(image: popUp(panel), scale: 2, panel: panel, style: .explode(from: skull))
+        b.apply(0)
+        let shards = (b.host.sublayers ?? []).filter { $0.contents != nil }
+        XCTAssertGreaterThan(shards.count, 40)
+        XCTAssertTrue(shards.allSatisfy { $0.opacity == 1 && CATransform3DIsIdentity($0.transform) })
+        b.apply(0.5)
+        // `position`, not `frame` — `frame` is the moved box. A shard flies a
+        // little off its ray, so the side is held by nine in ten, not all.
+        let left = shards.filter { $0.position.x - b.inset.x < skull.x - 40 }
+        let right = shards.filter { $0.position.x - b.inset.x > skull.x + 40 }
+        XCTAssertGreaterThan(Double(left.filter { $0.transform.m41 < -20 }.count), 0.9 * Double(left.count), "left of the skull flies left")
+        XCTAssertGreaterThan(Double(right.filter { $0.transform.m41 > 20 }.count), 0.9 * Double(right.count), "right of the skull flies right")
+        b.apply(1)
+        XCTAssertTrue(shards.allSatisfy { $0.opacity == 0 }, "every shard has faded out")
+    }
+
+    /// `REPLY_BURST_PNG=<dir> swift test --filter ReplyBurstTests` — the burst and
+    /// the blast at six moments, over a desktop-grey background, to look at.
     func testRenderForReview() throws {
         guard let dir = ProcessInfo.processInfo.environment["REPLY_BURST_PNG"] else { return }
         let panel = CGSize(width: 380, height: 110)
-        let b = ReplyBurst(image: popUp(panel), scale: 2, panel: panel)
-        for u in [0.0, 0.15, 0.3, 0.5, 0.7, 0.9] {
+        try render(ReplyBurst(image: popUp(panel), scale: 2, panel: panel), "burst", dir)
+        try render(ReplyBurst(image: popUp(panel), scale: 2, panel: panel, style: .explode(from: CGPoint(x: 310, y: 92))), "blast", dir)
+    }
+
+    private func render(_ b: ReplyBurst, _ name: String, _ dir: String) throws {
+        for u in [0.0, 0.08, 0.2, 0.4, 0.65, 0.9] {
             b.apply(u)
             let ctx = CGContext(data: nil, width: Int(b.size.width * 2), height: Int(b.size.height * 2),
                                 bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
@@ -53,7 +77,7 @@ final class ReplyBurstTests: XCTestCase {
             b.host.render(in: ctx)
             let rep = NSBitmapImageRep(cgImage: ctx.makeImage()!)
             try rep.representation(using: .png, properties: [:])!
-                .write(to: URL(fileURLWithPath: dir).appendingPathComponent(String(format: "burst-%03d.png", Int(u * 100))))
+                .write(to: URL(fileURLWithPath: dir).appendingPathComponent(String(format: "\(name)-%03d.png", Int(u * 100))))
         }
     }
 }
