@@ -55,8 +55,8 @@ enum CodexBridge {
         let result = try invoke(["list", "--limit", "100"] + (liveOnly ? ["--live-only"] : []))
         return (result["threads"] as? [[String: Any]] ?? []).compactMap(Conversation.init)
     }
-    static func conversation(_ id: String) throws -> Conversation? {
-        let result = try invoke(["thread", "--id", id])
+    static func conversation(_ id: String, timeout: TimeInterval = 25) throws -> Conversation? {
+        let result = try invoke(["thread", "--id", id], timeout: timeout)
         return Conversation(result["thread"] as? [String: Any] ?? result)
     }
     static func resolve(tty: String) -> Conversation? {

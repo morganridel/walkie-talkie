@@ -15,8 +15,8 @@ import AppKit
 /// **Two halves, and the first one still answers instantly.** Above the line are
 /// the bindings — the same rows, in the same order, from `RebindHistory` — and
 /// they filter on every keystroke with a substring match, no disk, no wait.
-/// Below the line are sessions found by `SessionSearch` in Claude Code's own
-/// transcripts, which costs about a second, so it runs on a pause rather than on
+/// Below the line are chats found by `SessionSearch` in Codex's local history,
+/// which costs about a second, so it runs on a pause rather than on
 /// a keystroke (`debounce`). The fast half is never made to wait for the slow
 /// one: that is the whole layout of this file.
 ///
@@ -47,7 +47,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         var terms: [String] = []
         /// **The session to reopen, for a row whose terminal is gone** — id and
         /// the folder it belongs to. Set only when there is no tty to bind to and
-        /// the folder still exists; ⏎ then spawns `claude --resume` instead of
+        /// the folder still exists; ⏎ then resumes the exact Codex chat instead of
         /// rebinding. See `hint`.
         var resume: (session: String, cwd: String)?
         /// **What ⏎ would do to this row, in three words**, drawn on the selected
@@ -86,7 +86,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     /// appearing.
     var onMessage: ((String) -> Void)?
     /// **⏎ on a session whose terminal is gone**: open it again with
-    /// `claude --resume <id>` in the folder it belongs to.
+    /// the exact Codex chat id in the folder it belongs to.
     var onResume: ((_ session: String, _ cwd: String) -> Void)?
 
     // MARK: - State
@@ -414,7 +414,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         if let tty, destinations.contains(where: { $0.tty == tty }) { return nil }
 
         // **A closed window is no longer a dead end.** The row knows the session
-        // id and the folder, and `claude --resume` is one spawn away — so the
+        // id and the folder, and a Codex resume is one spawn away — so the
         // question is only whether the folder is still there to resume *in*: a
         // session id is scoped to it, and from anywhere else the id is not found.
         let resumable = tty == nil && !hit.cwd.isEmpty

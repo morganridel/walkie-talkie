@@ -1,55 +1,32 @@
 #!/usr/bin/env python3
-"""walkie-reply "<answer>" [--image <path>]… — show a short answer beside the user's mouse (2026-10-07).
+"""Send an answer to the running Walkie Talkie reply bubble.
 
-`--image` (2026-10-09, repeatable): a small picture rides the answer — thumbnails under
-the words, as many as fit; a click opens one full size. PNG/JPEG/GIF/TIFF/HEIC/PDF.
-
-A prompt he dictated with a `?` in it carries the footer line
-`[If I asked you a question, also run: walkie-reply "<the answer in ≤2 short sentences>". Only to answer me — never to ask me something, never to report work done.]`
-(narrowed 2026-10-08: a "done, refresh Gmail" after a request phrased as a question
-was a modal he had no need of).
-This posts the answer to the running Walkie Talkie (`POST /reply` on 127.0.0.1:8917–8919,
-with the token from ~/.walkie-talkie/reply-token) and `ReplyPanel` shows it next to his
-pointer. Linked into ~/.local/bin. Stdlib only.
+Usage: walkie-reply "<answer>" [--thread <conversation-id>] [--image <path>]…
+Text can also be read from stdin; images may be repeated. A thread ID may be
+supplied with --thread or CODEX_THREAD_ID so the bubble identifies its source.
 """
+import errno
 import json
 import os
+from pathlib import Path
+import shutil
+import socket
 import subprocess
 import sys
+import tempfile
+import urllib.error
 import urllib.request
 
-args, images = [], []
-thread_id = os.environ.get("CODEX_THREAD_ID")
-argv = sys.argv[1:]
-while argv:
-    a = argv.pop(0)
-    if a == "--thread":
-        if not argv:
-            sys.exit("walkie-reply: --thread needs a Codex conversation ID")
-        thread_id = argv.pop(0)
-    elif a in ("--image", "-i"):
-        if not argv:
-            sys.exit("walkie-reply: --image needs a path")
-        path = os.path.abspath(os.path.expanduser(argv.pop(0)))
-        if not os.path.isfile(path):
-            sys.exit(f"walkie-reply: no such image: {path}")
-        images.append(path)
-    else:
-        args.append(a)
-text = " ".join(args).strip() or ("" if images else sys.stdin.read().strip())
-if not text and not images:
-    sys.exit("usage: walkie-reply \"<answer>\" [--image <path>]…")
-try:
-    token = open(os.path.expanduser("~/.walkie-talkie/reply-token")).read().strip()
-except OSError:
-    sys.exit("walkie-reply: Walkie Talkie has not made ~/.walkie-talkie/reply-token yet")
-try:
-    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=2).stdout.strip()
-except Exception:
-    top = ""
+PORTS = (8917, 8918, 8919)
+REQUEST_TIMEOUT = 8
+
+
+class ReplyError(RuntimeError):
+    """A user-readable failure that never includes the reply token."""
+
+
 def session_tty():
-    """The terminal of the agent asking: walk up from this process to the first
-    ancestor with a tty (the Bash tool's shell has none; `claude` does)."""
+    """Walk to the first ancestor with a tty (the calling shell may not)."""
     pid = os.getppid()
     for _ in range(12):
         try:
@@ -61,25 +38,217 @@ def session_tty():
             return None
         if out[0].startswith("ttys"):
             return out[0]
-        pid = int(out[1])
+        try:
+            pid = int(out[1])
+        except ValueError:
+            return None
         if pid <= 1:
             return None
     return None
 
 
-body = json.dumps({"token": token, "text": text, "from": os.path.basename(top or os.getcwd()),
-                   "tty": ("codex:" + thread_id) if thread_id else session_tty(), "images": images}).encode()
-for port in (8917, 8918, 8919):
+def _project_name(cwd=None):
     try:
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/reply", data=body,
-                                     headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=2) as r:
-            if r.status == 200:
-                # Not shown when its terminal is the one in front (2026-10-13):
-                # the answer is already on screen there.
-                answer = json.loads(r.read() or b"{}")
-                print("shown" if answer.get("shown", True) else "not shown — your terminal is in front")
-                sys.exit(0)
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=cwd,
+                             capture_output=True, text=True, timeout=2).stdout.strip()
     except Exception:
-        continue
-sys.exit("walkie-reply: no Walkie Talkie answered on 8917–8919")
+        top = ""
+    return os.path.basename(top or cwd or os.getcwd())
+
+
+def parse_arguments(argv, stdin_text="", env=None, *, require_content=True):
+    env = os.environ if env is None else env
+    args, images = [], []
+    thread_id = env.get("CODEX_THREAD_ID")
+    remaining = list(argv)
+    while remaining:
+        arg = remaining.pop(0)
+        if arg == "--thread":
+            if not remaining:
+                raise ReplyError("--thread needs a Codex conversation ID")
+            thread_id = remaining.pop(0)
+        elif arg in ("--image", "-i"):
+            if not remaining:
+                raise ReplyError("--image needs a path")
+            path = os.path.abspath(os.path.expanduser(remaining.pop(0)))
+            if not os.path.isfile(path):
+                raise ReplyError(f"no such image: {path}")
+            images.append(path)
+        else:
+            args.append(arg)
+    text = " ".join(args).strip() or ("" if images else stdin_text.strip())
+    if require_content and not text and not images:
+        raise ReplyError('usage: walkie-reply "<answer>" [--thread <id>] [--image <path>]…')
+    return text, images, thread_id
+
+
+def make_payload(argv, *, token_path, stdin_text="", env=None, cwd=None,
+                 project_root=None, tty=None):
+    text, images, thread_id = parse_arguments(argv, stdin_text, env)
+    try:
+        token = Path(token_path).read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise ReplyError("Walkie Talkie has not made ~/.walkie-talkie/reply-token yet") from error
+    if not token:
+        raise ReplyError("Walkie Talkie reply token is empty")
+    if project_root is None:
+        project = _project_name(cwd)
+    else:
+        project = os.path.basename(os.fspath(project_root).rstrip(os.sep))
+    destination = ("codex:" + thread_id) if thread_id else (session_tty() if tty is None else tty)
+    return {"token": token, "text": text, "from": project,
+            "tty": destination, "images": images}
+
+
+def _is_connection_refused(error):
+    return isinstance(error, OSError) and error.errno == errno.ECONNREFUSED
+
+
+def _is_timeout(error):
+    return isinstance(error, (TimeoutError, socket.timeout))
+
+
+def _outcome_unknown(port, detail):
+    return ReplyError(
+        f"reply outcome is unknown after contacting port {port} ({detail}); "
+        "check the reply bubble before trying again"
+    )
+
+
+def _permission_denied(error):
+    return isinstance(error, OSError) and error.errno in (errno.EPERM, errno.EACCES)
+
+
+def _permission_error(port):
+    return ReplyError(
+        f"local connection to port {port} was denied by the sandbox; "
+        "request permission to run walkie-reply with local network access, "
+        "then retry once. This connection was blocked before delivery"
+    )
+
+
+def post_reply(payload, *, ports=PORTS, opener=None, timeout=REQUEST_TIMEOUT):
+    opener = urllib.request.urlopen if opener is None else opener
+    body = json.dumps(payload).encode("utf-8")
+    for port in ports:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/reply", data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            response = opener(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            raise ReplyError(
+                f"Walkie Talkie returned HTTP {error.code} on port {port}; "
+                "check the reply bubble before trying again"
+            ) from error
+        except urllib.error.URLError as error:
+            if _permission_denied(error.reason):
+                raise _permission_error(port) from error
+            if _is_connection_refused(error.reason):
+                continue
+            if _is_timeout(error.reason):
+                raise _outcome_unknown(port, "request timed out") from error
+            raise _outcome_unknown(port, "connection failed") from error
+        except (TimeoutError, socket.timeout) as error:
+            raise _outcome_unknown(port, "request timed out") from error
+        except OSError as error:
+            if _permission_denied(error):
+                raise _permission_error(port) from error
+            if _is_connection_refused(error):
+                continue
+            raise _outcome_unknown(port, "connection failed") from error
+        except Exception as error:
+            raise _outcome_unknown(port, "request failed") from error
+
+        try:
+            status = response.status if hasattr(response, "status") else response.getcode()
+            try:
+                raw = response.read()
+            finally:
+                if hasattr(response, "close"):
+                    response.close()
+        except Exception as error:
+            raise _outcome_unknown(port, "response could not be read") from error
+        if status != 200:
+            raise ReplyError(
+                f"Walkie Talkie returned HTTP {status} on port {port}; "
+                "check the reply bubble before trying again"
+            )
+        try:
+            answer = json.loads(raw or b"{}")
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise _outcome_unknown(port, "server response was malformed") from error
+        if not isinstance(answer, dict) or answer.get("ok") is not True:
+            raise _outcome_unknown(port, "server response did not confirm delivery")
+        return answer
+    raise ReplyError("no Walkie Talkie listener answered on ports 8917–8919")
+
+
+def stage_images(payload, *, cache_dir=None):
+    """Copy images into a private, app-readable cache for the duration of delivery."""
+    images = payload.get("images") or []
+    if not images:
+        return payload, None
+    cache = Path(cache_dir) if cache_dir is not None else (
+        Path.home() / "Library/Caches/local.walkie-talkie/reply-staging"
+    )
+    try:
+        cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+        staging = Path(tempfile.mkdtemp(prefix="reply-", dir=cache))
+        staging.chmod(0o700)
+        staged_paths = []
+        for index, original in enumerate(images):
+            source = Path(original)
+            suffix = source.suffix
+            target = staging / f"image-{index}{suffix}"
+            shutil.copyfile(source, target)
+            staged_paths.append(str(target))
+    except OSError as error:
+        if "staging" in locals():
+            shutil.rmtree(staging, ignore_errors=True)
+        raise ReplyError("could not stage reply image in the local cache") from error
+    staged_payload = dict(payload)
+    staged_payload["images"] = staged_paths
+    return staged_payload, staging
+
+
+def cleanup_staging(staging):
+    if staging is not None:
+        shutil.rmtree(staging)
+
+
+def main(argv=None, *, stdin_text=None, token_path=None, env=None, cwd=None,
+         project_root=None, tty=None, opener=None, ports=PORTS, cache_dir=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if token_path is None:
+        token_path = Path.home() / ".walkie-talkie/reply-token"
+    try:
+        if stdin_text is None:
+            text, images, _ = parse_arguments(argv, "", env, require_content=False)
+            stdin_text = sys.stdin.read() if not text and not images else ""
+        payload = make_payload(argv, token_path=token_path, stdin_text=stdin_text,
+                               env=env, cwd=cwd, project_root=project_root, tty=tty)
+        payload, staging = stage_images(payload, cache_dir=cache_dir)
+        try:
+            answer = post_reply(payload, ports=ports, opener=opener)
+        except ReplyError as error:
+            if staging is not None:
+                raise ReplyError(f"{error}; staged images kept at {staging}") from error
+            raise
+    except ReplyError as error:
+        print("walkie-reply: " + str(error), file=sys.stderr)
+        return 1
+    if staging is not None:
+        try:
+            cleanup_staging(staging)
+        except OSError:
+            print(f"walkie-reply: reply was delivered; staged images remain at {staging}",
+                  file=sys.stderr)
+    print("shown" if answer.get("shown", True)
+          else "not shown — your terminal is in front")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

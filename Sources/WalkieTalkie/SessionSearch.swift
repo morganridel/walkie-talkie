@@ -3,18 +3,18 @@ import Foundation
 /// **Finding a session by something that was said in it** — the search behind
 /// the field at the top of `RebindPanel`.
 ///
-/// **Why the transcripts and not a list this app keeps.** `RebindHistory` knows
+/// **Why Codex's history and not a list this app keeps.** `RebindHistory` knows
 /// the twelve destinations the relay has spoken to, which is the right answer
 /// while the session is still on screen and no answer at all for the one from
 /// Tuesday afternoon. The thing the original author remembers about that one is a sentence —
 /// *"trebuie să fie un search peste mesajele scrise de mine sau de agent … ca să
 /// pot găsi sesiunea care îmi trebuie"* — and the sentence is written down, in
-/// `~/.claude/projects/<folder>/<session>.jsonl`, by Claude Code itself.
+/// Codex's local state database, by Codex itself.
 ///
 /// **Nothing is indexed and nothing is held.** The scan is
-/// `helpers/session_search.py`, which ripgreps the window down to the files that
-/// contain the word at all and then streams those line by line; this side never
-/// sees a transcript, only the rows the helper prints. That is the original author's
+/// `helpers/codex_bridge.py search`, which queries the read-only history window
+/// and streams matching rows as JSONL; this side never sees the whole history,
+/// only the rows the helper prints. That is the original author's
 /// constraint as he put it — *"fără să mai ții lucruri în memorie, ci direct pe
 /// jurnalele de sesiuni"* — and it is also what makes the answer current: there
 /// is no cache that can be out of date, because there is no cache.
@@ -34,19 +34,19 @@ final class SessionSearch {
         /// not every project of his is under `~/workspace`.
         let cwd: String
         let branch: String
-        /// The `/rename` title, else the topic title Claude Code generated —
+        /// The chat name, else the topic title Codex generated —
         /// the same string, by the same precedence, that the original author's
         /// `terminal-title.sh` hook has been writing into the tab's title. That
         /// is not a coincidence, it is the join: see `RebindPanel.liveTTY`.
         let title: String
         /// The words around the match, one line, already trimmed by the helper.
         let snippet: String
-        /// `me` or `claude` — who said the matching sentence.
+        /// `me` or `codex` — who said the matching sentence.
         let role: String
         let hits: Int
         let when: Date
         /// **`/dev/ttysNNN` as the session last reported it**, from the cache the
-        /// title hook keeps at `/tmp/claude-terminal-title-<id>.tty`.
+        /// Codex launcher sidecar keeps under `~/.walkie-talkie/codex-tty`.
         let tty: String?
         /// **Whether this is the newest session to have claimed that tty** — a
         /// tab is reused and every session that ever sat in it left a claim, so

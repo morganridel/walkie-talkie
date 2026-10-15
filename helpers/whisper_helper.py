@@ -68,6 +68,21 @@ def parse_languages(value):
 
 LANGUAGES = parse_languages(os.environ.get("RELAY_WHISPER_LANGUAGES", ""))
 
+
+def validate_language_hint(value):
+    """Return a supported two-letter code, or None for automatic selection."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError('language must be a Whisper language code or "auto"')
+    code = value.strip().lower()
+    if code == "auto":
+        return None
+    if code not in WHISPER_LANGUAGE_CODES:
+        raise ValueError('language must be a supported Whisper language code or "auto"')
+    return code
+
+
 # **The words he says that a general model has never heard him say.**
 #
 # Whisper's `initial_prompt` is decoder context, not a filter: it does not
@@ -187,10 +202,13 @@ try:
         import mlx.core as mx
         import numpy as np
         from mlx_whisper import audio as A
+        from mlx_whisper.tokenizer import LANGUAGES as _MLX_LANGUAGES
         from mlx_whisper.transcribe import ModelHolder
 except Exception as e:  # noqa: BLE001 — any import failure is the same answer
     emit({"ready": False, "error": f"cannot import mlx_whisper: {e}"})
     sys.exit(1)
+
+WHISPER_LANGUAGE_CODES = frozenset(_MLX_LANGUAGES)
 
 
 # **MLX keeps every buffer it frees, and by default it never stops.**
@@ -330,6 +348,12 @@ def pick_language(samples):
         return None
 
 
+def resolve_language(samples, language_hint=None):
+    """An explicit per-request hint wins; otherwise keep configured Auto behavior."""
+    hint = validate_language_hint(language_hint)
+    return hint if hint is not None else pick_language(samples)
+
+
 # Same number as `LocalWhisper.loopCeiling` on the Swift side (803 clips, zero
 # false alarms): above it the decode is one syllable repeated, not a transcript.
 LOOP_CEILING = 2.4
@@ -440,26 +464,31 @@ def load_pcm(path):
     return mx.array(np.fromfile(path, dtype="<i2")).astype(mx.float32) / 32768.0
 
 
-def transcribe(path, words=WORDS, samples=None):
+def decode_samples(samples, *, language, words, prompt):
+    return mlx_whisper.transcribe(
+        samples,
+        path_or_hf_repo=MODEL,
+        language=language,
+        task="transcribe",
+        initial_prompt=prompt,
+        verbose=False,
+        condition_on_previous_text=False,
+        word_timestamps=words,
+        temperature=0.0,  # the ladder runs inside `Whisper.decode` — `_install_ladder`
+    )
+
+
+def transcribe(path, words=WORDS, samples=None, language_hint=None):
     with quiet():
         # Decoded once, here, and handed to both halves as an array: the LID pass
         # needs the samples anyway, and passing the path twice would shell out to
         # ffmpeg twice for the same file.
         if samples is None:
             samples = A.load_audio(path)
-        lang = pick_language(samples)
+        lang = resolve_language(samples, language_hint)
 
         def decode(prompt):
-            return mlx_whisper.transcribe(
-                samples,
-                path_or_hf_repo=MODEL,
-                language=lang,
-                initial_prompt=prompt,
-                verbose=False,
-                condition_on_previous_text=False,
-                word_timestamps=words,
-                temperature=0.0,  # the ladder runs inside `Whisper.decode` — `_install_ladder`
-            )
+            return decode_samples(samples, language=lang, words=words, prompt=prompt)
 
         res = decode(VOCABULARY_RO if lang == "ro" else VOCABULARY)
     res["duration"] = len(samples) / A.SAMPLE_RATE
@@ -556,49 +585,57 @@ def timed_segments(res):
             for s in res.get("segments") or []]
 
 
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
+def process_request(req, language_hint):
+    path = req.get("pcm") or req.get("wav")
+    if not path or not os.path.exists(path):
+        return {"ok": False, "error": f"no such file: {path}"}
+    t0 = time.monotonic()
+    want_words = bool(req.get("words", WORDS))
+    samples = load_pcm(path) if req.get("pcm") else None
+    res = transcribe(path, words=want_words, samples=samples, language_hint=language_hint)
+    decode_s = time.monotonic() - t0
+    segs = res.get("segments") or []
+    # The worst segment, not the average: a dictation is unusable if any part
+    # of it was hallucinated, and averaging hides one bad segment inside
+    # twenty good ones. `avg_logprob` is the signal that actually separates —
+    # measured over the corpus, a gate at -0.6 caught 7 of 11 semantically
+    # broken transcripts while falsely rejecting 0 of 40 good ones, whereas
+    # `no_speech_prob` caught none of them.
+    return {
+        "ok": True,
+        "text": (res.get("text") or "").strip(),
+        "language": res.get("language"),
+        # NaN anywhere makes the worst one NaN (sent as null): `min` alone
+        # would answer depending on where in the list the NaN sat.
+        "avg_logprob": min((s.get("avg_logprob", 0.0) for s in segs), default=0.0,
+                           key=lambda v: -math.inf if v != v else v),
+        "compression_ratio": max((s.get("compression_ratio", 0.0) for s in segs), default=0.0),
+        "no_speech_prob": max((s.get("no_speech_prob", 0.0) for s in segs), default=0.0),
+        "coverage": coverage(res),
+        # Present only when asked for (the default): `[{text, start, end}]`,
+        # seconds into the WAV, the ruler `MicRecorder.offset(of:)` measures on.
+        **({"words": timed_words(res, res.get("_samples"))} if want_words else {}),
+        **({"segments": timed_segments(res)} if req.get("segments") else {}),
+        "decode_s": round(decode_s, 3),
+        # Rides along on every answer rather than needing its own request:
+        # the interesting question about this pool is how it moves across a
+        # day of dictations, and a number nobody has to ask for is the only
+        # kind that gets looked at.
+        "memory": memory_stats(),
+    }
+
+
+def handle_line(line):
+    """Turn one request into one response; a bad hint cannot kill the worker."""
     try:
         req = json.loads(line)
-        path = req.get("pcm") or req.get("wav")
-        if not path or not os.path.exists(path):
-            emit({"ok": False, "error": f"no such file: {path}"})
-            continue
-        t0 = time.monotonic()
-        want_words = bool(req.get("words", WORDS))
-        samples = load_pcm(path) if req.get("pcm") else None
-        res = transcribe(path, words=want_words, samples=samples)
-        decode_s = time.monotonic() - t0
-        segs = res.get("segments") or []
-        # The worst segment, not the average: a dictation is unusable if any part
-        # of it was hallucinated, and averaging hides one bad segment inside
-        # twenty good ones. `avg_logprob` is the signal that actually separates —
-        # measured over the corpus, a gate at -0.6 caught 7 of 11 semantically
-        # broken transcripts while falsely rejecting 0 of 40 good ones, whereas
-        # `no_speech_prob` caught none of them.
-        emit({
-            "ok": True,
-            "text": (res.get("text") or "").strip(),
-            "language": res.get("language"),
-            # NaN anywhere makes the worst one NaN (sent as null): `min` alone
-            # would answer depending on where in the list the NaN sat.
-            "avg_logprob": min((s.get("avg_logprob", 0.0) for s in segs), default=0.0,
-                               key=lambda v: -math.inf if v != v else v),
-            "compression_ratio": max((s.get("compression_ratio", 0.0) for s in segs), default=0.0),
-            "no_speech_prob": max((s.get("no_speech_prob", 0.0) for s in segs), default=0.0),
-            "coverage": coverage(res),
-            # Present only when asked for (the default): `[{text, start, end}]`,
-            # seconds into the WAV, the ruler `MicRecorder.offset(of:)` measures on.
-            **({"words": timed_words(res, res.get("_samples"))} if want_words else {}),
-            **({"segments": timed_segments(res)} if req.get("segments") else {}),
-            "decode_s": round(decode_s, 3),
-            # Rides along on every answer rather than needing its own request:
-            # the interesting question about this pool is how it moves across a
-            # day of dictations, and a number nobody has to ask for is the only
-            # kind that gets looked at.
-            "memory": memory_stats(),
-        })
+        language_hint = validate_language_hint(req.get("language"))
+        return process_request(req, language_hint)
     except Exception as e:  # noqa: BLE001 — one bad request must not kill the daemon
-        emit({"ok": False, "error": str(e)})
+        return {"ok": False, "error": str(e)}
+
+
+for line in sys.stdin:
+    line = line.strip()
+    if line:
+        emit(handle_line(line))

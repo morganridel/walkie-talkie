@@ -84,6 +84,8 @@ enum ReplyPanel {
 
     /// What is on screen — `GET /test/state`.
     static var shown: String?
+    /// Keep source markers for rebuilding and queueing; `shown` is plain text.
+    private static var shownRich: String?
     /// The terminal the open pop-up came from.
     private static var shownTTY: String?
     /// The pictures on the open pop-up.
@@ -301,9 +303,10 @@ enum ReplyPanel {
             // The pointer may be on a link: its tip again, on the new view.
             root.refreshHover()
             shown = plain(text)
+            shownRich = text
             return
         }
-        if let p = panel, let open = shown {
+        if let p = panel, let open = shownRich {
             // An agent's answer waits its turn again; a finished ⚡ one is
             // simply replaced by the next question's.
             if openLabel?.hasPrefix(quickMark) != true {
@@ -336,6 +339,7 @@ enum ReplyPanel {
     private static func present(_ text: String, from label: String?, tty: String?, images: [URL] = []) {
         allowCursorInBackground
         shown = plain(text)
+        shownRich = text
         shownTTY = tty
         shownImages = images
         openLabel = label
@@ -367,7 +371,7 @@ enum ReplyPanel {
     /// hand did not move kept where they were (`keepTop`: the top edge, when a
     /// bottom corner is the one moving).
     fileprivate static func resize(_ p: NSPanel, to f: NSRect, keepTop: Bool) {
-        guard panel === p, let text = shown else { return }
+        guard panel === p, let text = shownRich else { return }
         let root = build(text, from: openLabel, tty: shownTTY, images: shownImages, size: f.size)
         let size = root.frame.size
         userSize = size
@@ -549,7 +553,7 @@ enum ReplyPanel {
         // `bodyShare` of the screen. Less than they need → they scroll.
         let natural = ceil(bodySize.height)
         let bodyH: CGFloat
-        if let size { bodyH = max(text.isEmpty ? 0 : 22, size.height - chrome) }
+        if let size { bodyH = max(text.isEmpty ? 0 : 22, max(minHeight, size.height) - chrome) }
         else { bodyH = min(natural, ((NSScreen.main?.visibleFrame.height ?? 900) * bodyShare).rounded()) }
         let height = chrome + bodyH
 
@@ -721,6 +725,7 @@ enum ReplyPanel {
         }
         liveOpen = false
         shown = nil
+        shownRich = nil
         shownTTY = nil
         shownDead = false
         watchTimer?.invalidate()

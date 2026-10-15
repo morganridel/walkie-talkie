@@ -449,6 +449,7 @@ final class LocalWhisper {
     /// `words`: ask the helper for word timings — +45 % decode time, so only
     /// when a marker is waiting to be placed (2026-10-04, `evals/local-word-timing/`).
     func transcribe(wav: String, words: Bool = false, _ done: @escaping (Result?) -> Void) {
+        let request = WhisperLanguage.selected.request(["wav": wav, "words": words])
         queue.async { [weak self] in
             guard let self = self else { done(nil); return }
             self.lastFailure = nil
@@ -456,7 +457,7 @@ final class LocalWhisper {
                 self.lastFailure = "the local model was not up"
                 done(nil); return
             }
-            guard let req = try? JSONSerialization.data(withJSONObject: ["wav": wav, "words": words] as [String: Any]) else {
+            guard let req = try? JSONSerialization.data(withJSONObject: request) else {
                 done(nil); return
             }
             var line = req
@@ -497,9 +498,10 @@ final class LocalWhisper {
     /// the caller wrote; the answer carries the segments with their times, which
     /// is what `LocalLiveCaption` commits by. Nil for any failure, a kill included.
     func transcribeWindow(pcm: String, _ done: @escaping (WindowResult?) -> Void) {
+        let request = WhisperLanguage.selected.request(["pcm": pcm, "segments": true])
         queue.async { [weak self] in
             guard let self, self.ready, let stdin = self.toHelper,
-                  let req = try? JSONSerialization.data(withJSONObject: ["pcm": pcm, "segments": true] as [String: Any])
+                  let req = try? JSONSerialization.data(withJSONObject: request)
             else { done(nil); return }
             var line = req
             line.append(0x0A)

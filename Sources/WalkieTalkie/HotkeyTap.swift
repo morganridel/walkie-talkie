@@ -2099,6 +2099,7 @@ final class HotkeyTap {
 
     private let VK_B: CGKeyCode = 0x0B
     private let VK_D: CGKeyCode = 0x02
+    private let VK_S: CGKeyCode = 0x01
 private let VK_X: CGKeyCode = 0x07
     private let VK_RETURN: CGKeyCode = 0x24        // Return
     private let VK_KEYPAD_ENTER: CGKeyCode = 0x4C  // Enter (keypad / Fn-Return)
@@ -2444,7 +2445,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         let ctrl = flags.contains(.maskControl), opt = flags.contains(.maskAlternate), cmd = flags.contains(.maskCommand)
         let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
         if ctrl && opt && cmd { return Self.gestureNames[code] != nil }
-        return ctrl && cmd && !opt && (code == VK_B || code == VK_D || code == VK_X)
+        return ctrl && cmd && !opt && (code == VK_B || code == VK_D || code == VK_X || (code == VK_S && !flags.contains(.maskShift)))
     }
 
     /// **The freeze photographs itself.** The 17:12 one was only understood
@@ -2611,7 +2612,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             if isOwnChordWhileFrozen(type, event) {
                 chordsDroppedWhileOpen += 1
                 let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-                Log.info("🧊 \(Self.gestureNames[code] ?? (code == VK_B ? "⌘⌃B" : code == VK_X ? "⌘⌃X" : "⌘⌃D")) dropped — the main thread is frozen; a gesture made now is not acted on, and never reaches the front app")
+                Log.info("🧊 \(Self.gestureNames[code] ?? (code == VK_B ? "⌘⌃B" : code == VK_X ? "⌘⌃X" : code == VK_S ? "⌘⌃S" : "⌘⌃D")) dropped — the main thread is frozen; a gesture made now is not acted on, and never reaches the front app")
                 return nil
             }
             return Unmanaged.passUnretained(event)
@@ -3653,6 +3654,19 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             queueToggle()
             DispatchQueue.global().async { [weak self] in self?.onLocalToggle?() }
             return swallow("⌘⌃D dictate", type, event)
+        }
+
+        // Keyboard shutter: preserve the cursor at key-down, just like the
+        // rear mouse button. Available in either mouse mode, during a prompt.
+        if keyCode == VK_S && cmd && ctrl && !opt && !flags.contains(.maskShift) {
+            if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 {
+                return swallow("⌘⌃S shutter (autorepeat)", type, event)
+            }
+            if dictating && !cleanSentenceOpen {
+                let cursor = NSEvent.mouseLocation
+                DispatchQueue.global().async { [weak self] in self?.onScreenshot?(cursor) }
+            }
+            return swallow("⌘⌃S shutter", type, event)
         }
 
         // ⌘⌃X — **the local model, now** (2026-09-28): see `onLocalNow`. Swallowed

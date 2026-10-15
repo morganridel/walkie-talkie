@@ -41,7 +41,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite passes 268 tests. The release bundle builds, installs, launches, and loads
+suite passes 270 tests. The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
@@ -64,8 +64,9 @@ both processes can hold model memory at once. The measured worker used about
 additional Walkie Talkie worker warm; disable them in Engine to reduce memory.
 No language is pinned
 or limited by default, and the default vocabulary includes Codex and `AGENTS.md`
-terms. One cached-model run took 5.12 s to warm and 2.85 s to decode a 28 s public
-sample; timings vary by hardware and cache state.
+terms. A cached-model run took 5.12 s to warm. The installed app decoded an 11 s
+public Whisper test sample in 2.56 s without word timings, or 5.31 s with
+word timings. Timings vary by hardware, cache state, and requested alignment.
 
 Codex CLI discovery checks `CODEX_BIN` and known app-bundled CLI locations. If
 needed, set `CODEX_BIN` to the native Codex executable in the environment used
@@ -88,10 +89,16 @@ installed app also passed bind, hold, edit, send, and cancel checks using a
 synthetic transcript; this does not verify microphone gestures or rendered UI.
 Desktop steering includes the native composer record and text-element arrays
 required by the tested desktop version (26.1007.30912). Quick-answer timing
-measured roughly 0.20 s to worker
-ready, 2.61 s to first delta, and 2.71 s total; web mode measured 5.24 s to first
-delta and 5.36 s total. These are observations from one run, not performance
-guarantees.
+measured 2.30 s to the first answer and 13.16 s for all three installed-app
+stages in English; French measured 3.67 s to first words and 16.06 s for all
+stages. Source links survived resize and queued-reply restoration after cancel.
+These are observations from individual runs, not performance guarantees.
+
+The installed `walkie-reply` helper supports text and image callbacks tied to
+the exact Codex chat. It stages images in the app cache before sending, avoiding
+blocked native reads from protected project folders. Images are copied for the
+bubble before staging is removed. Timeouts with an unknown outcome are not
+automatically retried; their staging directory is retained for a late copy.
 
 Quick answers default to `gpt-6-luna` with low reasoning effort for latency.
 This changes the model from upstream and does not promise identical answer
@@ -115,7 +122,13 @@ loaded from `chrome-extension/` using `chrome://extensions` → Developer mode �
    **Mic** to select an input device. The menu also exposes local warm-up,
    live-caption, and cloud-fallback controls.
 
-The app's menu lists current gestures and actions. Use **Disconnect** to clear a
+Use **⌃⌘S** while recording a prompt to capture the display under the pointer.
+For local English recognition, choose **Engine → Local language → English**;
+Automatic remains the default. This selection applies to captions and the
+final transcript without reloading the model.
+
+The [keyboard and mouse guide](docs/GESTURES.md) covers trackpad use, the
+optional one-time Options+ mappings, and Wheel mode. The app's menu lists current gestures and actions. Use **Disconnect** to clear a
 binding. **Rebind to…** offers recent destinations and searches Codex session
 history. New Codex chats can be launched through the Codex CLI from **Prompt to
 new**. Codex desktop text, images, and steering have passed disposable-chat
@@ -148,7 +161,7 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 46 passing tests and the Swift suite has 268 passing
+The current Python suite has 67 passing tests and the Swift suite has 270 passing
 tests. The finish helper has 12 mocked tests and a safe dry-run check; it has not
 closed a real Terminal tab. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for

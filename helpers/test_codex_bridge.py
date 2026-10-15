@@ -404,7 +404,7 @@ class CodexBridgeTests(unittest.TestCase):
         db.execute("INSERT INTO thread_turns VALUES (?,?,?,?,?,?,?,?)",
                    (thread, turn, 1, "completed", None, now // 1000, now // 1000, 10))
         items = [
-            ("u", 1, {"type": "userMessage", "content": [{"type": "text", "text": "blue bicycle"}]}, "userMessage"),
+            ("u", 1, {"type": "userMessage", "content": [{"type": "text", "text": "my blue bicycle"}]}, "userMessage"),
             ("a", 2, {"type": "agentMessage", "text": "The blue bicycle is ready"}, "agentMessage"),
             ("r", 3, {"type": "reasoning", "content": ["blue bicycle secret"]}, "reasoning"),
         ]
@@ -702,7 +702,26 @@ class CodexBridgeTests(unittest.TestCase):
         done = json.loads(lines[-1])
         self.assertEqual(row["hits"], 2)
         self.assertEqual(row["session"], "11111111-1111-4111-8111-111111111111")
+        self.assertEqual(row["role"], "codex")
+        self.assertIn("The blue bicycle is ready", row["snippet"])
         self.assertTrue(done["done"])
+
+    def test_search_reports_user_role_for_latest_user_match(self):
+        lines = self.run_bridge("search", "--query", "my blue").stdout.splitlines()
+        row = json.loads(lines[0])
+        self.assertEqual(row["hits"], 1)
+        self.assertEqual(row["role"], "me")
+        self.assertIn("my blue bicycle", row["snippet"])
+
+    def test_visible_message_roles_use_codex_vocabulary(self):
+        self.assertEqual(codex_bridge.extract_visible(
+            "agentMessage", json.dumps({"text": "answer"})), ("codex", "answer"))
+        self.assertEqual(codex_bridge.extract_visible(
+            "plan", json.dumps({"text": "plan"})), ("codex", "plan"))
+        self.assertEqual(codex_bridge.extract_visible(
+            "userMessage", json.dumps({"content": [
+                {"type": "text", "text": "question"},
+            ]})), ("me", "question"))
 
     def test_search_marks_verified_desktop_owner(self):
         self.make_desktop_ipc()

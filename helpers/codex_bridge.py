@@ -1253,7 +1253,7 @@ def extract_visible(item_type, item_json):
         return None
     if item_type in ("agentMessage", "plan"):
         text = item.get("text")
-        return ("claude", text) if isinstance(text, str) and text.strip() else None
+        return ("codex", text) if isinstance(text, str) and text.strip() else None
     if item_type != "userMessage":
         return None
     parts = []
@@ -1300,7 +1300,7 @@ def search_threads(args):
               FROM thread_items
              WHERE thread_id IN ({placeholders})
                AND item_type IN ('userMessage', 'agentMessage', 'plan')
-             ORDER BY created_at_ms DESC
+             ORDER BY created_at_ms DESC, rollout_ordinal DESC
         """, tuple(metadata))
         found = {}
         ttys = sidecar_tty_map()

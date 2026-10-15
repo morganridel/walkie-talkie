@@ -1720,6 +1720,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // flips on every dictation, and the only moment its answer has to be right
         // is the moment the row is on screen.
         status.isRecording = { [weak self] in self?.listening ?? false }
+        status.canTakeScreenshot = { [weak self] in
+            guard let self else { return false }
+            return self.listening && !self.hotkeys.cleanSentenceOpen
+        }
         // **The same question `⌘⇧P` asks** (2026-09-22) — see
         // `pastableDictation`. Asking `lastDictation` here is what left the row
         // greyed out above a submenu full of sentences after every relaunch.
@@ -2060,17 +2064,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let folder = body["from"] as? String
             var label = folder
             if let tty = body["tty"] as? String, !tty.isEmpty {
-                let title = TerminalBinding.liveTitles()[tty]
-                let base = folder ?? tty
-                if let task = ActiveTerminals.task(fromTitle: title, folder: base) {
-                    label = "\(base) — \(task)"
+                if tty.hasPrefix("codex:") {
+                    // A Codex ID is not a Terminal tty. Use its metadata without
+                    // launching Terminal or requesting unrelated Automation access.
+                    let chat = try? CodexBridge.conversation(String(tty.dropFirst(6)), timeout: 1)
+                    let base = chat.flatMap { $0.folder.isEmpty ? nil : $0.folder } ?? folder ?? "Codex"
+                    label = chat.map { "\(base) — \($0.title)" } ?? "\(base) · \(tty)"
+                    if let terminalTTY = chat?.terminalTTY,
+                       TerminalBinding.focusedTTY() == (terminalTTY as NSString).lastPathComponent {
+                        Log.info("💬 Codex answer not shown — its verified CLI terminal is in front")
+                        return (200, ["ok": true, "shown": false, "reason": "sender in front", "from": label ?? NSNull()])
+                    }
                 } else {
-                    label = "\(base) · \(tty)"
+                    let title = TerminalBinding.liveTitles()[tty]
+                    let base = folder ?? tty
+                    if let task = ActiveTerminals.task(fromTitle: title, folder: base) {
+                        label = "\(base) — \(task)"
+                    } else {
+                        label = "\(base) · \(tty)"
+                    }
                 }
                 // **Not over the terminal he is looking at** (2026-10-13, the original author:
                 // *"if I'm focusing the window, don't use the reply pop-up"*): the
                 // agent's answer is already on screen there.
-                if TerminalBinding.focusedTTY() == (tty as NSString).lastPathComponent {
+                if !tty.hasPrefix("codex:"), TerminalBinding.focusedTTY() == (tty as NSString).lastPathComponent {
                     Log.info("💬 answer from \(label ?? tty) not shown — \(tty) is the terminal in front")
                     return (200, ["ok": true, "shown": false, "reason": "sender in front", "from": label ?? NSNull()])
                 }
@@ -8006,6 +8023,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func stateSnapshot() -> [String: Any] {
         var out: [String: Any] = [
             "at": Outbox.iso(Date()),
+            "localLanguage": WhisperLanguage.selected.rawValue,
+            "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
+            "logiGestures": status.isLogiGestures,
             // The relay's own sentence-in-flight flag — *not* the microphone.
             "listening": listening,
             "settling": settling,
@@ -8912,7 +8932,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// task. Then, minutes later, narrower still: *"exclusiv când eu întreb
     /// ceva. Atât. … Niciodată să nu fie folosit ca să mă întrebe Claude pe mine
     /// ceva."* — his question in, its answer out; nothing else rides it.
-    static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done.]"
+    static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done. In Codex, run this local helper with permission to access its localhost listener (request sandbox escalation when required). If the helper reports a timeout or unknown delivery, check the bubble and do not automatically retry.]"
 
     /// **`[Transcribed by <engine>]`** (2026-10-12, the original author: *"let's
     /// call it transcribed in RO or EN, and then you place the name of the engine

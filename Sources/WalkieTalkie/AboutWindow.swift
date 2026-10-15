@@ -579,9 +579,12 @@ enum AboutWindow {
             label("🎙️ Walkie Talkie for Codex", size: 20, weight: .bold),
             label("built \(buildStamp)", size: 11, colour: .tertiaryLabelColor),
             label("""
-                  A menu bar relay: dictate with the mouse, and the words land \
-                  in the Claude Code session it is bound to.
+                  A menu bar relay: dictate by keyboard or mouse, and the words land \
+                  in the Codex chat it is bound to.
                   """, size: 12, colour: .secondaryLabelColor, width: tableWidth, wraps: true),
+            heading("Keyboard"),
+            label("⌃⌘D  Start / stop prompt\n⌃⌘S  Screenshot at the pointer while recording\nF5  Plain dictation at the caret\nReturn / Esc  Send / cancel the held prompt",
+                  size: 12, colour: .secondaryLabelColor, width: tableWidth, wraps: true),
             heading("Your mouse, button by button — \(vocabulary)"),
         ]
 

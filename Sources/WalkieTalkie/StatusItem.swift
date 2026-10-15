@@ -66,6 +66,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// with every dictation, and the one moment it has to be right is the moment
     /// the row that ends it is on screen.
     var isRecording: (() -> Bool)?
+    /// The shutter is available for prompt recordings, including keyboard-only use.
+    var canTakeScreenshot: (() -> Bool)?
 
     /// **Is there a dictation to cancel** — which is not the same question as
     /// `isRecording`. Since 2026-09-12 the row kills a Wispr Flow dictation too,
@@ -1070,10 +1072,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         menu.addItem(messageLog)
 
         shot.image = Self.symbolIcon("camera")
-        // **A legend, not a command — permanently disabled** (the original author, 2026-09-04),
-        // the same rendering `pickLegend` uses for "this is something you do, not
-        // something you pick". The shutter itself lives on the back button while
-        // dictating; F3, its keyboard route, was never pressed and is gone.
+        // Keep the shutter usable without a configured mouse gesture. Its
+        // current recording/mode gate is refreshed whenever the menu opens.
         shot.action = #selector(shotClicked)
         shot.target = self
         shot.isEnabled = false
@@ -1116,10 +1116,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // only exists inside a sentence, so the row belongs with the rows that
         // open and close one rather than down with the two gesture legends.
         menu.addItem(screenRecording)
-        // **A line between the verbs that end a dictation and the two legends.**
-        // Take Screenshot and Pick Element are both disabled rows now — gestures
-        // written down, not commands — so they sit apart from the three rows
-        // above that actually do something when clicked (the original author, 2026-09-04).
+        // Capture commands and gesture references follow the recording verbs.
         menu.addItem(.separator())
         menu.addItem(shot)
         menu.addItem(areaShot)
@@ -1256,7 +1253,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
             (dictatePlain, dictatePlain.title, "🔽 →", "🔽 →", Chord("", "⇒"), Chord("", "⇒")),
             // The same gesture as Start: it is one toggle, and writing it twice
             // is how the menu says so without a sentence.
-            (stopRecording, stopRecording.title, "🔼 →", "🛞", Chord("", "⇢"), Chord("", "◎")),
+            (stopRecording, stopRecording.title, "🔼", "🛞", Chord("", "○"), Chord("", "◎")),
             // The mirror direction of the one that starts it — the two gestures
             // that open and abandon a sentence are one hand movement, reversed.
             // The wheel had no mirror to offer and used a 2s hold instead, and
@@ -1468,6 +1465,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         for row in gestureRows {
             let chord = logiGesturesOn ? row.logiGlyph : row.wheelGlyph
             row.item.toolTip = Self.gestureTip(logiGesturesOn ? row.logi : row.wheel)
+            if row.item === shot { row.item.toolTip = "⌃⌘S, or click the rear side button, while recording a prompt" }
             row.item.keyEquivalent = chord.key
             row.item.keyEquivalentModifierMask = chord.mask
             guard !chord.head.isEmpty else {
@@ -1575,6 +1573,20 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // about the engines, so under them, between two lines; the tick drawn as
         // every other switch here draws it.
         engineSubmenu.addItem(.separator())
+        let language = NSMenuItem(title: "Local language: \(WhisperLanguage.selected.title)", action: nil, keyEquivalent: "")
+        let languageMenu = NSMenu()
+        languageMenu.autoenablesItems = false
+        for option in WhisperLanguage.allCases {
+            let row = NSMenuItem(title: option.title, action: #selector(localLanguagePicked(_:)), keyEquivalent: "")
+            row.target = self
+            row.representedObject = option.rawValue
+            row.image = option == WhisperLanguage.selected ? Self.symbolIcon("checkmark") : Self.blankIcon
+            row.isEnabled = !(isRecording?() ?? false)
+            languageMenu.addItem(row)
+        }
+        language.submenu = languageMenu
+        language.toolTip = "Recognition language for local transcripts and live captions. Choose before recording; no model reload is needed."
+        engineSubmenu.addItem(language)
         let auto = NSMenuItem(title: AutoLocal.menuTitle, action: #selector(autoLocalClicked), keyEquivalent: "")
         auto.target = self
         auto.image = AutoLocal.isOn ? Self.symbolIcon("checkmark") : Self.blankIcon
@@ -1614,6 +1626,13 @@ final class StatusItem: NSObject, NSMenuDelegate {
         quotaRow = quota
         applyQuotaRow()
         engineSubmenu.addItem(quota)
+    }
+
+    @objc private func localLanguagePicked(_ sender: NSMenuItem) {
+        guard !(isRecording?() ?? false), let raw = sender.representedObject as? String,
+              let language = WhisperLanguage(rawValue: raw) else { return }
+        WhisperLanguage.selected = language
+        applyEngineRow()
     }
 
     /// **Whether the list offers Wispr Flow as a row of its own** — hidden since
@@ -2020,8 +2039,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // *starts* one, and the sentence already open is re-aimed by the wheel's
         // second click, not from here.
         newSession.isEnabled = !recording
-        // Take Screenshot is a legend now (disabled at construction), so there
-        // is nothing to re-enable here.
+        shot.isEnabled = canTakeScreenshot?() ?? recording
     }
 
     private func refreshGlyph() {

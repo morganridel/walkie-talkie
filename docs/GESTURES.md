@@ -1,0 +1,69 @@
+# Walkie Talkie: keyboard and mouse controls
+
+These controls describe Morgan’s Codex fork. Keyboard controls work with a trackpad; Logi Options+ is only needed for the optional Logitech thumb-button setup. The ⌃⌘S shutter and language menu were installed on 15 October 2026; both macOS grants were refreshed and verified afterward.
+
+## Your trackpad and keyboard
+
+Bind the intended Codex chat once with **Bind Codex chat…**. You can then work in a browser or editor while the prompt still goes to that selected chat.
+
+| Action | Control |
+|---|---|
+| Start / stop a prompt for the bound Codex chat | **Control + Command + D** (⌃⌘D) |
+| Add a screenshot while the prompt is recording | **Control + Command + S** (⌃⌘S), in the new build |
+| Existing screenshot control, with Gestures: Logi selected | **Control + Option + Command + F6** while recording |
+| Send the held prompt after transcription | **Return** |
+| Cancel the held prompt | **Escape** |
+| Cancel a recording using the existing Logi chord | **Control + Option + Command + F11** |
+| Start / stop plain text dictation at the insertion caret | **F5**; stopping inserts words without Return |
+| Prompt at the insertion caret; click again to stop | **Control + Option + Command + F7** |
+| Start / stop screen film during a prompt | **Control + Option + Command + F4** |
+| Open a small typed-note box during a local prompt | **Control + Option + Command + F12** |
+
+On a keyboard whose F keys perform media/system actions, use **Fn** to send the actual F key. The ⌃⌥⌘F-key controls require **Gestures: Logi**, but do not require Options+ when typed on the keyboard. ⌃⌘D and the new ⌃⌘S work in either gesture mode.
+
+The screenshot captures the **display containing the pointer**, with the pointer location passed as context. It does not crop automatically around the pointer. Point at the relevant item before pressing the shortcut. Check that the screenshot count or thumbnail appears before stopping; a flash alone does not prove capture succeeded.
+
+Plain dictation inserts text at the caret and accepts no attachments. Use ⌃⌘D for a Codex prompt with screenshots. Keep the selected target visible in Walkie Talkie’s overlay when switching destinations.
+
+For the English test, choose **Engine → Local language → English** before recording. This affects both local captions and the final transcript; no model reload is needed. **Automatic** remains the default, and **French** is also available. This is recognition language, not a translation command.
+
+Try a short prompt: open example.com, point at its heading, press ⌃⌘D, say “What is the heading I’m pointing at?”, press ⌃⌘S, then ⌃⌘D. Review the transcript and screenshot, then Return to send. Use the disposable integration-test chat.
+
+## If you add a Logitech mouse
+
+The **front side button** is the thumb button closer to the nose of the mouse; the **rear side button** is closer to your wrist. “Right/up/left/down” means **hold that button, move the whole mouse a little in that direction, then release**. It does not mean scrolling or moving fingers on the trackpad.
+
+Configure both buttons once in Logi Options+: select the mouse, open **Buttons**, select a side button, choose **Gestures → Custom**, and assign each direction and Click a **Keyboard Shortcut** from this table. Apply the profile where you will use dictation, including your browser/editor; a profile confined to Codex will not apply while the browser is in front. Select **Gestures → Logi** in Walkie Talkie. See [Logitech’s official setup guide](https://hub.sync.logitech.com/options/post/programming-buttons-and-keys-in-options-ntwM6VsAEKhHACY).
+
+Every shortcut below uses **Control + Option + Command**, plus the listed F key.
+
+| Button / gesture | F key | Behavior |
+|---|---|---|
+| Front: click | F7 | At rest, start a prompt at the caret; during recording, stop it |
+| Front: hold + move right | F10 | At rest, start a prompt for the bound chat; during recording, switch between bound chat and caret |
+| Front: hold + move left | F11 | Cancel the current recording |
+| Front: hold + move up | F8 | Prompt to a new CLI session; during recording, convert to that destination |
+| Front: hold + move down | F9 | Toggle the kamikaze completion cue |
+| Rear: click | F6 | During a prompt, take a screenshot; at rest, start plain dictation; during plain dictation, stop and insert words followed by Return |
+| Rear: hold + move right | F5 | Start / stop plain dictation, without Return |
+| Rear: hold + move left | F3 | Type Return |
+| Rear: hold + move up | F4 | Start / stop screen film during a prompt |
+| Rear: hold + move down | F12 | During a local prompt, open typed notes; during plain dictation, stop without Return; otherwise disconnect |
+
+For a prompt to the bound chat: **front + right → speak → rear click for screenshots → front click to stop → review → Return**. Repeating front + right during recording changes the destination, so check the overlay.
+
+During a prompt, **press and hold the scroll wheel, drag a rectangle, then release** for a region capture. Command moves the box; Option draws from its centre; Escape cancels. Right-click while dragging locks the source box; release the wheel, then wheel-drag a destination to describe a move. The wheel crop needs a physical pressable wheel. A normal trackpad has no equivalent built into this version.
+
+## Any mouse with a pressable wheel
+
+Choose **Gestures → Wheel** once. A wheel click starts/stops a prompt; holding it for two seconds during recording cancels. A wheel drag during a prompt captures a region. This mode takes over middle-click while Walkie Talkie is running, so it changes the usual middle-click behavior in browsers/editors. The richer side-button directions above still need their Options+ mappings.
+
+## Current test status
+
+Real ⌃⌘D voice delivery to Codex passed. The earlier page test attempted a screen capture but produced no image, and its held transcript was cancelled, so it was never sent to Codex. The subsequent English + ⌃⌘S test passed: the actual selected Codex turn contains the English question and both opening/explicit screenshots, and the user confirmed the heading answer. Physical mouse gestures remain untested. Unexpected French appeared in recognition; the helper uses transcription, and the English choice bypasses automatic language guessing for local recognition.
+
+The reply bubble stays open until you click **× at its top right**; there is
+no automatic timeout. Further replies queue behind it. A separate permissioned
+callback test appeared visibly for the user. The receiving Codex chat's first
+callback was blocked by its sandbox's localhost restriction; the updated helper
+and prompt guidance explain requesting local-network permission.

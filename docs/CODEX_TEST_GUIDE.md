@@ -6,12 +6,14 @@ result next to each run. Use a disposable Codex chat/project for anything that
 could deliver a prompt. The routes below can open UI or send data; do not aim
 them at a real work chat without checking the selected target first.
 
+For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
+
 ## Before a run
 
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and all 268 Swift tests pass. Launch an already
+   packaging and all 270 Swift tests pass. Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -38,7 +40,7 @@ them at a real work chat without checking the selected target first.
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **46 Python tests** and **268 Swift tests** pass. The release
+Current evidence: all **67 Python tests** and **270 Swift tests** pass. The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -51,8 +53,11 @@ tested Desktop version: 26.1007.30912, native CLI: 0.162.0-alpha.17.2.
 The CLI finish helper has 12 mocked tests and a safe dry-run; no real tab close
 has been tested. Desktop completion archived only the disposable chat and the
 test restored it afterward. Archiving interrupts the active turn, so provide
-the result before the archive action; a final answer after archive is lost. Rendered UI and physical gestures
-remain separate manual checks.
+the result before the archive action; a final answer after archive is lost.
+A real user-spoken prompt also passed ⌃⌘D start/stop and desktop delivery with
+the expected `banana` reply. Installed-app English/French quick-answer stages, source handlers, reply
+authentication/images, resize, cancel/queue restoration, and synthetic captions
+also passed. Visual/pointer interaction remains a separate manual check.
 
 ### macOS permissions and stopping a recording
 
@@ -81,10 +86,12 @@ with the plus button, enable it, and reopen it. Use the actual installed bundle;
 do not add a build-directory executable. If it still reports untrusted, record
 that result and leave physical tests pending. Never edit the macOS TCC database.
 
-During the latest permission check, Microphone and Screen Recording were on.
-Accessibility appeared on, but toggle/reopen still left the app untrusted and
-its event tap dead; a fresh entry for the final build remains to be checked.
-The latest canary also found the screen locked; unlock before checking shortcuts.
+Before the keyboard/language rebuild, Microphone and Screen Recording were enabled. The fresh Accessibility entry
+resolved the stale grant: startup now reports `trusted=true eventTap=true`, and
+the harmless canary reports `alive:true`. This verifies event-tap access; the
+real spoken start/stop/send test also passed: the user bound the disposable
+chat, pressed ⌃⌘D to start and stop, and Codex replied `banana`. App delivery
+metadata independently matched `local-whisper` and the exact selected chat.
 
 ## Codex binding and chat selection
 
@@ -147,23 +154,34 @@ The latest canary also found the screen locked; unlock before checking shortcuts
   question-language output with at least two languages. During each stage test
   the panel close button and the cancel gesture; confirm the active work stops
   and the warm worker is available for a later question.
-  The quick-worker protocol smoke measured ready at 0.20 s, first delta at
-  2.61 s, and completion at 2.71 s; web mode measured first delta at 5.24 s and
-  completion at 5.36 s. These timings are run-specific; UI and cancel behavior
-  still require manual checks.
+  Installed-app runs passed all three stages: English first words at 2.30 s
+  and all stages at 13.16 s; French first words at 3.67 s and all stages at
+  16.06 s. Closing an in-flight question restored a queued reply, and a later
+  question completed. These observations do not prove pointer/gesture behavior.
 - Use `POST /test/quick` UI options only after reading the handler: it can
   resize/close the panel, mark it capturable, and simulate a source-link click.
   For a link test use `{"link":{"index":0,"click":true,"open":false}}` to
   avoid opening a browser. Verify the link label, hover URL, quote fragment, and
   that no raw citation markers leak into the answer.
-- `walkie-reply "Short answer"` posts a response to the running app; `--image`
+- `walkie-reply "Short answer"` posts a response to the running app. In Codex,
+  allow the helper to connect to its localhost listener (request sandbox
+  escalation if needed). A denied connection may be tried once after permission;
+  an unknown delivery or timeout must not be automatically retried. The bubble
+  stays until its top-right **×** is clicked; later replies queue. `--image`
   can be repeated to attach image files, and `CODEX_THREAD_ID` associates it with
   the originating Codex chat. A reply test can be posted to `/reply` only with
   the app's valid reply token; don’t invent one. Test text and image replies,
   thumbnails, opening/keeping/copying an image, pinning, and reply-back to the
   originating context. Confirm the panel does not steal focus unexpectedly and
-  temporary files remain available when kept. Reply-back via pointer/gesture and
-  the rendered bubble need real UI checks.
+  temporary files remain available when kept. The installed helper passed
+  token rejection, text/image delivery, persistent image copy, source links
+  through resize, and queued reply restoration. It stages images under
+  `~/Library/Caches/local.walkie-talkie/reply-staging` because direct native
+  reads from protected project folders can block. Confirmed delivery removes
+  staging; an unknown outcome retains it and stops without retrying. Check
+  the bubble before retrying or clearing retained staging. Prefer the helper
+  for image callbacks. Reply-back, pin, image opening, and visual layout still
+  need real UI checks.
 
 ### Kamikaze and finish behavior
 
@@ -198,9 +216,11 @@ The latest canary also found the screen locked; unlock before checking shortcuts
   cold state, and elapsed time with the result. Compare the first transcription
   after app launch with a later warmed decode; avoid treating one machine's
   timing as a universal threshold.
-  A development-Mac cached-model run measured 5.12 s to warm and decoded a 28 s
-  public WAV in 2.85 s. Treat these as a single-machine observation, not an
-  acceptance threshold.
+  Cached-model warm-up measured 5.12 s. The installed app decoded the public
+  11 s OpenAI Whisper JFK sample in 2.56 s from its cache without word timings;
+  forced word timings took 5.31 s and returned 22 words. Copy public test WAVs
+  into the app cache before this route; protected Documents-folder metadata
+  access caused an unrelated delay. These are observations, not thresholds.
 - The Python interpreter is discovered by checking for `mlx_whisper`. Test
   `RELAY_WHISPER_PYTHON` only with an interpreter already set up for MLX;
   `RELAY_WHISPER_MODEL` chooses model id/path; `RELAY_WHISPER_CACHE` points at
@@ -235,8 +255,10 @@ The latest canary also found the screen locked; unlock before checking shortcuts
 
 ## Screenshots, crop, selection, browser, and music
 
-- Start a prompt and verify the automatic opening screenshot and pointer marker.
-  Use the shutter/Take Screenshot action for another shot; confirm original and
+- If opening context capture is enabled, start a prompt and verify its screenshot
+  and pointer marker. Test the explicit shutter independently below.
+  Use **⌃⌘S** for another shot without opening the menu. The optional
+  **Take Screenshot** row is clickable during prompt recording. Confirm original and
   resized files, labels, prompt references, and shot times.
 - During a dictation, hold the wheel and drag a region. Check the crop image and
   selection outline. Hold ⌘ while moving to reposition; hold ⌥ to draw from the
@@ -337,3 +359,92 @@ date, and evidence), **failed** (with a minimal reproduction and log excerpt
 redacted of private data), **not run**, or **not applicable**. Automated route
 success is evidence for the route's layer only; mark end-to-end interaction as
 verified only after checking the visible UI or destination.
+
+## Keyboard screenshot and recognition language
+
+- In a disposable bound chat, open example.com in the browser. Press ⌃⌘D,
+  speak a short English question, point at the heading, press ⌃⌘S, then ⌃⌘D.
+  Confirm a thumbnail/count appeared and the final prompt has an actual image.
+  Review and send with Return; verify Codex identifies the heading. A shutter
+  flash without a saved image is a failure. Check `screenCaptureAllowed` in
+  `/test/state`; a false value requires the installed app's Screen Recording
+  permission to be refreshed. Test ⌃⌘S in both Logi and Wheel modes and
+  verify holding the key does not add repeated captures. No Options+ is
+  required for these keyboard controls.
+- While idle, choose **Engine → Local language → English**. Dictate the same
+  short English sentence and verify both captions and final transcript remain
+  English. Repeat with French selected and a French sentence, then restore
+  **Automatic** and check persistence after relaunch. Automatic remains the
+  default; explicit choices bypass language guessing and do not reload the
+  model. This setting affects local recognition, including local fallback,
+  rather than optional cloud providers. The choice is disabled while recording.
+- With a configured Logitech mouse, follow the full mapping in GESTURES.md.
+  Verify front+right starts a bound prompt, rear click captures, front click
+  stops, and front+right during recording switches destination. Confirm the
+  destination in the overlay before sending. Wheel-only crop/move needs a
+  physical pressable wheel; trackpad drag is not an implemented substitute.
+
+## Effects, reference panel, history, and sound
+
+- Record the current **𝓯𝔁** choices. Try an available style for caret, bound,
+  and new-session destinations; start a harmless recording for each. Verify
+  the selected effect follows the pointer and reacts to the microphone. Check
+  unavailable styles explain why they are disabled. Select each available
+  effect engine, voice option, and filter, check persistence after relaunch,
+  then restore the original choices. Use the F7/F9 preview controls independently.
+- Open the **Built/Version** row near Quit. Verify About has a visible size,
+  current build stamp, Codex wording, keyboard reference, the current Logi/Wheel
+  gesture table, and a source link to Morgan's fork. Close the panel.
+- After harmless delivered test prompts, open **Prompt History**. Check recent
+  spoken snippets, newest first, and hover text. Choosing one should copy its
+  envelope to the clipboard; paste it into a safe editor to inspect it. Open
+  **Full Log**, inspect the last two days of delivered records, and check its
+  Copy control and attachment references. A cancelled, unsent take must not
+  appear as a delivered event. Test an empty history with a separate fixture
+  rather than deleting personal history.
+- Focus a safe text editor and choose **Paste last prompt**. Confirm exactly one
+  paste and compare the envelope with the latest prompt; repeat after plain
+  dictation, which should paste clean words. Avoid testing this in a shell.
+- Record the current **Radio squelch** setting. Turn it on: it should play once
+  on enabling and when the microphone opens. Turn it off and start another
+  harmless recording; check persistence after relaunch, then restore the setting.
+
+2026-10-15 follow-up: the public-page test started/stopped correctly in Chrome,
+kept its exact Codex target, and attempted context capture, but screencapture
+produced no file. Its 33-character held transcript was cancelled, so no Codex
+turn was expected. The user confirmed the unwanted French was in transcript/
+captions. The keyboard shutter and optional recognition-language choice address
+interaction and language guessing; a successful real screenshot and the new
+English spoken check remain necessary. No private recording was read.
+
+The keyboard/language release was installed from a verified staged bundle
+on 2026-10-15 at 11:28. The user refreshed both grants afterward; PID 30109
+reports `screenCaptureAllowed:true`, `tapAlive:true`, and a live canary
+(about 0.30 ms). The exact user-selected test-chat binding was restored through
+the ownership-checked route. The model is ready and language defaults to Auto.
+All 270 Swift and 67 Python tests passed. The packaged helper also decoded the
+public 11-second JFK sample with explicit English for final WAV (1.50 s) and
+caption PCM (1.32 s), kept Auto functional (2.52 s), and accepted a valid request
+after rejecting an invalid language. A first standalone launch omitted the
+app's model-cache environment and timed out during warm-up; the repeat used
+the actual Quiet Journal model cache offline and warmed in 4.81 s. No journal
+service/settings/content or private audio was accessed. Real keyboard capture
+and explicit-English recognition subsequently passed in the user test below.
+
+2026-10-15 real keyboard/image/language check: the user confirmed both English
+recognition and screenshot interpretation worked. The exact desktop turn
+`01a13ee9-e9f6-7f92-9449-ed35e9101a04` contains the English question and two
+real local image inputs (opening context and ⌃⌘S shutter). Codex identified the
+visible heading. App metadata reports English and 3.51 s final transcription
+after closing the 7.6 s recording; no private recording was opened.
+
+The receiving chat invoked `walkie-reply`, but its sandbox blocked localhost
+(immediate connection failure; a harmless default-sandbox probe independently
+returned EPERM). A distinct callback with proper permission returned `shown`
+in 0.10 s, and the user confirmed the visible bubble. It intentionally stays
+until × is clicked; subsequent replies queue. The updated helper distinguishes
+EPERM/EACCES before delivery, stops without automatic retry, and explains
+requesting permission for one retry. Timeouts and uncertain response outcomes
+remain non-retriable. The question footer now explicitly requests appropriate
+localhost permission. Test this automatic callback after installing the
+reply-permission build. All 270 Swift and 67 Python tests passed.
