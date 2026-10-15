@@ -499,7 +499,13 @@ window; multi-tab windows are refused before signalling.
 The project-first floating switcher replaces the earlier picker. Source checks
 cover grouping, metadata pagination/deduplication, global shortcut routing,
 fresh owner checks, wrong-ID/unknown rejection, and stale/duplicate callbacks.
-Its new visual and physical interaction require the installed-build pass above.
+The 15:47 build is installed; both existing grants were refreshed through
+System Settings with the user's authorization. Accessibility/event tap and
+Screen Recording verify, the shortcut canary is alive (0.43 ms), English and
+both workers are ready, and the reusable desktop test is bound. Its deep strict
+signature verifies. Automation keypresses did not open the picker and menu-bar
+automation timed out; its new physical/visual interaction still needs the
+installed-build pass above.
 Ad-hoc code rebuilds can require renewed macOS grants. Check the running app's
 Accessibility/event tap and Screen Recording state after install; bindings
 currently clear on relaunch, so select the intended chat again.
