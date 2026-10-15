@@ -41,7 +41,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite passes 267 tests. The release bundle builds, installs, launches, and loads
+suite passes 268 tests. The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Physical controls and desktop message delivery still need
@@ -144,7 +144,7 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 35 passing tests and the Swift suite has 267 passing
+The current Python suite has 43 passing tests and the Swift suite has 268 passing
 tests. The finish helper has 12 mocked tests and a safe dry-run check; it has not
 closed a real Terminal tab. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for

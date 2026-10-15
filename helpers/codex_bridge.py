@@ -104,19 +104,32 @@ def control_socket():
     path = Path(override).expanduser() if override else (
         codex_home() / "app-server-control/app-server-control.sock"
     )
-    try:
-        socket_stat = path.lstat()
-        directory_stat = path.parent.lstat()
-    except OSError:
-        return None
     uid = os.getuid() if hasattr(os, "getuid") else None
-    if not stat.S_ISSOCK(socket_stat.st_mode) or not stat.S_ISDIR(directory_stat.st_mode):
+    try:
+        source_stat = path.lstat()
+        source_directory_stat = path.parent.lstat()
+        resolved = path.resolve(strict=True)
+        socket_stat = resolved.lstat()
+        target_directory_stat = resolved.parent.lstat()
+    except (OSError, RuntimeError):
         return None
-    if uid is not None and (socket_stat.st_uid != uid or directory_stat.st_uid != uid):
+    if not (stat.S_ISSOCK(source_stat.st_mode) or stat.S_ISLNK(source_stat.st_mode)):
         return None
-    if directory_stat.st_mode & 0o022:
+    if not stat.S_ISSOCK(socket_stat.st_mode):
         return None
-    return path
+    if not (stat.S_ISDIR(source_directory_stat.st_mode)
+            and stat.S_ISDIR(target_directory_stat.st_mode)):
+        return None
+    if uid is not None and any(info.st_uid != uid for info in (
+            source_stat, source_directory_stat, socket_stat, target_directory_stat)):
+        return None
+    if source_directory_stat.st_mode & 0o022:
+        return None
+    if target_directory_stat.st_mode & 0o022:
+        return None
+    if socket_stat.st_mode & 0o022:
+        return None
+    return resolved
 
 
 def desktop_ipc_socket():
@@ -613,7 +626,7 @@ def thread_row(raw, *, live):
     status = status_value.get("type") if isinstance(status_value, dict) else status_value
     if not status:
         status = "unknown"
-    live = bool(live and status != "notLoaded")
+    live = bool(live and status in {"idle", "active", "systemError"})
     name = raw.get("name") or raw.get("title") or raw.get("preview") or raw.get("first_user_message") or ""
     branch = raw.get("git_branch") or ((raw.get("gitInfo") or {}).get("branch") if isinstance(raw.get("gitInfo"), dict) else "")
     row = {
@@ -699,15 +712,11 @@ def sidecar_tty_map():
         process = processes.get(pid)
         if process is None or not UUID_RE.fullmatch(thread_id):
             continue
-        try:
-            argv = shlex.split(process["command"])
-        except ValueError:
+        if not verified_codex_resume_process(process, tty=tty, thread_id=thread_id):
             continue
-        if (Path(process["tty"]).name != Path(tty).name or not argv
-                or Path(argv[0]).name != "codex" or "resume" not in argv
-                or thread_id.lower() not in {arg.lower() for arg in argv}):
-            continue
-        result[thread_id] = {"tty": tty, "pid": pid, "source": "sidecar"}
+        result[thread_id] = {
+            "tty": tty, "pid": pid, "sourceResolution": "sidecar",
+        }
     return result
 
 
@@ -732,19 +741,37 @@ def process_rows():
     return rows
 
 
+def verified_codex_resume_process(process, *, tty, thread_id):
+    """Require the exact native resume argv, PID row, tty, and thread token."""
+    try:
+        argv = shlex.split(process["command"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return bool(
+        Path(process.get("tty") or "").name == Path(tty).name
+        and argv
+        and Path(argv[0]).name == "codex"
+        and "resume" in argv
+        and thread_id.lower() in {arg.lower() for arg in argv}
+    )
+
+
 def process_thread_for_tty(tty):
     short = Path(tty).name
     rows = process_rows()
     matches = []
     for row in rows:
-        if row["tty"] != short or "codex" not in row["command"].lower():
+        if Path(row["tty"]).name != short:
             continue
-        if " resume " not in (" " + row["command"] + " "):
+        try:
+            argv = shlex.split(row["command"])
+        except ValueError:
             continue
-        ids = UUID_RE.findall(row["command"])
-        matches.extend((value.lower(), row["pid"]) for value in ids)
-    unique = {thread_id: pid for thread_id, pid in matches}
-    return next(iter(unique.items())) if len(unique) == 1 else None
+        if not argv or Path(argv[0]).name != "codex" or "resume" not in argv:
+            continue
+        ids = [arg.lower() for arg in argv if UUID_RE.fullmatch(arg)]
+        matches.extend((value, row["pid"]) for value in ids)
+    return matches[0] if len(matches) == 1 else None
 
 
 def resolve_tty(tty):
@@ -753,15 +780,15 @@ def resolve_tty(tty):
         if record["tty"] == tty:
             rows = db_threads(thread_id=thread_id, limit=1)
             if rows:
-                rows[0].update(record)
-                return rows[0]
+                return apply_cli_owner(rows[0], record)
     process_match = process_thread_for_tty(tty)
     if process_match:
         thread_id, pid = process_match
         rows = db_threads(thread_id=thread_id, limit=1)
         if rows:
-            rows[0].update({"tty": tty, "pid": pid, "sourceResolution": "process"})
-            return rows[0]
+            return apply_cli_owner(rows[0], {
+                "tty": tty, "pid": pid, "sourceResolution": "process",
+            })
     raise BridgeError(
         "no uniquely verified Codex thread owns this tty",
         code="tty_unresolved",
@@ -774,9 +801,23 @@ def add_ttys(rows):
     for row in rows:
         record = mapping.get(row.get("id"))
         if record:
-            row["tty"] = record["tty"]
-            row["ttyOwner"] = True
+            apply_cli_owner(row, record)
     return rows
+
+
+def apply_cli_owner(row, record):
+    """Apply metadata only after sidecar/process validation proved ownership."""
+    active = active_turn_id(row["id"])
+    row.update({
+        "tty": record["tty"],
+        "pid": record["pid"],
+        "sourceResolution": record["sourceResolution"],
+        "ttyOwner": True,
+        "live": True,
+        "status": "active" if active else "idle",
+        "busy": bool(active),
+    })
+    return row
 
 
 def desktop_owned_ids(thread_ids, *, budget=1.5):
@@ -796,12 +837,13 @@ def desktop_owned_ids(thread_ids, *, budget=1.5):
                 break
             client.socket.settimeout(max(0.05, min(0.25, remaining)))
             try:
-                client.find_owner(thread_id)
+                owner, _ = client.find_owner(thread_id)
             except BridgeError as error:
                 if error.code == "desktop_ipc_outcome_unknown":
                     break
                 continue
-            owned.add(thread_id)
+            if owner:
+                owned.add(thread_id)
     return owned
 
 
@@ -835,7 +877,9 @@ def list_threads(args):
             if args.query:
                 params["searchTerm"] = args.query
             result = client.request("thread/list", params)
-            rows = [thread_row(raw, live=True) for raw in result.get("data", [])]
+            # A daemon record alone is saved metadata. A row becomes live only
+            # after an exact CLI process/TTY or desktop-window owner is proven.
+            rows = [thread_row(raw, live=False) for raw in result.get("data", [])]
             if args.project:
                 rows = [row for row in rows if row.get("projectId") == args.project]
             rows = add_ttys(rows)
@@ -843,7 +887,8 @@ def list_threads(args):
             if args.live_only:
                 rows = [row for row in rows if row["live"]]
             return {"threads": rows, "nextCursor": result.get("nextCursor"),
-                    "backwardsCursor": result.get("backwardsCursor"), "live": True}
+                    "backwardsCursor": result.get("backwardsCursor"),
+                    "live": any(row["live"] for row in rows)}
     except BridgeError as error:
         if error.code != "shared_daemon_unavailable":
             raise
@@ -852,14 +897,14 @@ def list_threads(args):
     if args.live_only:
         rows = [row for row in rows if row["live"]]
     return {"threads": rows, "nextCursor": None,
-            "backwardsCursor": None, "live": False}
+            "backwardsCursor": None, "live": any(row["live"] for row in rows)}
 
 
 def one_thread(thread_id):
     try:
         with RpcClient() as client:
             result = client.request("thread/read", {"threadId": thread_id, "includeTurns": False})
-            row = thread_row(result["thread"], live=True)
+            row = add_ttys([thread_row(result["thread"], live=False)])[0]
             return row if row["live"] else enrich_desktop_owners([row])[0]
     except BridgeError as error:
         if error.code != "shared_daemon_unavailable":
@@ -870,12 +915,14 @@ def one_thread(thread_id):
     row = add_ttys(rows)[0]
     try:
         with DesktopIpcClient() as client:
-            client.find_owner(thread_id)
-        row.update({"live": True, "status": "active" if active_turn_id(thread_id) else "idle",
-                    "ttyOwner": True})
-        row["busy"] = row["status"] == "active"
-        if row.get("tty") is None:
-            row["tty"] = "codex:" + thread_id
+            owner, _ = client.find_owner(thread_id)
+        if owner:
+            row.update({"live": True,
+                        "status": "active" if active_turn_id(thread_id) else "idle",
+                        "ttyOwner": True})
+            row["busy"] = row["status"] == "active"
+            if row.get("tty") is None:
+                row["tty"] = "codex:" + thread_id
     except BridgeError:
         pass
     return row

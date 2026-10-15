@@ -434,13 +434,14 @@ final class TerminalBinding {
     }
 
     private func codexTarget(_ chat: CodexBridge.Conversation, tty: String? = nil, frame: CGRect? = nil) -> Target {
+        let terminalTTY = tty ?? chat.terminalTTY
         let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").first
-        return Target(handle: .codex(threadID: chat.id, tty: tty),
+        return Target(handle: terminalTTY.map { .codex(threadID: chat.id, tty: $0) } ?? chat.handle,
                       label: chat.folder.isEmpty ? "Codex" : chat.folder,
-                      address: chat.key, appName: tty == nil ? "Codex" : "Terminal",
-                      bundleID: tty == nil ? "com.openai.codex" : "com.apple.Terminal",
+                      address: chat.key, appName: terminalTTY == nil ? "Codex" : "Terminal",
+                      bundleID: terminalTTY == nil ? "com.openai.codex" : "com.apple.Terminal",
                       folder: chat.cwd.isEmpty ? nil : Self.label(forDirectory: chat.cwd), title: chat.title,
-                      sourceFrame: frame ?? app.flatMap { Self.focusedWindow(pid: $0.processIdentifier).frame }, boundAt: Date())
+                      sourceFrame: frame ?? (terminalTTY == nil ? app.flatMap { Self.focusedWindow(pid: $0.processIdentifier).frame } : nil), boundAt: Date())
     }
 
     /// `ttys014` → `/dev/ttys014`; anything already a path is left alone.
@@ -1319,7 +1320,11 @@ final class TerminalBinding {
         var windowAt: CGPoint?
         switch target.handle {
         case .codex(let id, let tty):
-            if let tty, let tab = terminalWindowFrame(tty: tty) {
+            if let tty {
+                // A retained binding can outlive its CLI. Never raise a tab
+                // that merely inherited the same TTY number afterward.
+                guard CodexBridge.resolve(tty: tty)?.id == id,
+                      let tab = terminalWindowFrame(tty: tty) else { return false }
                 let proxy = Target(handle: .terminalApp(tty: tty), label: target.label, address: target.address, appName: "Terminal", bundleID: "com.apple.Terminal", folder: target.folder, title: target.title, sourceFrame: tab, boundAt: target.boundAt)
                 return bringToFront(proxy)
             }

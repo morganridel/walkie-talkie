@@ -229,6 +229,52 @@ class CodexBridgeTests(unittest.TestCase):
 
         threading.Thread(target=serve, daemon=True).start()
 
+    def test_control_socket_accepts_owned_symlink_to_private_socket(self):
+        source_directory = self.root / "control"
+        target_directory = self.root / "daemon"
+        source_directory.mkdir(mode=0o700)
+        target_directory.mkdir(mode=0o700)
+        target = target_directory / "server.sock"
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            server.bind(str(target))
+            link = source_directory / "control.sock"
+            link.symlink_to(target)
+            with mock.patch.dict(os.environ, {"CODEX_APP_SERVER_SOCKET": str(link)}):
+                self.assertEqual(codex_bridge.control_socket(), target.resolve())
+        finally:
+            server.close()
+
+    def test_control_socket_rejects_symlink_into_unsafe_directory(self):
+        source_directory = self.root / "control"
+        target_directory = self.root / "daemon"
+        source_directory.mkdir(mode=0o700)
+        target_directory.mkdir(mode=0o700)
+        target = target_directory / "server.sock"
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            server.bind(str(target))
+            target_directory.chmod(0o777)
+            link = source_directory / "control.sock"
+            link.symlink_to(target)
+            with mock.patch.dict(os.environ, {"CODEX_APP_SERVER_SOCKET": str(link)}):
+                self.assertIsNone(codex_bridge.control_socket())
+        finally:
+            target_directory.chmod(0o700)
+            server.close()
+
+    def test_control_socket_rejects_symlink_to_regular_file(self):
+        source_directory = self.root / "control"
+        target_directory = self.root / "daemon"
+        source_directory.mkdir(mode=0o700)
+        target_directory.mkdir(mode=0o700)
+        target = target_directory / "not-a-socket"
+        target.write_text("not a socket")
+        link = source_directory / "control.sock"
+        link.symlink_to(target)
+        with mock.patch.dict(os.environ, {"CODEX_APP_SERVER_SOCKET": str(link)}):
+            self.assertIsNone(codex_bridge.control_socket())
+
     def make_desktop_ipc(self):
         directory = self.root / "ipc"
         directory.mkdir(mode=0o700)
@@ -352,15 +398,45 @@ class CodexBridgeTests(unittest.TestCase):
     def rpc_methods(self):
         return [json.loads(line)["method"] for line in self.log.read_text().splitlines()]
 
+    @staticmethod
+    def rpc_client_for_thread(status="idle"):
+        class FakeRpcClient:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def request(self, method, params):
+                if method != "thread/read":
+                    raise AssertionError(method)
+                return {"thread": {
+                    "id": params["threadId"], "name": "CLI chat",
+                    "cwd": "/tmp/project", "status": {"type": status},
+                    "source": "cli", "createdAt": 10, "updatedAt": 20,
+                    "model": "fake", "projectId": "p1",
+                }}
+
+        return FakeRpcClient
+
     def test_list_falls_back_to_read_only_database(self):
         result = self.json_output(self.run_bridge("list", "--limit", "5"))
         self.assertFalse(result["live"])
         self.assertEqual(result["threads"][0]["title"], "Named chat")
         self.assertIsNone(result["threads"][0]["busy"])
 
+    def test_unknown_server_status_never_implies_live_ownership(self):
+        row = codex_bridge.thread_row({
+            "id": "11111111-1111-4111-8111-111111111111",
+            "status": {"type": "unknown"}, "source": "cli",
+        }, live=True)
+        self.assertFalse(row["live"])
+        self.assertIsNone(row["busy"])
+
     def test_list_live_only_uses_verified_desktop_owner(self):
         self.make_desktop_ipc()
         result = self.json_output(self.run_bridge("list", "--limit", "5", "--live-only"))
+        self.assertTrue(result["live"])
         self.assertEqual(len(result["threads"]), 1)
         self.assertTrue(result["threads"][0]["live"])
         self.assertTrue(result["threads"][0]["ttyOwner"])
@@ -370,9 +446,59 @@ class CodexBridgeTests(unittest.TestCase):
     def test_list_uses_shared_proxy_when_available(self):
         self.make_socket()
         result = self.json_output(self.run_bridge("list", "--limit", "5"))
-        self.assertTrue(result["live"])
+        self.assertFalse(result["live"])
         self.assertEqual(result["threads"][0]["title"], "Live chat")
+        self.assertFalse(result["threads"][0]["live"])
         self.assertIn("thread/list", self.rpc_methods())
+
+    def test_one_thread_shared_read_keeps_verified_cli_tty(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        record = {"tty": "/dev/ttys007", "pid": 42,
+                  "sourceResolution": "sidecar"}
+        with mock.patch.object(codex_bridge, "RpcClient", self.rpc_client_for_thread()), \
+             mock.patch.object(codex_bridge, "sidecar_tty_map",
+                               return_value={thread: record}), \
+             mock.patch.object(codex_bridge, "codex_home", return_value=self.home):
+            row = codex_bridge.one_thread(thread)
+        self.assertTrue(row["live"])
+        self.assertTrue(row["ttyOwner"])
+        self.assertEqual(row["tty"], "/dev/ttys007")
+        self.assertEqual(row["source"], "cli")
+        self.assertEqual(row["sourceResolution"], "sidecar")
+        self.assertEqual(row["status"], "idle")
+        self.assertFalse(row["busy"])
+
+    def test_one_thread_unproven_cli_mapping_is_saved_not_live(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        with mock.patch.object(codex_bridge, "RpcClient", self.rpc_client_for_thread()), \
+             mock.patch.object(codex_bridge, "sidecar_tty_map", return_value={}), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners",
+                               side_effect=lambda rows: rows):
+            row = codex_bridge.one_thread(thread)
+        self.assertFalse(row["live"])
+        self.assertFalse(row["ttyOwner"])
+        self.assertIsNone(row["tty"])
+        self.assertIsNone(row["busy"])
+
+    def test_resolve_tty_returns_consistent_verified_cli_owner(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        db = sqlite3.connect(self.home / "thread_history_1.sqlite")
+        db.execute("UPDATE thread_turns SET status = 'inProgress'")
+        db.commit()
+        db.close()
+        record = {"tty": "/dev/ttys007", "pid": 42,
+                  "sourceResolution": "sidecar"}
+        with mock.patch.object(codex_bridge, "sidecar_tty_map",
+                               return_value={thread: record}), \
+             mock.patch.object(codex_bridge, "codex_home", return_value=self.home):
+            row = codex_bridge.resolve_tty("/dev/ttys007")
+        self.assertEqual(row["source"], "cli")
+        self.assertEqual(row["sourceResolution"], "sidecar")
+        self.assertEqual(row["pid"], 42)
+        self.assertTrue(row["live"])
+        self.assertTrue(row["ttyOwner"])
+        self.assertEqual(row["status"], "active")
+        self.assertTrue(row["busy"])
 
     def test_active_send_steers_exact_turn(self):
         self.make_socket()
@@ -504,6 +630,16 @@ class CodexBridgeTests(unittest.TestCase):
                  "command": "/usr/bin/python3 unrelated.py",
              }]):
             self.assertEqual(codex_bridge.sidecar_tty_map(), {})
+
+    def test_native_process_resolution_rejects_ambiguous_owners(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        command = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex resume " + thread
+        rows = [
+            {"pid": 41, "ppid": 1, "tty": "ttys007", "command": command},
+            {"pid": 42, "ppid": 1, "tty": "ttys007", "command": command},
+        ]
+        with mock.patch.object(codex_bridge, "process_rows", return_value=rows):
+            self.assertIsNone(codex_bridge.process_thread_for_tty("/dev/ttys007"))
 
     def test_quick_worker_accepts_request_before_ready_and_streams_cumulative_text(self):
         request = {"id": "q1", "text": "hello", "model": "fake-model", "effort": "low"}

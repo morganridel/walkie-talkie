@@ -24,6 +24,25 @@ final class CodexBindingTests: XCTestCase {
         XCTAssertEqual(chat?.busy, true)
     }
 
+    func testPickerCLIIdentityKeepsOnlyTheVerifiedLiveTerminal() {
+        let row: [String: Any] = ["id": "chat-a", "live": true, "ttyOwner": true, "tty": "/dev/ttys009"]
+        let chat = CodexBridge.Conversation(row)
+        XCTAssertEqual(chat?.handle, .codex(threadID: "chat-a", tty: "/dev/ttys009"))
+        XCTAssertEqual(chat?.locationLabel, "CLI · ttys009")
+        var unverified = row
+        unverified["ttyOwner"] = false
+        XCTAssertNil(CodexBridge.Conversation(unverified)?.terminalTTY)
+        var saved = row
+        saved["live"] = false
+        XCTAssertNil(CodexBridge.Conversation(saved)?.terminalTTY)
+        XCTAssertTrue(CodexBridge.Conversation(saved)?.locationLabel.hasPrefix("Saved") == true)
+        for invalid in ["codex:chat-a", "ttys009", "/dev/ttys009;kill", "/tmp/ttys009"] {
+            var malformed = row
+            malformed["tty"] = invalid
+            XCTAssertNil(CodexBridge.Conversation(malformed)?.terminalTTY)
+        }
+    }
+
     func testAttachmentParserDoesNotReadAnUnrelatedDirectory() {
         XCTAssertEqual(CodexBridge.attachmentPaths(in: "[📁=/etc]"), [])
         XCTAssertEqual(CodexBridge.attachmentPaths(in: "plain dictation"), [])

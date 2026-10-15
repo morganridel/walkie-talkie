@@ -11,7 +11,7 @@ them at a real work chat without checking the selected target first.
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and all 267 Swift tests pass. Launch an already
+   packaging and all 268 Swift tests pass. Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -38,7 +38,7 @@ them at a real work chat without checking the selected target first.
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all 35 Python tests and all 267 Swift tests pass. The release
+Current evidence: all 43 Python tests and all 268 Swift tests pass. The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Accessibility was not granted, and automated native
@@ -55,8 +55,10 @@ internal and version-coupled; ownership discovery alone does not verify delivery
 
 - Open the menu and choose **Bind Codex chat…**. Verify chat titles and project
   paths load, search matches both title and project, the project filter narrows
-  the list, Refresh reloads it, and selecting/double-clicking a row binds the
-  intended chat. Confirm the selected target with `GET /target`.
+  the list, Refresh reloads it, and selecting/double-clicking a live row binds the
+  intended chat. Confirm saved rows are labelled and cannot be bound until
+  opened in Codex. Select a live CLI row and confirm its Terminal identity is
+  retained when using the reply bubble’s bring-forward action. Confirm the selected target with `GET /target`.
 - Switch among projects and bind a second disposable chat. Confirm that the
   picker does not confuse a chat with another open chat or rely on frontmost
   window focus. Use **Disconnect** and confirm `/target` reports no target.

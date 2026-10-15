@@ -9,8 +9,16 @@ enum CodexBridge {
         let busy: Bool
         let source: String
         let live: Bool
+        /// Only the helper's process-verified native Terminal mapping is usable.
+        let terminalTTY: String?
         var key: String { "codex:" + id }
         var folder: String { (cwd as NSString).lastPathComponent }
+        var handle: TerminalBinding.Handle { .codex(threadID: id, tty: terminalTTY) }
+        var locationLabel: String {
+            guard live else { return "Saved · open in Codex or resume through Rebind to…" }
+            if let terminalTTY { return "CLI · " + (terminalTTY as NSString).lastPathComponent }
+            return "Codex · live"
+        }
         init?(_ row: [String: Any]) {
             guard let id = row["id"] as? String, !id.isEmpty else { return nil }
             self.id = id
@@ -19,6 +27,10 @@ enum CodexBridge {
             busy = row["busy"] as? Bool ?? false
             source = row["source"] as? String ?? ""
             live = row["live"] as? Bool ?? false
+            if live, row["ttyOwner"] as? Bool == true, let tty = row["tty"] as? String,
+               tty.range(of: #"^/dev/ttys\d+$"#, options: .regularExpression) != nil {
+                terminalTTY = tty
+            } else { terminalTTY = nil }
         }
     }
 
@@ -148,6 +160,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
     private let search = NSSearchField()
     private let projects = NSPopUpButton()
     private let table = NSTableView()
+    private let bindButton = NSButton(title: "Bind selected chat", target: nil, action: nil)
     private let message = NSTextField(labelWithString: "Loading Codex chats…")
     private var all: [CodexBridge.Conversation] = []
     private var visible: [CodexBridge.Conversation] = []
@@ -170,15 +183,16 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         table.addTableColumn(column); table.headerView = nil; table.rowHeight = 48
         table.delegate = self; table.dataSource = self; table.target = self; table.doubleAction = #selector(bindSelected)
         scroll.documentView = table
-        let button = NSButton(title: "Bind selected chat", target: self, action: #selector(bindSelected)); button.keyEquivalent = "\r"
+        bindButton.target = self; bindButton.action = #selector(bindSelected); bindButton.keyEquivalent = "\r"
+        bindButton.isEnabled = false
         let refresh = NSButton(title: "Refresh", target: self, action: #selector(reload))
-        for v in [search, projects, scroll, message, button, refresh] { v.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(v) }
+        for v in [search, projects, scroll, message, bindButton, refresh] { v.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(v) }
         NSLayoutConstraint.activate([
             search.topAnchor.constraint(equalTo: view.topAnchor, constant: 16), search.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16), search.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             projects.topAnchor.constraint(equalTo: search.bottomAnchor, constant: 10), projects.leadingAnchor.constraint(equalTo: search.leadingAnchor), projects.trailingAnchor.constraint(equalTo: search.trailingAnchor),
             scroll.topAnchor.constraint(equalTo: projects.bottomAnchor, constant: 10), scroll.leadingAnchor.constraint(equalTo: search.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: search.trailingAnchor), scroll.bottomAnchor.constraint(equalTo: message.topAnchor, constant: -10),
-            message.leadingAnchor.constraint(equalTo: search.leadingAnchor), message.bottomAnchor.constraint(equalTo: button.topAnchor, constant: -12),
-            button.trailingAnchor.constraint(equalTo: search.trailingAnchor), button.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -14), refresh.leadingAnchor.constraint(equalTo: search.leadingAnchor), refresh.centerYAnchor.constraint(equalTo: button.centerYAnchor)
+            message.leadingAnchor.constraint(equalTo: search.leadingAnchor), message.bottomAnchor.constraint(equalTo: bindButton.topAnchor, constant: -12),
+            bindButton.trailingAnchor.constraint(equalTo: search.trailingAnchor), bindButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -14), refresh.leadingAnchor.constraint(equalTo: search.leadingAnchor), refresh.centerYAnchor.constraint(equalTo: bindButton.centerYAnchor)
         ])
         panel = p; p.center(); p.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         reload()
@@ -205,20 +219,29 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         let query = search.stringValue.lowercased(), project = projects.indexOfSelectedItem > 0 ? projects.titleOfSelectedItem : nil
         visible = all.filter { (project == nil || $0.cwd == project) && (query.isEmpty || ($0.title + " " + $0.cwd).lowercased().contains(query)) }
         table.reloadData()
-        if !visible.isEmpty { table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false) }
-        message.stringValue = "\(visible.count) chats · Select the conversation that should receive your voice"
+        table.deselectAll(nil)
+        if let firstLive = visible.firstIndex(where: \.live) { table.selectRowIndexes(IndexSet(integer: firstLive), byExtendingSelection: false) }
+        bindButton.isEnabled = visible.indices.contains(table.selectedRow) && visible[table.selectedRow].live
+        message.stringValue = "\(visible.filter(\.live).count) live · \(visible.count) total · Saved chats must be opened before binding"
+    }
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        bindButton.isEnabled = visible.indices.contains(table.selectedRow) && visible[table.selectedRow].live
     }
     func numberOfRows(in tableView: NSTableView) -> Int { visible.count }
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard visible.indices.contains(row) else { return nil }
         let chat = visible[row]
-        let label = NSTextField(wrappingLabelWithString: "\(chat.busy ? "⏳ " : "")\(chat.title)\n\(chat.cwd)")
+        let label = NSTextField(wrappingLabelWithString: "\(chat.busy ? "⏳ " : "")\(chat.title) · \(chat.locationLabel)\n\(chat.cwd)")
         label.font = .systemFont(ofSize: 13)
         return label
     }
     @objc private func bindSelected() {
         guard visible.indices.contains(table.selectedRow) else { return }
         let chat = visible[table.selectedRow]
+        guard chat.live else {
+            message.stringValue = "Open this saved chat in Codex and Refresh, or resume it through Rebind to…"
+            return
+        }
         panel?.orderOut(nil); panel = nil
         onPick?(chat)
     }
