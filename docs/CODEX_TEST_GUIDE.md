@@ -302,6 +302,10 @@ metadata independently matched `local-whisper` and the exact selected chat.
   empty synthetic WAV, and test real parsing, bounded retries and cancellation.
   They use no microphone or provider account and send no audio. They do not
   establish successful live cloud transcription or the app-level fallback race.
+  A real missing-key fallback also passed: the user selected ElevenLabs with
+  no API key, dictated, reviewed and sent; the exact disposable desktop chat
+  received one locally recovered prompt and replied `fallback ok`. App metadata
+  confirms `local-fallback`. Restore Engine → Local after this check.
 - Select ElevenLabs (or the other cloud row available in Engine), dictate a
   short sample, then exercise **Transcribe Locally Now** (⌘⌃X) and the automatic
   local-fallback setting. Verify which transcript wins if cloud and local
@@ -530,3 +534,10 @@ build orders project folders by their most recent chat using Codex's recency
 order; search preserves that order. Both existing macOS permissions were
 refreshed by the agent and verify; the signature and both local workers verify. Update a disposable chat and reopen the switcher to check its folder
 moves appropriately after refresh.
+
+
+The **16:56** verification build is installed. Both existing macOS grants were
+refreshed by the agent and verify, as do the signature, English setting and
+both local workers. The shortcut canary responds (0.48 ms) and the disposable
+desktop test is bound. Current source checks: 315 Swift passes plus two opt-in
+skips (317 executed); 77 Python passes.
