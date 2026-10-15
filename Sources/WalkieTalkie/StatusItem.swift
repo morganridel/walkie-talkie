@@ -1459,6 +1459,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     }
 
     private func applyGestureColumn() {
+        publishAboutGestures()
         let font = NSFont.menuFont(ofSize: 0)
         let style = NSMutableParagraphStyle()
         style.tabStops = [NSTextTab(textAlignment: .right, location: gestureTab)]
@@ -2365,12 +2366,16 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// each chord exists — so About renders what the menu is showing at the moment
     /// it is asked, including which of the two vocabularies is ticked. Published
     /// here and not at build time because the tick can change between two openings.
-    @objc private func versionClicked() {
+    private func publishAboutGestures() {
         AboutWindow.gestures = gestureRows.map {
             AboutWindow.Gesture(label: $0.label, logi: $0.logi, wheel: $0.wheel,
                                 logiGlyph: $0.logiGlyph.rendered, wheelGlyph: $0.wheelGlyph.rendered)
         }
         AboutWindow.logiGesturesOn = logiGesturesOn
+    }
+
+    @objc private func versionClicked() {
+        publishAboutGestures()
         AboutWindow.show()
     }
 

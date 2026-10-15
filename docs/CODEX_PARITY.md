@@ -7,10 +7,10 @@ test guide](CODEX_TEST_GUIDE.md).
 
 | Area | Implementation in this fork | Verification evidence |
 |---|---|---|
-| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 270 passed. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
+| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 279 executed, 2 opt-in integration checks skipped, 0 failures; 277 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
 | Codex CLI discovery | `CodexBridge` resolves the helper and bundled native CLI executable; `CODEX_BIN` can override the binary. | **Verified.** Native CLI connected in PTY E2E; installed helper doctor resolves the native binary and version. |
 | Chat picker | `Bind Codex chat…` lists chat metadata; picker supports title/project search, project filter, refresh, and explicit live-chat binding. Saved rows are labelled and cannot bind; verified CLI rows retain their Terminal TTY. | **Partial.** Regression tests verify CLI handle/TTY preservation and reject unproven/saved mappings. Installed-app API binding selected the exact disposable desktop chat in 0.45 s after removing window/branch lookups. Codex target labels use the recorded project folder. User opened the disposable chat, selected it through Bind Codex chat, and completed the spoken test; the app reported that exact target. Search/filter/refresh, project switching, and other pointer actions remain manual. |
-| CLI chat sending | Codex target is represented in `TerminalBinding`; delivery calls the bridge with text and recognized screenshot image attachments. Busy sends can steer the exact active turn. | **Verified in native CLI PTY E2E.** First prompt appeared exactly once; follow-up direct send worked; a synthetic red image was interpreted as red; a busy follow-up steered the same turn ID and produced the expected final marker. Test chat was archived and TUI exited 0. This is CLI protocol evidence, not packaged-app UI evidence. |
+| CLI chat sending | Codex target is represented in `TerminalBinding`; bound and verified caret delivery call the bridge with text and actual screenshot/crop/film-sheet image inputs. Busy sends can steer the exact active turn. | **Verified in native CLI PTY E2E.** Initial prompt exactly once; follow-up send; synthetic red image read as red; busy follow-up steered the same turn. A separate production caret dispatch resolved the exact foreground CLI ID, displayed `[Image #1]`, and answered `CARET_RPC_RED`. Exited TUIs/shells fail caret ownership checks; attempted RPC failures never fall back to paste or retry. Physical Terminal/VS Code caret interaction remains manual. |
 | Codex desktop delivery | Same-user native desktop IPC adapter preserves protocol version and verifies owner discovery for desktop threads. | **Verified in a disposable desktop chat.** Text delivered with the expected reply, a synthetic red image was interpreted as red, and a busy update steered the same active turn and reached the expected marker. Installed-app bind/hold/edit/send also reached that chat; cancel caused no delivery or new turn. Tested with Desktop 26.1007.30912 and native CLI 0.162.0-alpha.17.2. IPC remains internal and version-coupled. Desktop completion uses the receiving model's `set_thread_archived` tool; exact-window closing is unsupported. Completion cue archived only the disposable chat; it was subsequently restored. Archiving interrupts the active turn, so a result must be provided before the archive action. |
 | New/resumed sessions | `walkie-codex` starts the shared daemon idempotently, persists the initial prompt through RPC before attaching the CLI TUI, creates/resumes the exact conversation, and writes a tty sidecar. `SpawnTerminal` uses this launcher. | **Verified in native CLI PTY E2E.** Initial prompt delivered once. New launch without an initial prompt is deliberately rejected; `--resume` is supported. Packaged-app spawn UI still needs verification. |
 | Search and history | `Rebind to…` searches Codex thread metadata and message history through read-only queries; live hits can bind and closed hits can resume. Prompt History/Full Log remain available. | **Partial.** Installed helper found both user and Codex marker hits in the disposable chat with correct project/title and latest Codex snippet. History contained the sent marker and excluded the cancelled one. Equal-timestamp matches use rollout order. Rebind UI, tty association, and closed-chat resume still need manual checks. |
@@ -18,12 +18,12 @@ test guide](CODEX_TEST_GUIDE.md).
 | Local transcription | Helper discovery can reuse Quiet Journal's runtime and on-disk model cache; default model is multilingual with no language allowlist. The optional local language menu supplies the same per-request recognition hint to captions and final decode; Automatic remains the default. A separate worker owns the loaded model and its memory. | **Installed-app decode and spoken delivery passed.** User started/stopped with ⌃⌘D, dictated the requested phrase, and the exact selected desktop chat replied `banana`; delivery metadata reports `local-whisper`. Cached model warm-up 5.12 s. Public 11 s Whisper JFK sample: 2.56 s from the app cache without word timings; 5.31 s with 22 timed words. No chat delivery occurred. About 1.54 GB active model memory plus a 512 MB decode cache was observed; the in-memory model is not shared with Quiet Journal. |
 | Cloud transcription/fallback | ElevenLabs cloud rows and local-now/automatic-local options remain. | **Pending.** Test cloud response, injected failure, local fallback race, and provider/mic switching. |
 | Wispr Flow | Wispr implementation and menu integration remain controlled by `WT_WISPR_ENGINE`; current source defaults its row on. The raw chord path is separate from a successful engine transcript/delivery. | **Pending.** Validate menu, transcript capture, and delivery independently; do not infer engine reliability from raw chords. |
-| Captions and microphone | Local caption-band controls and microphone chooser are implemented. Test routes can supply synthetic caption text and select devices. | **Partial.** Synthetic caption route opened the band, laid out six words, and closed it without audio capture. Engine reports the Mac microphone selected automatically and both MLX workers ready. Real Mac microphone capture/transcription/send passed in the banana test. Actual live-caption rendering and other devices still need manual checks. |
-| Prompt/reply UI | Held prompt, edit/countdown/autosend/cancel/recover, `walkie-reply` text/image callbacks, reply bubble, images, links, and reply-back actions are present in source. | **Partial.** Installed-app API hooks exercised actual bind/hold/edit/send to a disposable desktop chat; cancel left delivery unchanged and created no chat turn. This used a synthetic transcript. Authenticated text/image callbacks passed; invalid token was rejected. Cached image survived source deletion. Source links survived resize and queue restoration; minimum requested size is 240×90. Plain text callback took 0.15 s. Codex callbacks avoid unrelated Terminal queries. Rendered controls, image opening, pin, and reply-back remain manual. |
+| Captions and microphone | Local caption-band controls and microphone chooser are implemented; explicit language applies to captions and final decode. | **Partial.** Synthetic band opened/closed with six words; real Mac microphone voice/send and English captions/transcript were confirmed by the user. Both workers ready. Other devices and unplug/reconnect remain manual. |
+| Prompt/reply UI | Held prompt, edit/countdown/autosend/cancel/recover, authenticated text/image callbacks, links, and reply-back actions are present. | **Partial.** Installed hold/edit/send/cancel passed; cancel created no turn. Authentication, persistent image copies, resize/queue restoration and source handlers passed. Real spoken “What is two plus two?” automatically invoked `walkie-reply`, returned `shown`, and displayed the bubble confirmed by the user. Bubbles intentionally stay until ×; later replies queue. Pin, image opening and reply-back remain manual. |
 | Kamikaze / finish | `kamikaze` adds a completion cue. CLI `walkie-finish` waits for the active exact turn, verifies sidecar/PID/TTY and root terminal owner identity, then signals only its Codex TUI and closes one tab. Desktop cue asks the receiving model to archive itself through `set_thread_archived`. | **Partial.** 12 mocked helper tests and a safe `--dry-run` pass; no real Terminal close has been tested. Desktop completion cue archived only the disposable chat, then the test restored it. Archiving interrupts the active turn; no final answer after archive was produced. |
-| Screen/context | Screenshot, region crop/move/cancel, accessibility selection, Chrome DOM picker/extension, screen film/contact sheet, and Chrome music bridge have implementation/routes. | **Partial.** Synthetic image delivery passed in CLI PTY smoke. Chrome extension, DOM selection, music, physical event taps, film recording, and crop/move behavior still need real-device checks. |
-| Gestures and caret | Keyboard shutter ⌃⌘S, menu-described hotkeys, Logi/Wheel handlers, plain dictation, prompt-at-caret, and clipboard/paste-last paths remain implemented. | **Partial.** Fresh grant gave trusted=true/eventTap=true and a live canary. User pressed the real ⌃⌘D start/stop shortcut, spoke a harmless phrase, and the selected desktop chat replied `banana`; local-whisper delivery metadata matched. Logi/wheel gestures, caret targeting, and clipboard restoration remain manual. |
-| Outbox/restart/login/settings | Outbox records delivered events; guarded restart script and menu preferences remain. | **Partial.** Installed app reports login registration and survived a graceful idle replacement/relaunch. Bound restoration, preference persistence, permission grants, and delivered logging need manual checks. |
+| Screen/context | Keyboard screenshot, wheel crop/move/cancel, accessibility selection, Chromium DOM picker, film/contact sheet, and media pause/resume are implemented. | **Partial, with real keyboard/browser/film delivery verified.** User confirmed English + ⌃⌘S; two real image inputs reached the exact desktop chat. In Microsoft Edge with the unpacked extension enabled, real ⌘⇧ hold/click outlined and picked `#pick-target`; app logged receipt and the synthetic prompt was cancelled without delivery. A fixture audio element paused on prompt open and resumed on cancel. User film delivery produced a genuine 14-frame contact sheet plus screenshot; Codex described the fixture. A second 42-frame film plus selected text correctly described the user selecting synthetic fixture sentences. Wheel crop/move, DOM drag, multi-tab media and iframe cases remain manual. |
+| Gestures and caret | ⌃⌘D and ⌃⌘S work in either gesture mode. Logi/Wheel handlers, plain dictation, caret prompts, and clipboard/paste-last remain. Verified Codex caret prompts use stable-ID RPC; generic fields receive paste without Return. | **Partial.** Real keyboard voice/shutter/film and browser picker passed. Native PTY production caret dispatch passed with a real image; 7 deterministic caret tests pass and 2 opt-in tests passed separately. Physical Logi/Wheel gestures, native Terminal/VS Code focus interaction, and clipboard restoration remain manual. No Options+ is required for keyboard controls. |
+| Outbox/restart/login/settings | Outbox records delivered events; guarded restart and menu preferences remain. | **Partial.** Graceful idle replacement/relaunch passed; English persisted, workers started, current grants and event-tap canary verified. Chat binding is cleared on relaunch and must be selected again; exact disposable binding was restored through the owner-checked route. Login registration reports enabled; actual login, other preferences and restart under varied conditions remain manual. |
 | Voice corpus and report helper | Transcribed recordings retain WAV plus transcript whether or not delivered. Cancelled takes are staged for five minutes and can enter the corpus if recovered and transcribed; outbox records delivered prompts only. | **Retention documented; report helper not installed or scheduled.** Default preview and explicit recipient/inbox requirements pass two tests. No report email was sent. No private Quiet Journal audio was used. |
 
 ## Evidence log
@@ -35,7 +35,7 @@ for future runs. Redact private chat content, audio, tokens, paths, and credenti
 
 | Date/build | Area and method | Result/evidence |
 |---|---|---|
-| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 270 passed. |
+| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 279 executed, 2 skipped, 0 failures (277 passed). |
 | 2026-10-15 release | Signed bundle build, install, launch, local API, and signature verification after model startup. | Passed. Both transcription workers ready using Quiet Journal runtime/cache; Quiet Journal health remains good. Microphone and Screen Recording are enabled. After removing/re-adding the current app in Accessibility and reopening, startup reports trusted=true/eventTap=true; the harmless canary is alive (about 0.14 ms). The earlier stale grant is resolved. Real spoken start/stop/send subsequently passed; other physical gestures remain separate checks. |
 | 2026-10-15 CLI identity follow-up | Real native CLI and isolated cold-start tests. | Native daemon symlink accepted with ownership checks; shared read and TTY resolve retain the same verified CLI identity; initial prompt completed exactly once; exited CLI disappears from live rows; synthetic test archived. Isolated cold start installed daemon, initialized RPC and attached TUI successfully, then stopped/cleaned only its own daemon. |
 | Current Python tests | Full Python test suite. | 67 tests pass. |
@@ -53,31 +53,40 @@ for future runs. Redact private chat content, audio, tokens, paths, and credenti
 For detailed procedures, including loopback test hooks and safety boundaries,
 see [CODEX_TEST_GUIDE.md](CODEX_TEST_GUIDE.md).
 
-2026-10-15 follow-up: the public-page recording kept its target, but screen capture produced no file; the user cancelled its held transcript, so no send was expected. The user confirmed unexpected French was in ASR/captions. Added a keyboard shutter and optional local language selection; real English speech and keyboard screenshot delivery subsequently passed on the disposable chat. See [GESTURES.md](GESTURES.md) for the exact current mappings, including the corrected front-click stop.
+## Latest real-device evidence — 15 October 2026
 
-Keyboard/language build installed 2026-10-15 11:28: 270 Swift / 67 Python tests
-pass; user-refreshed grants verify screen capture allowed and event tap alive
-(canary 0.30 ms). Packaged-helper public-audio checks passed explicit English
-for both final WAV and caption PCM, Auto, and recovery after an invalid hint.
-The isolated smoke initially lacked the app's cache environment and timed out
-at warm-up; with the real offline cache, warm-up took 4.81 s and final/caption
-decodes took 1.50/1.32 s. This does not establish microphone recognition or
-physical ⌃⌘S capture by itself; the separate user test below provides that evidence.
+- After the 11:44 callback-guidance build, the user refreshed Accessibility and
+  Screen Recording. Both verified true; the event-tap canary was alive (0.21 ms).
+- English speech and ⌃⌘S supplied opening and explicit screenshots as genuine
+  desktop image inputs. Codex identified the heading; the user confirmed both.
+- Automatic voice → Codex → `walkie-reply` passed: the 2+2 turn ran the helper,
+  exited 0 with `shown` in 88 ms, and the user confirmed the bubble. The initial
+  sandbox denial was resolved by localhost-permission guidance. Unknown delivery
+  outcomes still stop without automatic retry.
+- Microsoft Edge: the user enabled the unpacked extension. A local synthetic
+  audio fixture paused on prompt start and resumed on cancellation. The user
+  held ⌘⇧ and clicked the outlined blue box; the app received `#pick-target`.
+  That synthetic DOM take was cancelled, so DOM delivery itself is not claimed.
+- Real film delivery passed twice: a 2.7-second/14-frame sheet and screenshot
+  reached the test chat; then an 8.3-second/42-frame sheet plus captured synthetic
+  text selections. Codex correctly described the page and selections.
+- One earlier automated film captured the wrong foreground window. It was
+  cancelled without sending, and only those test images were deleted. It is not
+  counted as fixture evidence.
+- Final source caret check: the production target resolver and default bridge
+  dispatch passed in a disposable native PTY, including a generated red PNG.
+  The TUI displayed `[Image #1]` and answered `CARET_RPC_RED`. Synthetic threads
+  were archived and isolated test artifacts removed. Deterministic tests also
+  reject stale/saved/wrong-ID/background/shell targets and attempted-send fallback.
+- Generic vocabulary samples and the focus-frame queue no longer carry the
+  upstream author's identity. Upstream attribution and historical fixtures remain.
 
-2026-10-15 real keyboard/image/language check: the user confirmed both English
-recognition and screenshot interpretation worked. The exact desktop turn
-`01a13ee9-e9f6-7f92-9449-ed35e9101a04` contains the English question and two
-real local image inputs (opening context and ⌃⌘S shutter). Codex identified the
-visible heading. App metadata reports English and 3.51 s final transcription
-after closing the 7.6 s recording; no private recording was opened.
+Final release built at **12:32** was staged, swapped only while idle, launched,
+and verified signed after both local workers started. English persisted. About
+now reports 12 gesture rows at 482×799, confirmed in native Accessibility text.
+Its new ad-hoc signature again requires renewed Accessibility and Screen
+Recording grants; the new process reports both unavailable. The real-device
+results above belong to the preceding 11:44 build. Binding clears on relaunch.
 
-The receiving chat invoked `walkie-reply`, but its sandbox blocked localhost
-(immediate connection failure; a harmless default-sandbox probe independently
-returned EPERM). A distinct callback with proper permission returned `shown`
-in 0.10 s, and the user confirmed the visible bubble. It intentionally stays
-until × is clicked; subsequent replies queue. The updated helper distinguishes
-EPERM/EACCES before delivery, stops without automatic retry, and explains
-requesting permission for one retry. Timeouts and uncertain response outcomes
-remain non-retriable. The question footer now explicitly requests appropriate
-localhost permission. Test this automatic callback after installing the
-reply-permission build. All 270 Swift and 67 Python tests passed.
+These results do not establish untested physical mouse controls or configured
+cloud-provider behavior. The manual guide covers those checks explicitly.

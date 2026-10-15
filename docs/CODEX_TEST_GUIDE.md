@@ -13,7 +13,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and all 270 Swift tests pass. Launch an already
+   packaging and the Swift suite passes (279 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -40,7 +40,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **67 Python tests** and **270 Swift tests** pass. The release
+Current evidence: all **67 Python tests** and **277 Swift tests** pass (279 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -72,7 +72,7 @@ also passed. Visual/pointer interaction remains a separate manual check.
 - **Screen & System Audio Recording → Walkie Talkie: on** permits screen,
   crop, and film capture. Restart the app when macOS requests it.
 - **Automation → Walkie Talkie → Terminal: on**, if macOS requests it, permits
-  launching and managing a Terminal tab. Chrome automation is needed only for
+  launching and managing a Terminal tab. Browser automation is needed only for
   the relevant browser actions. Allow individual prompts when using those
   features; these rows may not exist before the first request.
 
@@ -86,8 +86,8 @@ with the plus button, enable it, and reopen it. Use the actual installed bundle;
 do not add a build-directory executable. If it still reports untrusted, record
 that result and leave physical tests pending. Never edit the macOS TCC database.
 
-Before the keyboard/language rebuild, Microphone and Screen Recording were enabled. The fresh Accessibility entry
-resolved the stale grant: startup now reports `trusted=true eventTap=true`, and
+On the preceding keyboard/language build, the fresh Accessibility entry
+resolved its stale grant: startup reported `trusted=true eventTap=true`, and
 the harmless canary reports `alive:true`. This verifies event-tap access; the
 real spoken start/stop/send test also passed: the user bound the disposable
 chat, pressed ⌃⌘D to start and stop, and Codex replied `banana`. App delivery
@@ -269,13 +269,14 @@ metadata independently matched `local-whisper` and the exact selected chat.
   Accessibility and appears at the appropriate transcript offset. Use
   `POST /test/selection {"text":"sample selection"}` to exercise attachment
   formatting. Check that the user's clipboard value is unchanged.
-- Load the unpacked Chrome extension. During a prompt hold ⌘⇧ over an element
-  for the activation delay; verify the highlight, click-to-add text/URL/selector,
+- Load the unpacked extension in Chrome or Microsoft Edge (Developer mode →
+  Load unpacked → `chrome-extension/`). During a prompt hold ⌘⇧ over an element
+  for about half a second; verify the highlight, click-to-add text/URL/selector,
   and drag-to-describe a move. Confirm a quick ⌘⇧ click still behaves like a
   normal browser click. Try a normal link and a text selection.
-- Play audio in more than one Chrome tab. Start and stop dictation; verify only
+- Play audio in more than one browser tab. Start and stop dictation; verify only
   tabs that were playing are paused and then restored. Extension, DOM selection,
-  and music behavior each require a real Chrome pass; the loopback `/pick` or
+  and music behavior each require a real browser pass; the loopback `/pick` or
   `/chrome/reload` route alone is not evidence of browser integration.
 - Start **Record Screen** during a prompt, stop it, and verify the film marker,
   frame files, and contact-sheet image in the prompt. Try a second recording,
@@ -309,8 +310,13 @@ metadata independently matched `local-whisper` and the exact selected chat.
   selected Logi or Wheel mode as configured.
 - In a text editor, run a plain dictation and verify words are inserted at the
   caret without Return; use the other plain mode to confirm it ends with Return.
-  Compare with prompt-at-caret, which carries context and uses the hold/review
-  flow. Verify the normal caret contents survive menu interaction.
+  Compare with prompt-at-caret, which carries context: a verified Codex CLI
+  prompt is sent directly to its stable ID with actual image inputs; a generic
+  field receives paste without Return. Use only a disposable CLI for this check.
+  Close that TUI and confirm a shell is never auto-submitted. Test a verified
+  VS Code terminal separately from its editor. An attempted RPC error must show
+  an acknowledgement warning and preserve the clipboard without fallback paste
+  or retry. Verify caret contents survive menu interaction.
 - Record a clipboard sentinel, dictate and deliver, then paste. Check the
   finished prompt envelope (or clean dictation words) is now on the clipboard
   for re-pasting. Separately verify selection capture alone preserves the
@@ -409,42 +415,26 @@ verified only after checking the visible UI or destination.
   on enabling and when the microphone opens. Turn it off and start another
   harmless recording; check persistence after relaunch, then restore the setting.
 
-2026-10-15 follow-up: the public-page test started/stopped correctly in Chrome,
-kept its exact Codex target, and attempted context capture, but screencapture
-produced no file. Its 33-character held transcript was cancelled, so no Codex
-turn was expected. The user confirmed the unwanted French was in transcript/
-captions. The keyboard shutter and optional recognition-language choice address
-interaction and language guessing; a successful real screenshot and the new
-English spoken check remain necessary. No private recording was read.
+## Latest observed results
 
-The keyboard/language release was installed from a verified staged bundle
-on 2026-10-15 at 11:28. The user refreshed both grants afterward; PID 30109
-reports `screenCaptureAllowed:true`, `tapAlive:true`, and a live canary
-(about 0.30 ms). The exact user-selected test-chat binding was restored through
-the ownership-checked route. The model is ready and language defaults to Auto.
-All 270 Swift and 67 Python tests passed. The packaged helper also decoded the
-public 11-second JFK sample with explicit English for final WAV (1.50 s) and
-caption PCM (1.32 s), kept Auto functional (2.52 s), and accepted a valid request
-after rejecting an invalid language. A first standalone launch omitted the
-app's model-cache environment and timed out during warm-up; the repeat used
-the actual Quiet Journal model cache offline and warmed in 4.81 s. No journal
-service/settings/content or private audio was accessed. Real keyboard capture
-and explicit-English recognition subsequently passed in the user test below.
+Real ⌃⌘D speech, English captions/transcript, ⌃⌘S image delivery, automatic
+question reply bubble, Edge picker outline/receipt, fixture media pause/resume,
+and two film/contact-sheet deliveries passed on 15 October 2026. The first film
+contained 14 frames over 2.7 seconds; the second contained 42 frames over 8.3
+seconds and included captured synthetic text selections. Both reached the exact
+disposable chat as actual image inputs and were described correctly.
 
-2026-10-15 real keyboard/image/language check: the user confirmed both English
-recognition and screenshot interpretation worked. The exact desktop turn
-`01a13ee9-e9f6-7f92-9449-ed35e9101a04` contains the English question and two
-real local image inputs (opening context and ⌃⌘S shutter). Codex identified the
-visible heading. App metadata reports English and 3.51 s final transcription
-after closing the 7.6 s recording; no private recording was opened.
+A production Codex caret dispatch also passed in an isolated native CLI PTY with
+an actual red image. This verifies target resolution and RPC dispatch, while
+physical Terminal/VS Code focus and mouse gestures remain manual. Full Swift
+checks executed 279 cases with 2 opt-in integration skips and no failures;
+those opt-in checks passed separately in the disposable PTY. All 67 Python tests
+passed. Optional cloud/Wispr providers, other microphones, real CLI tab closing,
+wheel crops/moves, DOM dragging/iframes, and remaining pointer controls have not
+been claimed as passed.
 
-The receiving chat invoked `walkie-reply`, but its sandbox blocked localhost
-(immediate connection failure; a harmless default-sandbox probe independently
-returned EPERM). A distinct callback with proper permission returned `shown`
-in 0.10 s, and the user confirmed the visible bubble. It intentionally stays
-until × is clicked; subsequent replies queue. The updated helper distinguishes
-EPERM/EACCES before delivery, stops without automatic retry, and explains
-requesting permission for one retry. Timeouts and uncertain response outcomes
-remain non-retriable. The question footer now explicitly requests appropriate
-localhost permission. Test this automatic callback after installing the
-reply-permission build. All 270 Swift and 67 Python tests passed.
+The final 12:32 release starts both local workers and preserves English, but
+its ad-hoc signature requires renewed Accessibility and Screen Recording grants
+before physical shortcuts/capture can be used. About now publishes its 12 real
+gesture rows, confirmed through the installed panel. Select the intended chat
+again after relaunch; binding currently clears on restart.

@@ -20,7 +20,7 @@ This fork adapts the upstream project for Codex CLI and Codex chats. Upstream:
 - Codex CLI installed and signed in for Codex chat binding, quick answers, and
   other Codex-backed features.
 - The native dependencies already checked into this repository (see `Package.swift`).
-- Optional: ElevenLabs credentials for cloud transcription; Chrome and the
+- Optional: ElevenLabs credentials for cloud transcription; Chrome or Microsoft Edge and the
   unpacked extension for picking page elements.
 
 ## Build and launch
@@ -41,11 +41,11 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite passes 270 tests. The release bundle builds, installs, launches, and loads
+suite executes 279 tests with 2 opt-in integration skips and no failures (277 passed). The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
-Physical controls and the remaining UI features still need the manual checks below.
+Real keyboard voice, screenshot, film, automatic reply bubble, and Edge picker/media checks also passed. Physical mouse controls and remaining UI features need the manual checks below.
 
 Allow the requested **Accessibility**, **Microphone**, and **Screen Recording**
 permissions in macOS. Launch the `.app` through Finder or `open` so macOS keeps
@@ -106,9 +106,11 @@ quality. Set `WT_QUICK_MODEL` and `WT_QUICK_EFFORT` in the launch environment
 or `~/.walkie-talkie/elevenlabs.env` to choose another available Codex model.
 
 Optional ElevenLabs credentials can be stored in the local
-`~/.walkie-talkie/elevenlabs.env` configuration file. The Chrome extension is
-loaded from `chrome-extension/` using `chrome://extensions` → Developer mode →
-**Load unpacked**.
+`~/.walkie-talkie/elevenlabs.env` configuration file. The browser extension is
+loaded from `chrome-extension/` using `chrome://extensions` or Edge’s
+`edge://extensions` → Developer mode → **Load unpacked**. During a prompt, hold
+Command + Shift until an element is outlined (about half a second), then click
+to pick it. The extension also pauses playing browser media while dictating.
 
 ## First use
 
@@ -161,8 +163,9 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 67 passing tests and the Swift suite has 270 passing
-tests. The finish helper has 12 mocked tests and a safe dry-run check; it has not
+The current Python suite has 67 passing tests. The Swift suite has 277 passing
+tests and 2 opt-in integration skips (279 executed, no failures); those opt-in
+checks also passed separately in a disposable native CLI PTY. The finish helper has 12 mocked tests and a safe dry-run check; it has not
 closed a real Terminal tab. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for
 the current status.

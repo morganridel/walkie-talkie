@@ -2017,6 +2017,25 @@ final class TerminalBinding {
         return out
     }
 
+    /// The pty owned by the pane, rather than the outer tty owned by its tmux
+    /// client. Prompt ownership must be checked here: typing into the client's
+    /// tty reaches whichever pane is active, but `ps` on that tty only sees
+    /// tmux itself.
+    private static func tmuxPaneTTY(_ pane: String) -> String? {
+        guard let out = tmux(["display-message", "-p", "-t", pane, "#{pane_tty}"]),
+              out.hasPrefix("/dev/tty") else { return nil }
+        return out
+    }
+
+    /// The tty whose foreground process will receive input sent to `tty`.
+    /// Ordinary terminals answer themselves; an attached tmux client answers
+    /// its currently visible pane. `tmuxPane` first proves that this exact tty
+    /// is an attached client, so it cannot borrow an unrelated tmux session.
+    private static func promptProcessTTY(for tty: String) -> String {
+        guard let pane = tmuxPane(clientTTY: tty), let paneTTY = tmuxPaneTTY(pane) else { return tty }
+        return paneTTY
+    }
+
     /// tmux's own record of what the pane called itself — the same OSC title,
     /// caught one layer down.
     private static func tmuxPaneTitle(_ pane: String) -> String? {
@@ -2205,6 +2224,99 @@ final class TerminalBinding {
         }
     }
 
+    /// One process row from the tty ownership check used by caret submission.
+    /// `arguments` is the complete command line: the executable name alone is
+    /// insufficient because two Codex TUIs can own different conversation IDs.
+    struct PromptProcess: Equatable {
+        let tty: String
+        let pid: Int32
+        let status: String
+        let arguments: String
+
+        var isForeground: Bool { status.contains("+") }
+    }
+
+    /// What owns a prompt at the caret. Codex carries the stable conversation
+    /// identity needed for an RPC delivery; legacy agents keep the tty typing
+    /// path they used before Codex integration.
+    enum CaretPromptTarget: Equatable {
+        case codex(threadID: String, tty: String)
+        case legacy(tty: String)
+
+        var tty: String {
+            switch self {
+            case .codex(_, let tty), .legacy(let tty): return tty
+            }
+        }
+    }
+
+    enum CodexCaretSendResult: Equatable {
+        case notCodex
+        case delivered(threadID: String, tty: String)
+        case failed(threadID: String, tty: String, reason: String)
+    }
+
+    /// Deliver a verified Codex caret prompt by stable conversation ID. The
+    /// result is explicit so a caller can distinguish "use the legacy tty path"
+    /// from "Codex was attempted and failed"; the latter must never paste or
+    /// retry because the bridge may have accepted the message before failing.
+    static func sendCodexCaretPrompt(
+        _ text: String,
+        to target: CaretPromptTarget,
+        sender: (String, String) throws -> Void = { text, threadID in
+            try CodexBridge.send(text, to: threadID)
+        }
+    ) -> CodexCaretSendResult {
+        guard case .codex(let threadID, let tty) = target else { return .notCodex }
+        do {
+            try sender(text, threadID)
+            return .delivered(threadID: threadID, tty: tty)
+        } catch {
+            return .failed(threadID: threadID, tty: tty, reason: error.localizedDescription)
+        }
+    }
+
+    /// Parse `/bin/ps -o pid=,stat=,command=` without treating spaces in the
+    /// argument list as columns. Internal so the fail-closed ownership decision
+    /// can be regression-tested without inspecting a real terminal.
+    static func parsePromptProcesses(_ output: String, tty: String) -> [PromptProcess] {
+        let device = (tty as NSString).lastPathComponent
+        return output.components(separatedBy: "\n").compactMap { line in
+            let fields = line.split(maxSplits: 2, omittingEmptySubsequences: true,
+                                    whereSeparator: { $0 == " " || $0 == "\t" })
+            guard fields.count == 3, let pid = Int32(fields[0]) else { return nil }
+            return PromptProcess(tty: device, pid: pid, status: String(fields[1]),
+                                 arguments: String(fields[2]).trimmingCharacters(in: .whitespaces))
+        }
+    }
+
+    private static func promptProcesses(onTTY tty: String) -> [PromptProcess] {
+        let device = (tty as NSString).lastPathComponent
+        guard let out = run("/bin/ps", ["-t", device, "-o", "pid=,stat=,command="]) else { return [] }
+        return parsePromptProcesses(out, tty: device)
+    }
+
+    /// True only when the helper has just proved that this live conversation
+    /// owns this tty and that exact native `codex … resume <thread-id>` process
+    /// is in the tty's foreground process group. A saved row, stale sidecar,
+    /// background TUI, shell, or a different Codex conversation all fail.
+    static func verifiedCodexPrompt(onTTY tty: String, conversation: CodexBridge.Conversation?,
+                                    processes: [PromptProcess]) -> Bool {
+        let device = (tty as NSString).lastPathComponent
+        guard let conversation, conversation.live, let ownerTTY = conversation.terminalTTY,
+              (ownerTTY as NSString).lastPathComponent == device else { return false }
+        let wanted = conversation.id.lowercased()
+        return processes.contains { process in
+            guard process.tty == device, process.isForeground else { return false }
+            let words = process.arguments.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+            guard let executable = words.first,
+                  (executable as NSString).lastPathComponent == "codex",
+                  let resume = words.firstIndex(of: "resume"), resume + 1 < words.count
+            else { return false }
+            return words[resume + 1].lowercased() == wanted
+        }
+    }
+
     /// **What is actually running in front on this tty** — the fact the shell
     /// guard judges, and the name the delivery log prints.
     ///
@@ -2275,19 +2387,24 @@ final class TerminalBinding {
     ///    An editor cannot say whether the caret is in its terminal pane or in a
     ///    source file (see `deliver`'s `.keystroke` case), and an Enter in a
     ///    source file is an edit — except VS Code, which Accessibility can ask:
-    ///    `frontVSCodeClaudePromptTTY`.
+    ///    `frontVSCodeAgentPromptTTY`.
     /// 2. **What runs in front on that tty is not a shell** — the shell guard's
     ///    own verdict (`foregroundCommand`, `isShell`).
-    /// 3. **A process on that tty owns a fresh `~/.claude/cwd/.last-<pid>`** —
+    /// 3. **Codex owns the exact live ID and foreground resume process**, or a
+    ///    legacy Claude process owns a fresh `~/.claude/cwd/.last-<pid>` —
     ///    the status line's per-session file, newer than the process itself
     ///    (`publishedDirectory(onTTY:)`), which is how the chip already knows a
     ///    Claude Code session is sitting there. This is what keeps `ssh`, `vim`
     ///    or a tmux client — non-shells all — from being handed an Enter.
     ///
     /// Runs `osascript` and `ps` — call it off the main thread.
-    static func frontClaudePromptTTY(bundleID: String?) -> String? {
+    static func frontAgentPromptTarget(bundleID: String?) -> CaretPromptTarget? {
         guard bundleID == "com.apple.Terminal", let tab = frontTerminalTab().tab else { return nil }
-        return claudePromptOn(tty: tab.tty) ? tab.tty : nil
+        return agentPromptTarget(onTTY: tab.tty)
+    }
+
+    static func frontAgentPromptTTY(bundleID: String?) -> String? {
+        frontAgentPromptTarget(bundleID: bundleID)?.tty
     }
 
     /// **The terminal he is looking at, as `ttysNNN`** (2026-10-13): Terminal.app's
@@ -2314,9 +2431,31 @@ final class TerminalBinding {
     /// live Claude Code published there. The late kamikaze asks it again before
     /// typing the word into a tab whose session may have ended since its prompt
     /// (2026-10-08) — `submitPrompt` has no shell guard of its own.
-    static func claudePromptOn(tty: String) -> Bool {
-        guard let command = foregroundCommand(onTTY: tty), !refusesDelivery(command) else { return false }
-        return publishedDirectory(onTTY: (tty as NSString).lastPathComponent) != nil
+    static func agentPromptTarget(onTTY tty: String) -> CaretPromptTarget? {
+        let processTTY = promptProcessTTY(for: tty)
+        let processes = promptProcesses(onTTY: processTTY)
+        if let conversation = CodexBridge.resolve(tty: processTTY) {
+            return verifiedCodexPrompt(onTTY: processTTY, conversation: conversation, processes: processes)
+                ? .codex(threadID: conversation.id, tty: tty) : nil
+        }
+
+        // A Codex process without a verified live mapping is never allowed to
+        // fall through to Claude's marker heuristic, even if a stale marker
+        // happens to remain on the same tty.
+        let foreground = processes.filter(\.isForeground)
+        if foreground.contains(where: {
+            let first = $0.arguments.split(whereSeparator: { $0 == " " || $0 == "\t" }).first.map(String.init)
+            return first.map { ($0 as NSString).lastPathComponent == "codex" } ?? false
+        }) { return nil }
+
+        guard let command = foregroundCommand(onTTY: processTTY), !refusesDelivery(command),
+              publishedClaudeDirectory(onTTY: (processTTY as NSString).lastPathComponent) != nil
+        else { return nil }
+        return .legacy(tty: tty)
+    }
+
+    static func agentPromptOn(tty: String) -> Bool {
+        agentPromptTarget(onTTY: tty) != nil
     }
 
     /// **The same question, asked of a VS Code window** (2026-10-06) — the tty
@@ -2336,15 +2475,17 @@ final class TerminalBinding {
     /// there questions 2 and 3 are asked exactly as for Terminal.app.
     ///
     /// Runs `ps` and a loopback request — call it off the main thread.
-    static func frontVSCodeClaudePromptTTY(bundleID: String?, pid: pid_t?) -> String? {
+    static func frontVSCodeAgentPromptTarget(bundleID: String?, pid: pid_t?) -> CaretPromptTarget? {
         guard let bundleID, IDEBridge.kind(bundleID: bundleID) == "vscode",
               let pid, caretInVSCodeTerminal(pid: pid),
               let shell = IDEBridge.focusedTerminalShellPID(bundleID: bundleID),
-              let tty = tty(ofPID: shell),
-              let command = foregroundCommand(onTTY: tty), !refusesDelivery(command),
-              publishedDirectory(onTTY: (tty as NSString).lastPathComponent) != nil
+              let tty = tty(ofPID: shell), let target = agentPromptTarget(onTTY: tty)
         else { return nil }
-        return tty
+        return target
+    }
+
+    static func frontVSCodeAgentPromptTTY(bundleID: String?, pid: pid_t?) -> String? {
+        frontVSCodeAgentPromptTarget(bundleID: bundleID, pid: pid)?.tty
     }
 
     /// Whether VS Code's keyboard focus is a terminal's input (see above).
@@ -2565,6 +2706,13 @@ final class TerminalBinding {
     /// is when the process's own `cwd` becomes the honest answer.
     private static func publishedDirectory(onTTY device: String) -> String? {
         if let chat = CodexBridge.resolve(tty: device), !chat.cwd.isEmpty { return chat.cwd }
+        return publishedClaudeDirectory(onTTY: device)
+    }
+
+    /// Claude's process-published working directory. Kept separate from the
+    /// combined label lookup so a failed Codex ownership check cannot be turned
+    /// into permission to press Return by an unrelated or stale Claude marker.
+    private static func publishedClaudeDirectory(onTTY device: String) -> String? {
         guard let out = run("/bin/ps", ["-t", device, "-o", "pid="]) else { return nil }
         for line in out.components(separatedBy: "\n") {
             guard let pid = Int32(line.trimmingCharacters(in: .whitespaces)) else { continue }

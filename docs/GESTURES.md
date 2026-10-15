@@ -9,7 +9,7 @@ Bind the intended Codex chat once with **Bind Codex chat…**. You can then work
 | Action | Control |
 |---|---|
 | Start / stop a prompt for the bound Codex chat | **Control + Command + D** (⌃⌘D) |
-| Add a screenshot while the prompt is recording | **Control + Command + S** (⌃⌘S), in the new build |
+| Add a screenshot while the prompt is recording | **Control + Command + S** (⌃⌘S) |
 | Existing screenshot control, with Gestures: Logi selected | **Control + Option + Command + F6** while recording |
 | Send the held prompt after transcription | **Return** |
 | Cancel the held prompt | **Escape** |
@@ -17,13 +17,14 @@ Bind the intended Codex chat once with **Bind Codex chat…**. You can then work
 | Start / stop plain text dictation at the insertion caret | **F5**; stopping inserts words without Return |
 | Prompt at the insertion caret; click again to stop | **Control + Option + Command + F7** |
 | Start / stop screen film during a prompt | **Control + Option + Command + F4** |
+| Pick a browser element during a prompt (extension enabled) | Hold **Command + Shift** about half a second until outlined, then click |
 | Open a small typed-note box during a local prompt | **Control + Option + Command + F12** |
 
 On a keyboard whose F keys perform media/system actions, use **Fn** to send the actual F key. The ⌃⌥⌘F-key controls require **Gestures: Logi**, but do not require Options+ when typed on the keyboard. ⌃⌘D and the new ⌃⌘S work in either gesture mode.
 
 The screenshot captures the **display containing the pointer**, with the pointer location passed as context. It does not crop automatically around the pointer. Point at the relevant item before pressing the shortcut. Check that the screenshot count or thumbnail appears before stopping; a flash alone does not prove capture succeeded.
 
-Plain dictation inserts text at the caret and accepts no attachments. Use ⌃⌘D for a Codex prompt with screenshots. Keep the selected target visible in Walkie Talkie’s overlay when switching destinations.
+Plain dictation inserts text at the caret and accepts no attachments. Prompt-at-caret carries context; verified Codex CLI prompts submit directly by stable chat ID with actual images, and generic fields receive paste without Return. Use ⌃⌘D for a Codex prompt with screenshots. Keep the selected target visible in Walkie Talkie’s overlay when switching destinations.
 
 For the English test, choose **Engine → Local language → English** before recording. This affects both local captions and the final transcript; no model reload is needed. **Automatic** remains the default, and **French** is also available. This is recognition language, not a translation command.
 
@@ -60,10 +61,15 @@ Choose **Gestures → Wheel** once. A wheel click starts/stops a prompt; holding
 
 ## Current test status
 
-Real ⌃⌘D voice delivery to Codex passed. The earlier page test attempted a screen capture but produced no image, and its held transcript was cancelled, so it was never sent to Codex. The subsequent English + ⌃⌘S test passed: the actual selected Codex turn contains the English question and both opening/explicit screenshots, and the user confirmed the heading answer. Physical mouse gestures remain untested. Unexpected French appeared in recognition; the helper uses transcription, and the English choice bypasses automatic language guessing for local recognition.
+Real keyboard voice, English captions/transcript, screenshot and film delivery
+passed in the selected disposable Codex chat. In Edge, the user confirmed the
+⌘⇧ picker outline and click, and the app logged the blue box selector. The local
+fixture's tone paused on prompt start and resumed after cancellation. Film
+contact sheets and synthetic text selections reached Codex and were described
+correctly. Physical mouse gestures remain untested.
 
-The reply bubble stays open until you click **× at its top right**; there is
-no automatic timeout. Further replies queue behind it. A separate permissioned
-callback test appeared visibly for the user. The receiving Codex chat's first
-callback was blocked by its sandbox's localhost restriction; the updated helper
-and prompt guidance explain requesting local-network permission.
+The automatic question reply also passed: Codex invoked `walkie-reply` and the
+user saw the bubble. It stays open until **× at its top right**; there is no
+automatic timeout. Further replies queue. Allow the helper's localhost access
+when Codex requests it. If delivery is unknown or times out, check the bubble
+before retrying.

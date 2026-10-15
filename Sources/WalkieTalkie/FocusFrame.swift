@@ -78,7 +78,7 @@ final class FocusFrame {
     private static let corner: CGFloat = 10
     private static let fadeIn: TimeInterval = 0.15
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.walkie-talkie.focus-frame", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "local.walkie-talkie.focus-frame", qos: .userInitiated)
     private var timer: Timer?
     private var probing = false
     /// Bumped on every edge, so a read that started before an off cannot land after it.

@@ -1125,8 +1125,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `caretPrompt` — opened by the forward click (`startDictation(paste:)`):
     /// the context frame at the press, `[Dictated in RO or EN]`, selections,
     /// picks and pictures, i.e. the terminal's envelope pasted at the caret; and
-    /// **submitted** when the caret is a Claude Code prompt
-    /// (`TerminalBinding.frontClaudePromptTTY`).
+    /// **submitted** when the caret is a verified Codex or Claude Code prompt
+    /// (`TerminalBinding.frontAgentPromptTTY`).
     ///
     /// `cleanSentence` — opened by 🔽 → (the back click until 2026-09-28; the
     /// arm, `backStopsWispr`, is up when Wispr's begin callbacks run): the words
@@ -9140,21 +9140,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The forward click's prompt at the caret: pasted, or submitted where the
-    /// caret is a Claude Code prompt** (2026-09-23). the original author: *"Hit Enter to
+    /// caret is a verified agent prompt** (2026-09-23). the original author: *"Hit Enter to
     /// trigger. For example, if I am putting my [caret] into a Claude Code
     /// terminal prompt, it should already submit the prompt as it's actually a
     /// prompt."*
     ///
-    /// The detection is `TerminalBinding.frontClaudePromptTTY` — Terminal.app in
-    /// front, a non-shell in front on its selected tab, and a live Claude Code
-    /// session file on that tty — and the delivery is the bound terminal's own
-    /// (`writeToTerminalApp`: text, bare Return, the review Return). Everything
-    /// else is the ⌘V it always was, with no Enter: a browser field, a document,
-    /// an IDE's editor. There is no cancel window here, as there never was at
-    /// the caret.
+    /// The detection is `TerminalBinding.frontAgentPromptTarget` — Terminal.app
+    /// in front and either a process-verified Codex CLI owner in the foreground
+    /// or a live Claude Code session on that tty. Codex is sent through its
+    /// stable conversation ID, including actual image inputs; Claude keeps the
+    /// terminal's own text + Return delivery. Everything else is the ⌘V it
+    /// always was, with no Enter: a browser field, a document, an IDE's editor.
+    /// There is no cancel window here, as there never was at the caret.
     ///
     /// **A VS Code terminal running Claude Code is a prompt too** (2026-10-06,
-    /// `frontVSCodeClaudePromptTTY`): the ⌘V it always got, then one Return
+    /// `frontVSCodeAgentPromptTTY`): the ⌘V it always got, then one Return
     /// `vscodeReturnDelay` later — asked again first, so a caret that moved to
     /// the editor in between gets no Enter. Pasted, not typed: xterm.js wraps a
     /// paste in bracketed-paste markers, so the Return after it is a keypress
@@ -9166,22 +9166,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// source remembered a *different* app than the one in front (`focusPid`)
     /// is not second-guessed and is pasted to that app.
     private func deliverCaretPrompt(_ line: String, to pid: pid_t?) {
+        enum Route {
+            case codex(TerminalBinding.CodexCaretSendResult)
+            case terminalLegacy(tty: String, submitted: Bool)
+            case vscodeLegacy(tty: String, pid: pid_t)
+            case none
+        }
         let front = NSWorkspace.shared.frontmostApplication
         let frontIsTarget = pid == nil || pid == front?.processIdentifier
         let bundle = frontIsTarget ? front?.bundleIdentifier : nil
         let frontPid = frontIsTarget ? front?.processIdentifier : nil
         let serial = promptLeaves()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let tty = TerminalBinding.frontClaudePromptTTY(bundleID: bundle)
-            let submitted = tty.map { TerminalBinding.submitPrompt(line, toTTY: $0) } ?? false
-            let vscodeTTY = submitted ? nil
-                : TerminalBinding.frontVSCodeClaudePromptTTY(bundleID: bundle, pid: frontPid)
+            let route: Route
+            if let target = TerminalBinding.frontAgentPromptTarget(bundleID: bundle) {
+                switch TerminalBinding.sendCodexCaretPrompt(line, to: target) {
+                case .notCodex:
+                    route = .terminalLegacy(tty: target.tty,
+                                            submitted: TerminalBinding.submitPrompt(line, toTTY: target.tty))
+                case let result:
+                    route = .codex(result)
+                }
+            } else if let target = TerminalBinding.frontVSCodeAgentPromptTarget(bundleID: bundle, pid: frontPid),
+                      let frontPid {
+                switch TerminalBinding.sendCodexCaretPrompt(line, to: target) {
+                case .notCodex: route = .vscodeLegacy(tty: target.tty, pid: frontPid)
+                case let result: route = .codex(result)
+                }
+            } else {
+                route = .none
+            }
             DispatchQueue.main.async {
                 guard let self else { return }
                 let already = line.contains("\n\nkamikaze")
-                if let vscodeTTY, let frontPid {
+                switch route {
+                case .codex(.delivered(let threadID, let tty)):
+                    Log.info("⏎ caret prompt sent to Codex \(threadID) on \(tty) — \(line.count) chars, \(CodexBridge.attachmentPaths(in: line).count) image(s)")
+                    self.lastDictation = line
+                    let target = TerminalBinding.CaretPromptTarget.codex(threadID: threadID, tty: tty)
+                    self.offerKamikaze(already: already, at: "Codex \(tty)", serial: serial) { [weak self] in
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            let result = TerminalBinding.sendCodexCaretPrompt("kamikaze", to: target)
+                            DispatchQueue.main.async {
+                                guard case .failed(_, _, let reason) = result else {
+                                    Log.info("☠️ kamikaze sent to Codex \(threadID)")
+                                    return
+                                }
+                                Log.error("☠️ Codex kamikaze not sent: \(reason)")
+                                self?.kamikazeNotSent(to: "Codex \(tty)")
+                            }
+                        }
+                    }
+                    return
+
+                case .codex(.failed(_, let tty, let reason)):
+                    // The bridge can lose its acknowledgement after Codex took
+                    // the input. Never paste or retry an attempted RPC.
+                    Log.error("⏎ Codex caret prompt not sent/acknowledged on \(tty): \(reason)")
+                    self.lastDictation = line
+                    self.holdOnClipboard(line, why: "failed Codex caret prompt")
+                    self.overlay.flash("⚠️ Codex did not acknowledge — check the chat before retrying. \(reason)", duration: 8)
+                    self.promptWentNowhere(serial, why: "Codex did not acknowledge the prompt")
+                    return
+
+                case .codex(.notCodex):
+                    assertionFailure("notCodex is handled before the route reaches the main thread")
+
+                case .vscodeLegacy(let vscodeTTY, let vscodePID):
                     self.pasteText(line, to: pid, settles: false)
-                    self.returnAfterVSCodePaste(tty: vscodeTTY, pid: frontPid, chars: line.count)
+                    self.returnAfterVSCodePaste(tty: vscodeTTY, pid: vscodePID, chars: line.count)
                     // A queued flick waits out the prompt's own Return.
                     self.offerKamikaze(already: already, at: "VS Code \(vscodeTTY)", serial: serial,
                                        settle: Self.vscodeReturnDelay + 0.7) { [weak self] in
@@ -9189,38 +9242,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // caret, so the caret must still be that same terminal.
                         let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
                         DispatchQueue.global(qos: .userInitiated).async {
-                            let still = TerminalBinding.frontVSCodeClaudePromptTTY(bundleID: bundle, pid: frontPid) == vscodeTTY
+                            let still = TerminalBinding.frontVSCodeAgentPromptTTY(bundleID: bundle, pid: vscodePID) == vscodeTTY
                             DispatchQueue.main.async {
                                 guard let self else { return }
                                 guard still else { self.kamikazeNotSent(to: "VS Code \(vscodeTTY)"); return }
-                                self.pasteText("kamikaze", to: frontPid, settles: false)
-                                self.returnAfterVSCodePaste(tty: vscodeTTY, pid: frontPid, chars: "kamikaze".count)
+                                self.pasteText("kamikaze", to: vscodePID, settles: false)
+                                self.returnAfterVSCodePaste(tty: vscodeTTY, pid: vscodePID, chars: "kamikaze".count)
                                 self.holdOnClipboard(line, why: "the prompt, again after its kamikaze")
                             }
                         }
                     }
                     return
-                }
-                // `deliver` ended this sentence's settle before the hop; a
-                // settle standing now is the next sentence's (Q12) — not ours to end.
-                guard submitted, let tty else {
+
+                case .terminalLegacy(let tty, true):
+                    Log.info("⏎ caret prompt typed into Claude Code on \(tty) and submitted — \(line.count) chars")
+                    self.lastDictation = line
+                    self.offerKamikaze(already: already, at: tty, serial: serial) { [weak self] in
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            // The session may have ended since (the offer lasts):
+                            // never the word + Return at a shell.
+                            guard case .legacy = TerminalBinding.agentPromptTarget(onTTY: tty) else {
+                                DispatchQueue.main.async { self?.kamikazeNotSent(to: tty) }
+                                return
+                            }
+                            let ok = TerminalBinding.submitPrompt("kamikaze", toTTY: tty)
+                            Log.info(ok ? "☠️ kamikaze typed into Claude Code on \(tty)" : "☠️ kamikaze could not be typed into \(tty)")
+                        }
+                    }
+                    return
+
+                case .terminalLegacy(_, false), .none:
+                    // `deliver` ended this sentence's settle before the hop; a
+                    // settle standing now is the next sentence's (Q12) — not ours to end.
                     self.pasteText(line, to: pid, settles: false)
                     self.promptWentNowhere(serial, why: "the prompt went to no Codex prompt")
                     return
-                }
-                Log.info("⏎ caret prompt typed into Codex on \(tty) and submitted — \(line.count) chars")
-                self.lastDictation = line
-                self.offerKamikaze(already: already, at: tty, serial: serial) { [weak self] in
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        // The session may have ended since (the offer lasts):
-                        // never the word + Return at a shell.
-                        guard TerminalBinding.claudePromptOn(tty: tty) else {
-                            DispatchQueue.main.async { self?.kamikazeNotSent(to: tty) }
-                            return
-                        }
-                        let ok = TerminalBinding.submitPrompt("kamikaze", toTTY: tty)
-                        Log.info(ok ? "☠️ kamikaze typed into Codex on \(tty)" : "☠️ kamikaze could not be typed into \(tty)")
-                    }
                 }
             }
         }
