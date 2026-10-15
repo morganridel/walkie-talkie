@@ -460,7 +460,17 @@ HTTP acknowledgement as delivery/closure evidence.
 
 The current 13:53 installed release has matching packaged helper hashes,
 ready local workers, English retained, and a valid deep strict signature.
-Accessibility and Screen Recording need renewal after its changed ad-hoc
-signature; current physical shortcut/capture access is not yet verified. After a code rebuild, ad-hoc signing may require renewed Accessibility
-and Screen Recording grants. Select the intended chat again after relaunch;
+The user refreshed both grants and reopened it. Accessibility and Screen
+Recording now verify; the shortcut canary is alive (0.32 ms), and the exact
+disposable desktop chat is bound again. Later code rebuilds can require renewed
+grants because the app uses ad-hoc signing. Select the intended chat again after relaunch;
 binding currently clears on restart. About publishes 12 real gesture rows.
+
+The final closed-history check encountered two exact owner-query timeouts
+(`thread_ownership_unknown`) after an earlier conclusive closed response. No
+resume or prompt was attempted, and the disposable chat was archived again.
+Do not bypass this safety check or retry an uncertain send. Check again when
+Codex Desktop’s owner router is responsive; restarting Codex should be a user
+choice made when other work can safely be interrupted. Full end-to-end parity
+is not claimed while this check and the listed hardware/provider checks remain
+unverified.

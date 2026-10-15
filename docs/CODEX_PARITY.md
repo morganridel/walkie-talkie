@@ -23,7 +23,7 @@ test guide](CODEX_TEST_GUIDE.md).
 | Kamikaze / finish | `kamikaze` adds a completion cue. CLI finish waits for the exact turn and checks sidecar/PID/TTY/root owner. Automatic close is restricted to a window containing exactly the one verified tab; a window with sibling tabs is refused before signaling. Desktop cue uses the receiving chat’s archive tool. | **Real finish audit found and corrected an API mismatch.** Terminal rejects `close tab` (-1708); the guarded sole-tab-window implementation uses its supported close operation. A real packaged disposable CLI then passed single-tab-window close; its exact native PID exited and tty match count became zero. Desktop archive passed on the disposable chat, which was restored; the answer must precede archive because archive interrupts the active turn. |
 | Screen/context | Keyboard screenshot, wheel crop/move/cancel, accessibility selection, Chromium DOM picker, film/contact sheet, and media pause/resume are implemented. | **Partial, with real keyboard/browser/film delivery verified.** User confirmed English + ⌃⌘S; two real image inputs reached the exact desktop chat. In Microsoft Edge with the unpacked extension enabled, real ⌘⇧ hold/click outlined and picked `#pick-target`; app logged receipt and the synthetic prompt was cancelled without delivery. A fixture audio element paused on prompt open and resumed on cancel. User film delivery produced a genuine 14-frame contact sheet plus screenshot; Codex described the fixture. A second 42-frame film plus selected text correctly described the user selecting synthetic fixture sentences. Wheel crop/move, DOM drag, multi-tab media and iframe cases remain manual. |
 | Gestures and caret | ⌃⌘D and ⌃⌘S work in either gesture mode. Logi/Wheel handlers, plain dictation, caret prompts, and clipboard/paste-last remain. Verified Codex caret prompts use stable-ID RPC; generic fields receive paste without Return. | **Partial.** Real keyboard voice/shutter/film and browser picker passed. Native PTY production caret dispatch passed with a real image; 7 deterministic caret tests pass and 2 opt-in tests passed separately. Physical Logi/Wheel gestures, native Terminal/VS Code focus interaction, and clipboard restoration remain manual. No Options+ is required for keyboard controls. |
-| Outbox/restart/login/settings | Outbox records delivered events; guarded restart and menu preferences remain. | **Partial.** Graceful idle replacement/relaunch passed; English persisted, workers started, current grants and event-tap canary verified. Chat binding is cleared on relaunch and must be selected again; exact disposable binding was restored through the owner-checked route. Login registration reports enabled; actual login, other preferences and restart under varied conditions remain manual. |
+| Outbox/restart/login/settings | Outbox records delivered events; guarded restart and menu preferences remain. | **Partial.** Graceful idle replacement/relaunch passed; the 13:53 build’s renewed grants verify, its event-tap canary is alive (0.32 ms), English persisted and both workers are ready. Chat binding is cleared on relaunch and must be selected again; exact disposable binding was restored through the owner-checked route. Login registration reports enabled; actual login, other preferences and restart under varied conditions remain manual. |
 | Voice corpus and report helper | Transcribed recordings retain WAV plus transcript whether or not delivered. Cancelled takes are staged for five minutes and can enter the corpus if recovered and transcribed; outbox records delivered prompts only. | **Retention documented; report helper not installed or scheduled.** Default preview and explicit recipient/inbox requirements pass two tests. No report email was sent. No private Quiet Journal audio was used. |
 
 ## Evidence log
@@ -108,6 +108,13 @@ single-tab finish fixes. Its packaged helpers match the tested source byte for
 byte; both local workers are ready, English persisted, and its installed deep
 strict signature verifies after startup. Swift: 296 executed, 2 opt-in skips,
 0 failures (294 passed); both opt-in native checks passed separately. Python:
-75 passed. The final code signature invalidated Accessibility and Screen
-Recording again; both need user renewal before claiming current physical
-shortcut/capture access. No additional rebuild is planned.
+75 passed. The user refreshed both grants and reopened the app. Accessibility
+and Screen Recording now verify; the event-tap canary is alive (0.32 ms), and
+the exact disposable desktop chat is bound again. No additional rebuild is planned.
+
+A later closed-history check confirmed the disposable CLI chat was closed once,
+but two fresh exact ownership queries then timed out with
+`thread_ownership_unknown`. No resume/send was attempted; the test chat was
+returned to the archive. Packaged closed-history resume remains unverified.
+This is a current native IPC availability limit, distinct from the now-resolved
+macOS grants; a timeout must never be treated as proof a chat is closed.
