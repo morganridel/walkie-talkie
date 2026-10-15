@@ -359,7 +359,7 @@ final class MicRecorder {
     /// the audio thread as the buffers arrive.
     ///
     /// It exists because the chip's warmth ramp was counting the wrong thing.
-    /// Victor: *"uneori eu pur și simplu tac — dacă tac pe microfon și nu vine
+    /// the original author: *"uneori eu pur și simplu tac — dacă tac pe microfon și nu vine
     /// semnal, nu știu cât de valoroasă e întârzierea asta"*. He is right, and
     /// the corpus says how right: the **median dictation is only 38% voiced**
     /// (p10 14%), so six seconds of wall clock is 2.3 seconds of speech on an
@@ -443,7 +443,7 @@ final class MicRecorder {
     /// **The fall takes three seconds, and it used to take a quarter of one.**
     /// It was 35% of the remaining gap per buffer — a tail chosen so that "the
     /// fade at the end of a sentence reads as him having stopped", which is the
-    /// right length for a *readout* and the wrong one for a *beacon*. Victor
+    /// right length for a *readout* and the wrong one for a *beacon*. the original author
     /// reported the consequence on 2026-09-09: *"I find myself speaking a lot to
     /// keep it open"* — the light went out between his sentences, so the thing
     /// that is supposed to say *I am still hearing you* was answering a question
@@ -530,7 +530,7 @@ final class MicRecorder {
     /// **The whole of this recording, kept in memory as well** (2026-09-23),
     /// for the halo's rewind: while a caret sentence is being transcribed the
     /// ring plays back what he has just said, backwards (`CaretHalo.setRewind`).
-    /// Victor: *"pe durata transcrierii … să redai efectul de reverse tunnel pe
+    /// the original author: *"pe durata transcrierii … să redai efectul de reverse tunnel pe
     /// baza sunetului la ceea ce ai abia dictat"*. The file is on its own queue
     /// and may be mid-upload, so the halo is handed a copy instead of a path.
     /// Int16, 32 kB a second; only the last `takeCap` seconds are kept, because
@@ -699,7 +699,7 @@ final class MicRecorder {
         // the answer is the device's, and reading it first would describe the
         // one we are about to leave.
         guard let device = InputDevice.select(on: input) else {
-            return "the only microphone left is one Victor never records through (WH-1000XM3)"
+            return "no usable microphone is available"
         }
         // **`inputFormat`, not `outputFormat` — and this is what a tap is checked
         // against.** They are two different questions and they disagree the
@@ -708,7 +708,7 @@ final class MicRecorder {
         // *not* refresh when `kAudioOutputUnitProperty_CurrentDevice` is set
         // under it, while `inputFormat(forBus: 0)` is the hardware talking.
         //
-        // Measured on Victor's desk with the DJI receiver plugged in: after
+        // Measured on the original author's desk with the DJI receiver plugged in: after
         // selecting it, `outputFormat` still said **1ch 44100** (the built-in
         // microphone it had come from) and `inputFormat` said **2ch 48000** (the
         // receiver). `installTap` compares the format it is given against the

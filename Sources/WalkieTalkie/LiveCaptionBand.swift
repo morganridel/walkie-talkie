@@ -1,7 +1,7 @@
 import AppKit
 
 /// **The live caption as a film subtitle across the top of the screen**
-/// (2026-09-26). Victor: *"pui subtitrarea live pe o bandă de înălțime 80 px pe
+/// (2026-09-26). the original author: *"pui subtitrarea live pe o bandă de înălțime 80 px pe
 /// partea de sus a ecranului ca o subtitrare. font alb cu bordură/shadow negru
 /// … ideal textul să se miște uniform smooth de la dreapta spre stânga, în ciuda
 /// cuvintelor din transcriere care se modifică live … ochiul să urmărească lin
@@ -13,7 +13,7 @@ import AppKit
 /// soft shadow, and since 2026-09-28 a backdrop (below).
 ///
 /// **Two lines that roll up, not a line that scrolls left** (2026-09-28).
-/// Victor: *"We need to work a bit on the subtitles. Not very happy with how
+/// the original author: *"We need to work a bit on the subtitles. Not very happy with how
 /// they look, scrolling text to the left. When new text is added onto the
 /// right, that's okay. But then when a full line is filled up, a second line
 /// should be written below the first one. The first one should stay at the
@@ -35,7 +35,7 @@ import AppKit
 ///   one glides up and out (`lineGlide`, the same exponential ease as the
 ///   reflow, fading as it crosses the band's top edge) and the second takes its
 ///   slot. Nothing scrolls sideways any more, and **the eraser is gone**.
-///   **In that order** (Victor, same day: *"când ar trebui să apară rândul 3,
+///   **In that order** (the original author, same day: *"când ar trebui să apară rândul 3,
 ///   atunci rândul 1 iese în sus, și după ce rândul 2 devine 1, atunci începe
 ///   să apară și rândul '3' pe poziția 2"*): line 1 starts leaving the frame
 ///   the word that needs line 3 arrives; line 2 glides up; only once it has
@@ -73,7 +73,7 @@ import AppKit
 ///   lighter; medium was too thin under the 9 % black outline on video),
 ///   outline and shadow kept.
 ///
-/// **A grey backdrop, and the band dodges the pointer** (2026-09-28). Victor:
+/// **A grey backdrop, and the band dodges the pointer** (2026-09-28). the original author:
 /// *"pune o margine de 10x pe toate direcțiile de fundal gri semitransparent în
 /// jurul textului subtitrării. În plus, câtă vreme mouse-ul este peste
 /// subtitrarea de sus, ea să fugă jos (revine sus când mouse-ul iese din zona
@@ -86,7 +86,7 @@ import AppKit
 ///   by frame, jumps eased (τ `lineGlide`); it fades out when the band empties.
 /// - **Dodge**: while the pointer is inside the backdrop at the top, the band
 ///   **jumps** to the bottom of the same screen — in one frame, no pan, no fade
-///   (Victor, same day: *"flip top/bottom should be without pan, sudden. no
+///   (the original author, same day: *"flip top/bottom should be without pan, sudden. no
 ///   animation"*) — the backdrop the same `edgeGap`
 ///   from the bottom edge as it was from the top (the block then grows upward).
 ///   It jumps back up once the pointer has been out of the top backdrop
@@ -99,7 +99,7 @@ import AppKit
 /// out where they stood (ghosts), the rest of their line glides to its new
 /// layout, the new words fade in in a faded yellow that returns to white.
 ///
-/// **Words enter letter by letter** (2026-09-27, unchanged). Victor: *"the
+/// **Words enter letter by letter** (2026-09-27, unchanged). the original author: *"the
 /// entering text at right should fade in character by character (the same way
 /// it fades out at the left) ⇒ with less 'shocks' to the move."* An appended
 /// word is swept by a front with a soft edge (`softEdge`) from its first letter
@@ -133,11 +133,11 @@ final class LiveCaptionBand {
     static let dodgeDebounce: CFTimeInterval = 0.25
 
     private static let vMax: CGFloat = 700
-    /// **Elastic, not a ramp** (Victor, 2026-09-26: *"o mișcare elastică
+    /// **Elastic, not a ramp** (the original author, 2026-09-26: *"o mișcare elastică
     /// blândă"*): a line's re-centring approaches its target exponentially with
     /// this time constant.
     private static let ease: CGFloat = 0.45
-    /// **A replacement is a swap in three overlapping beats** (Victor,
+    /// **A replacement is a swap in three overlapping beats** (the original author,
     /// 2026-09-26): the old words fade out over the first half of `swap`, the
     /// rest of the line glides elastically to make room (`reflow`), and the
     /// new words fade in over the second half — *"fadeout + fadein = durata
@@ -157,7 +157,7 @@ final class LiveCaptionBand {
     static let readMin: CFTimeInterval = 3.0
     static let readPerWord: CFTimeInterval = 0.3
     static func readTime(words: Int) -> CFTimeInterval { max(readMin, readPerWord * Double(words)) }
-    /// **The segment still being spoken is provisional and looks it** (Victor,
+    /// **The segment still being spoken is provisional and looks it** (the original author,
     /// 2026-09-26: *"faded progresiv in"*): its words are drawn from this
     /// opacity at the newest up to solid at the committed boundary.
     static let provisionalFloor: CGFloat = 0.4
@@ -217,7 +217,7 @@ final class LiveCaptionBand {
     /// Opens the band across the top of the Retina, empty, or fades it out.
     /// `RELAY_SHOOT` never shows it: it is not a chip state.
     ///
-    /// **Always the built-in display** (2026-10-05, Victor: *"Mută subtitrarea
+    /// **Always the built-in display** (2026-10-05, the original author: *"Mută subtitrarea
     /// să apară mereu pe retina, indiferent unde pornesc dictarea efectivă"*) —
     /// it used to open on the screen under the pointer. The pointer's screen
     /// only when the lid is closed (`CaretHalo.retina` nil), as Stars do.

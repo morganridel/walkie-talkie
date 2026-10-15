@@ -17,12 +17,12 @@ import AppKit
 /// changed: the app never activates itself — `.regular` since 2026-09-07 for the
 /// Dock tile, but nothing calls `NSApp.activate` and the overlay is a
 /// `.nonactivatingPanel` — so a modal it puts up arrives behind whatever is in
-/// front and steals focus from the terminal Victor is bound to.
+/// front and steals focus from the terminal the original author is bound to.
 ///
 /// **That argument is against an `NSAlert`, not against a window.** A
 /// `.nonactivatingPanel` is exactly the thing the overlay already is: it comes
 /// up in front, it takes no focus, and the terminal underneath keeps the caret.
-/// Victor asked for it directly — *"să fie nu webpage ci pagina swift de
+/// the original author asked for it directly — *"să fie nu webpage ci pagina swift de
 /// about"* — and the browser route was costing three things:
 ///
 /// | the page paid | the window does not |
@@ -39,7 +39,7 @@ import AppKit
 /// two shapes in an evening and the second one is the lesson. First it was two
 /// drawings — `Glyphs.mouse` from over the desk for the deck and the wheel,
 /// `Glyphs.mouseSide` along the flank for the thumb buttons — each card
-/// illustrated by whichever view could see its subject. It worked, and Victor
+/// illustrated by whichever view could see its subject. It worked, and the original author
 /// threw it out on sight: *"1 singură poză, din diagonală cumva să se vadă
 /// toate butoanele."*
 ///
@@ -51,7 +51,7 @@ import AppKit
 /// again and there is no rule about which view to use.
 enum AboutWindow {
 
-    static let repository = "https://github.com/victorrentea/walkie-talkie"
+    static let repository = "https://github.com/morganridel/walkie-talkie"
 
     /// When the running binary was built — the same stamp the menu row carries,
     /// so the panel and the row cannot disagree about which build this is.
@@ -97,7 +97,7 @@ enum AboutWindow {
 
         // **`.nonactivatingPanel`, which is the whole reason this can be a
         // window at all.** It orders in front without making this app active,
-        // so the terminal Victor is bound to keeps the caret and the keyboard.
+        // so the terminal the original author is bound to keeps the caret and the keyboard.
         // `.utilityWindow` gives it the narrow title bar a reference panel wants
         // rather than a document's.
         // A placeholder rect — `setContentSize` below replaces it once the
@@ -106,7 +106,7 @@ enum AboutWindow {
                         styleMask: [.titled, .closable, .resizable,
                                     .utilityWindow, .nonactivatingPanel],
                         backing: .buffered, defer: false)
-        p.title = "Victor's Walkie Talkie"
+        p.title = "Walkie Talkie for Codex"
         p.isFloatingPanel = true
         p.level = .floating
         // Nothing in here takes typing, so it never needs to be key — and a
@@ -288,7 +288,7 @@ enum AboutWindow {
     /// gesture table, for the active vocabulary, by `actions(for:)`. A
     /// hand-written list was a second copy of `gestureRows` that described the
     /// Logi set while the menu might be on the wheel set, which is precisely
-    /// the drift Victor's *"ajustat după alegerea actuală de gestures"* is
+    /// the drift the original author's *"ajustat după alegerea actuală de gestures"* is
     /// about.
     private struct Button {
         let emoji: String
@@ -416,7 +416,7 @@ enum AboutWindow {
         return (pressed, seen, movement)
     }
 
-    /// **The one place the panel asks which vocabulary is live.** Victor's ask
+    /// **The one place the panel asks which vocabulary is live.** the original author's ask
     /// of 2026-09-22 — *"ajustat după alegerea actuală de gestures"* — is this
     /// pair of accessors and nothing else: everything below reads the active
     /// chord, so the panel describes the mouse in his hand rather than both
@@ -488,7 +488,7 @@ enum AboutWindow {
 
         // **Only the vocabulary that is live.** It printed both, side by side,
         // with the inactive pair faded — which put four columns on the panel to
-        // describe a mouse that has one set of gestures at a time. Victor's
+        // describe a mouse that has one set of gestures at a time. the original author's
         // *"ajustat după alegerea actuală de gestures"* settles it: the panel
         // is a legend for the mouse in his hand, and the set he is not using is
         // one menu row away.
@@ -576,7 +576,7 @@ enum AboutWindow {
 
     private static func content() -> [NSView] {
         var views: [NSView] = [
-            label("🎙️ Victor's Walkie Talkie", size: 20, weight: .bold),
+            label("🎙️ Walkie Talkie for Codex", size: 20, weight: .bold),
             label("built \(buildStamp)", size: 11, colour: .tertiaryLabelColor),
             label("""
                   A menu bar relay: dictate with the mouse, and the words land \

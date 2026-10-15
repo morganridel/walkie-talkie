@@ -9,7 +9,7 @@ import QuartzCore
 ///
 /// It came up for `at caret` dictations and for nothing else, so its presence
 /// *was* the message: these words land wherever the focus happens to be, go and
-/// put the focus somewhere. Victor took that reading away deliberately and knew
+/// put the focus somewhere. the original author took that reading away deliberately and knew
 /// what it cost — *"asta va implica și că va trebui să arăți fulgii de zăpadă,
 /// haloul de fulgi de zăpadă și când dictezi cu țintă. Însă, da? Fac și eu
 /// schimbarea asta"* — because the ring is the better **beacon**: it is the one
@@ -28,13 +28,13 @@ import QuartzCore
 /// where a ring only ever said *something is different about this one*.
 ///
 /// Since 2026-09-10 the ring itself is a **picture** — `assets/caret-halo.png`,
-/// the electric blue-and-magenta ring Victor picked — resampled so its band sits
+/// the electric blue-and-magenta ring the original author picked — resampled so its band sits
 /// exactly where the drawn one's did and faded by exactly the same rules. Every
 /// texture that came before it is still here, behind `WT_HALO_DESIGN`, and the
 /// geometry, the envelope and the swell below are unchanged: only what fills the
 /// band is different.
 ///
-/// Victor's ask, 2026-09-09: *"when this mode is activated … draw a little halo
+/// the original author's ask, 2026-09-09: *"when this mode is activated … draw a little halo
 /// ring around the mouse … about 100 pixels, to warn me that I need to basically
 /// pick somewhere to paste it"*.
 ///
@@ -53,7 +53,7 @@ import QuartzCore
 /// hour. The gate was `pasteMode && !isBound`, on the reading that a binding is
 /// a second answer to *where do these words go*. It is not — in this mode they
 /// go to the caret either way, so the failure is exactly as available bound as
-/// unbound. Victor: *"nu ne-legat e cheia, ci dacă transcriu at caret (legat sau
+/// unbound. the original author: *"nu ne-legat e cheia, ci dacă transcriu at caret (legat sau
 /// nu)"*. If anything bound is the worse case: the chip carries a terminal's
 /// name and icon all day, so `at caret` is the row that has to be *noticed*
 /// changing.
@@ -124,7 +124,7 @@ final class CaretHalo {
     /// This is a presence in the periphery rather than an ornament to be looked
     /// at, which is the one place it has to work: he is reading something else
     /// while he talks.
-    /// **105 since 2026-09-10, which is 0.7× what it was** (Victor's ask). The
+    /// **105 since 2026-09-10, which is 0.7× what it was** (the original author's ask). The
     /// texture that replaced the smooth band carries its light in many small
     /// marks spread over the whole annulus, so at 150 it covered more of the
     /// screen than the band ever did while saying the same thing — the mark got
@@ -133,7 +133,7 @@ final class CaretHalo {
     /// panel all follow.
     private static let core: CGFloat = 105
     /// How far the glow reaches either side of the core, as a multiple of it.
-    /// Twice what the halo shipped at (Victor, 2026-09-09: *"2× mai lat … mai
+    /// Twice what the halo shipped at (the original author, 2026-09-09: *"2× mai lat … mai
     /// gros adică"*), and now the **same** number on both sides — see `profile`.
     private static let spread: CGFloat = 0.66
     /// The panel has to hold the whole falloff: a gradient clipped by its own
@@ -152,7 +152,7 @@ final class CaretHalo {
     /// **The halo's cross-section**, as `(distance from the pointer ÷ core,
     /// alpha)`. One colour, and symmetric about the core.
     ///
-    /// It was neither for an hour. It was read off the reference picture Victor
+    /// It was neither for an hour. It was read off the reference picture the original author
     /// sent — a near-white inner rim, a gold body, an amber tail, and a long
     /// outer falloff against a short inner one — and he took all of that back
     /// the same evening: *"să nu fie multi-color. doar galben, gradient similar
@@ -160,7 +160,7 @@ final class CaretHalo {
     ///
     /// **The picture was of a picture, and this is a signal.** In that image the
     /// hues are what make it read as *light* — a photograph of a glow, looked at
-    /// on its own. This is drawn over Victor's actual work at a fraction of an
+    /// on its own. This is drawn over the original author's actual work at a fraction of an
     /// opacity, and there a second and third hue do not survive being that faint:
     /// they read as a smudge with a colour cast, and on a dark editor the white
     /// rim came out grey. One colour at one falloff is the same shape with
@@ -174,7 +174,7 @@ final class CaretHalo {
     ///
     /// Every stop is still zero at one end, so there is no radius at which the
     /// alpha steps.
-    /// **A plateau since 2026-09-10, not a peak** — Victor drew it. He marked a
+    /// **A plateau since 2026-09-10, not a peak** — the original author drew it. He marked a
     /// render of the chosen texture with two circles and said it should be fully
     /// opaque *only* between them, with the fade to either side much more
     /// pronounced: *"să fie full opac doar între cercul verde și cercul roșu …
@@ -197,7 +197,7 @@ final class CaretHalo {
     /// where rounding them to a matched pair would be preferring tidiness to
     /// what he actually asked for.
     /// **Full opacity across the central fifth of the ring's thickness, and a
-    /// straight line to nothing at both rims.** Victor's spec, and it is exact:
+    /// straight line to nothing at both rims.** the original author's spec, and it is exact:
     /// *"a linear, progressive fade out from the center 20% of thickness of the
     /// ring which is full opacity (before overall fadeout at animation time)"*.
     ///
@@ -238,7 +238,7 @@ final class CaretHalo {
     /// Public because the yellow capture receipt has to stop exactly here
     /// (`CaptureEffect.playTapRipple`). The two are drawn at the same point,
     /// one handing off to the other — the bubble marks the spot, the ring comes
-    /// out of it (`grow()`) — and Victor's rule for the pair is that they never
+    /// out of it (`grow()`) — and the original author's rule for the pair is that they never
     /// share a pixel: *"bula galbenă nu trebuie niciodată să se suprapună pe
     /// sub sau peste cercul de fulgere"*. Derived rather than copied, so the
     /// disc follows any future change to `core` or `spread` on its own.
@@ -258,7 +258,7 @@ final class CaretHalo {
     /// he learns to recognise before he ever needs it. That number was chosen
     /// for a 100pt ring and did not survive the halo becoming 300pt across: at
     /// that size a tenth of an opacity is not a faint mark, it is a wash over
-    /// everything under his hand, all sentence, every sentence. So Victor set it
+    /// everything under his hand, all sentence, every sentence. So the original author set it
     /// to **zero** — and then, minutes later, to five.
     ///
     /// Zero was the overcorrection. It is the halo *arriving* that says the
@@ -267,7 +267,7 @@ final class CaretHalo {
     /// of empty desktop, which is a bigger event than the thing it reports. At
     /// 5% it is at the edge of visible: enough to have been there, not enough to
     /// be in the way.
-    /// **×1.5 on 2026-09-10** (Victor: *"overall, să fie haloul 1.5× mai
+    /// **×1.5 on 2026-09-10** (the original author: *"overall, să fie haloul 1.5× mai
     /// opac"*), which is the second correction in the same direction: 10 → 0 →
     /// 5 → 7.5. The spoked designs are part of why it can afford it — a pattern
     /// of thin lines covers a fraction of the pixels a solid band does, so the
@@ -283,7 +283,7 @@ final class CaretHalo {
     /// says it only in the mode it is true of.
     ///
     /// What the ring does instead is the job the microphone at the bottom of the
-    /// screen used to do. Victor, 2026-09-11: *"în loc de microfonul care apare
+    /// screen used to do. the original author, 2026-09-11: *"în loc de microfonul care apare
     /// jos pe centrul ecranului, aș dori ca fulgerele să pulseze în același ritm
     /// al discuției, cu același fade-out care se întâmplă acum la microfon"*.
     /// The envelope is therefore `RecordingBeacon`'s, verbatim — a floor plus
@@ -292,7 +292,7 @@ final class CaretHalo {
     /// much of this ring a screen can carry while he works under it*, which the
     /// reason for lighting it does not change.
     ///
-    /// **+20% on 2026-09-16** (Victor: *"mărește cu 20% opacitatea fulgerelor
+    /// **+20% on 2026-09-16** (the original author: *"mărește cu 20% opacitatea fulgerelor
     /// când detectează vocea mea … opacitatea maximă pe care o atinge cercul
     /// acela de fulgere"*) — 0.225 → 0.27. Only the bright end moves: `rest` is
     /// unchanged, so what gets louder is the *difference* a syllable makes,
@@ -310,7 +310,7 @@ final class CaretHalo {
 
     /// **How much bigger the ring gets at the top of his voice.**
     ///
-    /// Victor, 2026-09-11: *"crescând dimensiunea cu zece la sută. Nu, chiar 20%
+    /// the original author, 2026-09-11: *"crescând dimensiunea cu zece la sută. Nu, chiar 20%
     /// față de cât e default, și apoi să se contracte înapoi, în timp ce se
     /// rotește totodată"* — he corrected himself mid-sentence, so this is 0.2
     /// and not 0.1.
@@ -337,7 +337,7 @@ final class CaretHalo {
 
     /// **One turn round the pointer, and it takes sixteen seconds.**
     ///
-    /// Victor, 2026-09-10: *"în timp ce e activ, să aibă o mișcare de rotație în
+    /// the original author, 2026-09-10: *"în timp ce e activ, să aibă o mișcare de rotație în
     /// jurul mouse-ului continuă"*. The film already crackles in place — 25
     /// frames of lightning, coming round every 3.75s — and that says *alive*
     /// without saying anything about the pointer it is drawn round. A rotation
@@ -397,7 +397,7 @@ final class CaretHalo {
 
     /// **How a ring comes up.** The close is a collapse into the pointer, so
     /// the way in is described in the same terms as the way out — and since
-    /// 2026-09-14 every dictation takes one of the two blooming cases. Victor:
+    /// 2026-09-14 every dictation takes one of the two blooming cases. the original author:
     /// *"acel cerc de fulgere să apară din mouse, să se mărească în momentul în
     /// care începe să asculte … se mărește din centru spre exterior când începe
     /// dictarea, pentru o durată comparabilă cu cea de închidere"*.
@@ -459,7 +459,7 @@ final class CaretHalo {
     var samples: (() -> [Float]?)?
 
     /// **macOS's own adjustment of the microphone gain, divided back out** —
-    /// Victor's idea, and it is the right instrument where two of mine were
+    /// the original author's idea, and it is the right instrument where two of mine were
     /// not (*"să citim auto ajustarea aceea, să o luăm în seamă"*).
     ///
     /// A MilkDrop preset is written against a signal at music level. What
@@ -500,7 +500,7 @@ final class CaretHalo {
     /// imediat, iar împrospătarea pleacă pe o coadă de fundal. Până la primul răspuns
     /// câștigul e 1, adică semnalul neatins — o jumătate de secundă de sunet nemodificat
     /// e nimic pe lângă trei secunde de niciun sunet.
-    private static let gainQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.halo-gain")
+    private static let gainQueue = DispatchQueue(label: "local.walkie-talkie.halo-gain")
     private static var gainReadInFlight = false
 
     static func undoInputGain(_ samples: [Float]) -> [Float] {
@@ -521,7 +521,7 @@ final class CaretHalo {
     }
 
     /// **Quiet speech lifted on a logarithmic curve, with a floor under it so
-    /// the pauses are not lifted with it** (Victor, 2026-09-21: *"coboară și
+    /// the pauses are not lifted with it** (the original author, 2026-09-21: *"coboară și
     /// mai mult limita de sunet de la care amplifică, cumva logaritmic,
     /// volumele încete, ca să nu fie nevoie să zbier să văd efectul ăsta … eu
     /// vorbesc de la jumătate de metru de laptop și tunelul face urme foarte
@@ -573,7 +573,7 @@ final class CaretHalo {
     }
 
     /// **A tail on the signal, so the picture does not snap home the moment he
-    /// stops** (Victor, 2026-09-21, on Stars: *"în momentul în care eu tac,
+    /// stops** (the original author, 2026-09-21, on Stars: *"în momentul în care eu tac,
     /// imediat se duc înapoi la origine steluțele. Vreau să le întârzii puțin
     /// … un fel de reverb, sau să prelungești undele sonore pe care le dai"*).
     ///
@@ -626,7 +626,7 @@ final class CaretHalo {
     }
 
     /// **A breath of signal at the start, so the ring opens with a picture on
-    /// it** (Victor, 2026-09-21: *"când pornește animația, să i se dea un input
+    /// it** (the original author, 2026-09-21: *"când pornește animația, să i se dea un input
     /// suficient cât să deseneze un input bogat … toate cele patru efecte, fără
     /// să fie nevoie eu să vorbesc în avans"*).
     ///
@@ -644,7 +644,7 @@ final class CaretHalo {
     /// seeded at the shared timer, so all four destinations get it — the
     /// film (`lightning`) reads no samples and is unaffected.
     ///
-    /// **1.25 s and not 0.75** (Victor, minutes after the first one: *"contracția
+    /// **1.25 s and not 0.75** (the original author, minutes after the first one: *"contracția
     /// înapoi să fie oleacă mai lentă la start; forța sau viteza cu care vine
     /// înapoi spre poziția originală să fie mai mică un pic"*). What contracts
     /// is this: the seed swells the picture and the picture falls back as it
@@ -709,7 +709,7 @@ final class CaretHalo {
     /// all of it hangs off the right — so the placement still says where he was.
     /// A `centred` one ignores the pointer's place: the middle of its screen.
     ///
-    /// **Always on the Retina** (2026-10-05, Victor, of Stars and the puzzle —
+    /// **Always on the Retina** (2026-10-05, the original author, of Stars and the puzzle —
     /// the only two anchored ones: *"aș vrea atât timpul efectele să fie astea …
     /// să fie mereu pe retina când apar"*), whichever screen the pointer is on;
     /// with the pointer elsewhere, the puzzle has no place to start from there
@@ -804,7 +804,7 @@ final class CaretHalo {
         use(rewinding ? rewindStyle : HaloStyle.current(for: new))
     }
 
-    /// **A ⚡ quick question has one effect** (2026-10-09, Victor: *"no second
+    /// **A ⚡ quick question has one effect** (2026-10-09, the original author: *"no second
     /// effect … then getting smaller until it disappears, fading out around the
     /// mouse"*). Which one is the `Question` row's (`HaloDestination.quick`,
     /// the electric question mark since 2026-10-11) — it was Reverse tunnel,
@@ -828,7 +828,7 @@ final class CaretHalo {
 
     /// **All three at once** — the top-level list in the menu, which is the
     /// answer to *"dacă îl selectez precis, atunci toate trei sunt puse pe
-    /// același"* (Victor, 2026-09-21).
+    /// același"* (the original author, 2026-09-21).
     func setStyleEverywhere(_ new: HaloStyle) {
         for dest in HaloDestination.allCases { HaloStyle.save(new, for: dest) }
         Log.info("◯ caret halo style for all three destinations: \(new.rawValue)")
@@ -864,20 +864,20 @@ final class CaretHalo {
     /// collapse: what replaces it is the same ring in another dress.
     /// When the last style change began — the zero every `+N ms` in the web
     /// hosts' log lines counts from, so *how long after F9 does it show* is
-    /// answerable from the log (Victor, 2026-09-20 late: *"the label shows
+    /// answerable from the log (the original author, 2026-09-20 late: *"the label shows
     /// first, and only then the animation starts"*).
     static var styleChangedAt: CFAbsoluteTime = 0
     static var sinceStyleChange: String { String(format: "+%.0f ms", (CFAbsoluteTimeGetCurrent() - styleChangedAt) * 1000) }
 
     /// **The panel before this one, kept on screen until the new one has
-    /// something to show** (2026-09-20, late; Victor: *"the label shows first,
+    /// something to show** (2026-09-20, late; the original author: *"the label shows first,
     /// and only then the animation starts"*). A style change rebuilds the
     /// panel, and a preset warms up unseen for 1.5 s — so with the ring up
     /// the old effect goes on running underneath until the new host says
     /// `onVisible`, or 3 s at most, and only then is ordered out. No blink
     /// to empty between F9 presses.
     ///
-    /// **It goes out in a 300 ms fade, never a cut** (Victor, 2026-09-29: *"when
+    /// **It goes out in a 300 ms fade, never a cut** (the original author, 2026-09-29: *"when
     /// the puzzle effect ends, it should not disappear abruptly, but instead fade
     /// out smoothly over 300 ms"*). The mic's close swaps Mosaic for the rewind
     /// here, and the `orderOut` alone had it vanish in one frame.
@@ -953,7 +953,7 @@ final class CaretHalo {
     }
 
     /// **The next halo, or the previous one, and nothing written down** —
-    /// F7/F9 (Victor, 2026-09-21: *"F7, F9 rămân doar de preview așa"*). They
+    /// F7/F9 (the original author, 2026-09-21: *"F7, F9 rămân doar de preview așa"*). They
     /// are pressed outside a dictation to look at effects; a keystroke that
     /// silently rewrote one of the three preferences is how a destination's
     /// pick would get lost while he browsed. Returns what it landed on, for
@@ -995,7 +995,7 @@ final class CaretHalo {
     /// **Is the ring on screen** — `private(set)` since 2026-09-13 so
     /// `GET /test/state` can answer `ringUp` without a screenshot. On 2026-09-13
     /// the ring stood for twelve seconds over a dictation that had already been
-    /// pasted into Word, and the only witness was Victor watching it.
+    /// pasted into Word, and the only witness was the original author watching it.
     private(set) var live = false
     /// A collapse in flight, and which one. The generation is what a `show`
     /// arriving mid-collapse invalidates: the panel is reused between
@@ -1023,7 +1023,7 @@ final class CaretHalo {
     private var atCaret = false
     private let arrow = DropArrow()
 
-    /// **Out of sight while he frames a crop** (2026-09-23). Victor: *"în timpul
+    /// **Out of sight while he frames a crop** (2026-09-23). the original author: *"în timpul
     /// în care trag cu rotița o selecțiune pe ecran … trebuie să fie ascunsă pe
     /// durata când trag poza, ca să pot să mă concentrez pe ce selectez"*. The
     /// ring and the heads ride the pointer, which during a wheel drag is the
@@ -1035,7 +1035,7 @@ final class CaretHalo {
     /// view is hidden, because `refresh` rewrites `alphaValue` twenty times a
     /// second and would undo a fade within one tick.
     ///
-    /// **It comes back in a 0.5 s fade, not a cut** (2026-09-24) — Victor:
+    /// **It comes back in a 0.5 s fade, not a cut** (2026-09-24) — the original author:
     /// *"after screen cut in walkie, the halo effect appears too brutal. fade it
     /// in over 0.5s"*. The fade is on the content view's own alpha, the one
     /// thing `refresh` never writes, so the voice keeps riding the panel's.
@@ -1080,7 +1080,7 @@ final class CaretHalo {
     /// **The ring does not go down at the stop gesture any more; it fades over
     /// the time the transcription is expected to take** (2026-09-22).
     ///
-    /// Victor: *"animația să nu se oprească instantaneu la încetarea dictării,
+    /// the original author: *"animația să nu se oprească instantaneu la încetarea dictării,
     /// ci doar la transcriere completă — lasă animația să-și continue mersul cât
     /// transcrierea e în curs, eventual scazi opacitatea progresiv cu timpul
     /// estimat cât mai ia dictarea."* This reverses the 2026-09-13 split (*the
@@ -1154,14 +1154,14 @@ final class CaretHalo {
     }
 
     /// **A few seconds of the ring, on his own voice, with no dictation** —
-    /// what F7/F9 and `POST /test/halo` show after a change (Victor: *"ca să
+    /// what F7/F9 and `POST /test/halo` show after a change (the original author: *"ca să
     /// văd ce aleg"*). The meter's samples stand in for the dictation's for the
     /// length of the preview and the app's closures are put back after; a
     /// real dictation opening meanwhile takes the ring over (`live` is
     /// already true, `setActive` is a no-op) and the preview's end is
     /// ignored (`previewGeneration`). Nothing is played aloud.
     ///
-    /// **The microphone, live, since 2026-09-23** (Victor: *"la efectul dust din
+    /// **The microphone, live, since 2026-09-23** (the original author: *"la efectul dust din
     /// preview f7/f9 sa iei in seama si vocea, exact ca atunci cand e live
     /// dictarea"*). It was a bundled clip played silently, so the effect moved to
     /// a voice nobody could hear and ignored the one in the room — no way to
@@ -1170,7 +1170,7 @@ final class CaretHalo {
     /// the main thread like every microphone here; until it is open, and if it
     /// will not open, the clip stands in.
     var previewMic: MicRecorder?
-    private static let previewMicQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.preview-mic")
+    private static let previewMicQueue = DispatchQueue(label: "local.walkie-talkie.preview-mic")
     private var previewGeneration = 0
     private var savedClosures: (samples: (() -> [Float]?)?, level: (() -> Float)?, quiet: (() -> TimeInterval)?)?
     func preview(seconds: TimeInterval) {
@@ -1213,7 +1213,7 @@ final class CaretHalo {
     /// **The ring is down, the words are still coming, and the heads stay up
     /// pointing at the place they will land** (2026-09-15).
     ///
-    /// Victor: *"dacă dictez la caret, după ce dictarea se oprește, fulgerul
+    /// the original author: *"dacă dictez la caret, după ce dictarea se oprește, fulgerul
     /// dispare, doar că rămân săgețile care curg până când efectiv se inseră
     /// textul la caret … să nu plec cu cursorul de acolo."*
     ///
@@ -1262,7 +1262,7 @@ final class CaretHalo {
 
     /// **While a caret sentence is transcribed, the ring wears Reverse tunnel
     /// and is fed what he has just said, played backwards** — in place of the
-    /// heads. Victor: *"pe durata transcrierii … să redai efectul de reverse
+    /// heads. the original author: *"pe durata transcrierii … să redai efectul de reverse
     /// tunnel pe baza sunetului la ceea ce ai abia dictat, astfel încât, în loc
     /// de acele săgeți care se duc spre cursor, să-mi atragă atenția că trebuie
     /// să las acel cursor într-un câmp text … condensat ca să încapă în timpul
@@ -1342,7 +1342,7 @@ final class CaretHalo {
     private(set) var rewinding = false
 
     /// **The rewind converges on the middle of the window the words go to, not
-    /// on the pointer** (2026-09-30). Victor: *"the reverse tunnel … shouldn't be
+    /// on the pointer** (2026-09-30). the original author: *"the reverse tunnel … shouldn't be
     /// following the mouse but should be placed in the center of the terminal or
     /// whatever window is receiving the input … (or the bound terminal if I'm
     /// dictating to a bound terminal)"*. Written by `AppDelegate` at the close —
@@ -1364,7 +1364,7 @@ final class CaretHalo {
     /// `RewindTimeline.orbitRadiusFallback`.
     var rewindOrbitRadius: CGFloat?
     /// **The receiving window's caret, when Accessibility can name it**
-    /// (2026-10-10, Victor: *"shouldn't go and circle around the window, but
+    /// (2026-10-10, the original author: *"shouldn't go and circle around the window, but
     /// should circle around the cursor if we can locate a cursor into the
     /// window … the diameter … a bit smaller"*). The dust alone circles it, on
     /// `RewindTimeline.caretOrbitRadius`; every other dress keeps `rewindAim`.
@@ -1379,7 +1379,7 @@ final class CaretHalo {
         (rewinding || orbitFading ? rewindPoint : fadeAim) ?? NSEvent.mouseLocation
     }
     /// **The tunnel starts where the pointer was and travels to the window as
-    /// it shrinks** (2026-10-02, Victor: *"întâi pe mouse și să apară mare ca
+    /// it shrinks** (2026-10-02, the original author: *"întâi pe mouse și să apară mare ca
     /// acum, și apoi să-și mute centrul, pe măsură ce se micșorează, către
     /// terminalul care va primi dictarea"* — and *"dacă mișc mouse-ul în timp ce
     /// reverse tunnel se deplasează, asta să nu-i influențeze traiectoria"*). So
@@ -1392,7 +1392,7 @@ final class CaretHalo {
     /// — `RewindTimeline.travel`. No window to go to: it stays where it started.
     ///
     /// **Superseded 2026-10-07: no travel — it falls straight onto the window.**
-    /// Victor: *"the tunnel effect … should just land directly onto the target
+    /// the original author: *"the tunnel effect … should just land directly onto the target
     /// terminal. Not move from around the mouse like before … coming from
     /// outside, the reverse tunnel should focus on the window and fit on it on
     /// its screen, on its center"*. The pointer is only where it waits while
@@ -1417,7 +1417,7 @@ final class CaretHalo {
                 return NSPoint(x: from.x + (to.x - from.x) * CGFloat(p), y: from.y + (to.y - from.y) * CGFloat(p))
             }
             // **The dust is there by half the prediction, and circles the rest**
-            // (2026-10-08, Victor: *"… moves towards the window, leaving a trail
+            // (2026-10-08, the original author: *"… moves towards the window, leaving a trail
             // of dust, and then it circles in there inside while the transcription
             // works"*): over the whole prediction it landed as the words did
             // (15:27:56, 1.8 s), and the ring was never seen.
@@ -1464,7 +1464,7 @@ final class CaretHalo {
     }
     private var rewindStart: NSPoint?
     /// **The words have landed and the dust is fading where it circles**
-    /// (2026-10-09, Victor: *"când dustul dispare din mișcarea ei de rotație să
+    /// (2026-10-09, the original author: *"când dustul dispare din mișcarea ei de rotație să
     /// se facă fade, nu să dispară brusc când transcrierea este terminată și
     /// injectată"*). It stopped dead and went in `rewindFade` (0.15 s — the
     /// tunnel's *"fade out foarte repede"*, 2026-09-23); now its orbit and the
@@ -1480,7 +1480,7 @@ final class CaretHalo {
     private var rewindEndedAt: CFAbsoluteTime = 0
     private var rewindEstimate: TimeInterval = 0
 
-    /// **The tunnel comes in from outside the screen** (Victor, 2026-09-23:
+    /// **The tunnel comes in from outside the screen** (the original author, 2026-09-23:
     /// *"sa para ca vine din exterior ecranului, de la transparenta 100% pana la
     /// converge in jurul mouseului pe durata transcrierii"*), shrunk
     /// geometrically from `approachFrom` × with the opacity rising ahead of it
@@ -1535,7 +1535,7 @@ final class CaretHalo {
     private static let approachDemo = TimeInterval(ProcessInfo.processInfo.environment["WT_HALO_APPROACH"] ?? "") ?? 0
     private static let tunnelStyle: HaloStyle = .milkdrop7Reversed
     /// **A new session keeps its stars through the transcription** (2026-10-02,
-    /// Victor: *"mi-ar plăcea ca efectul principal de stars să fie animat pe
+    /// the original author: *"mi-ar plăcea ca efectul principal de stars să fie animat pe
     /// durata transcripției, practic redând la o rată mai mare sunetul care acum
     /// intră în transcripție"*): the spawn's own dress, fed the take the same way
     /// the tunnel is, and left where it stands — Sparks is `centred`, the middle
@@ -1546,7 +1546,7 @@ final class CaretHalo {
         return flies ? HaloStyle.current(for: destination) : Self.tunnelStyle
     }
     /// **A bound sentence keeps its own effect and flies it to the terminal**
-    /// (2026-10-08, Victor: *"instead of the reverse tunnel that goes towards the
+    /// (2026-10-08, the original author: *"instead of the reverse tunnel that goes towards the
     /// receiving terminal, [in] bound dictation, bound prompting, I would like
     /// that effect from around the mouse to move from where it was currently
     /// towards that terminal by replaying the sound recorded up to that point
@@ -1561,7 +1561,7 @@ final class CaretHalo {
     /// puzzle), a pinned canvas or the film keeps the Reverse tunnel. `WT_HALO_FLIGHT=0`
     /// brings the tunnel back for bound sentences.
     ///
-    /// **And a prompt at the caret, the same way** (2026-10-08, Victor: *"Unify
+    /// **And a prompt at the caret, the same way** (2026-10-08, the original author: *"Unify
     /// the experience … if I prompt at caret … I don't want to see the reverse
     /// tunnel … the [caret's] effect would move on a certain trajectory towards
     /// the center of the recipient window, and then there start circling like a
@@ -1580,7 +1580,7 @@ final class CaretHalo {
     }
     private static let flightOff = ProcessInfo.processInfo.environment["WT_HALO_FLIGHT"] == "0"
     /// **The puzzle and the stars shrink onto where the words go** (2026-10-10,
-    /// Victor: *"dictation-ul simplu să se micșoreze … puzzle … să se ducă …
+    /// the original author: *"dictation-ul simplu să se micșoreze … puzzle … să se ducă …
     /// pe poziția cursorului. Și la fel și stars"*). An anchored dress — the
     /// plain dictation's Mosaic, a spawn's Sparks — is kept through the
     /// transcription instead of the Reverse tunnel: its square slides from
@@ -1601,7 +1601,7 @@ final class CaretHalo {
         return spawnLanding ?? anchorStart.map { NSPoint(x: $0.midX, y: $0.midY) }
     }
     /// **Where a spawn's Sparks flies: the corner where the prompt panel is
-    /// about to come up** (2026-10-14, Victor: *"rather than going directly to
+    /// about to come up** (2026-10-14, the original author: *"rather than going directly to
     /// where the new terminal will land, you don't know where the new terminal
     /// is going to land"*). One journey from where the stars stood to the
     /// corner (`RelayWindow.promptCornerEstimate`), then the dock fits them onto
@@ -1609,7 +1609,7 @@ final class CaretHalo {
     /// predicted slot, which was never docked. Written by `AppDelegate.aimRewind`.
     var spawnLanding: NSPoint?
     /// **The plain dictation's puzzle zooms into the receiving window, inside
-    /// its orange outline — not onto the caret** (2026-10-14, Victor: *"at the
+    /// its orange outline — not onto the caret** (2026-10-14, the original author: *"at the
     /// end of the dictation the puzzle effect should zoom into the receiving
     /// border, not on the cursor that receives but on the receiving border of
     /// the application that we input. And also display … the arrowheads going
@@ -1742,7 +1742,7 @@ final class CaretHalo {
     /// the gap between `◯ caret halo on` and `◯ caret halo film` in the log, and
     /// it was being spent on the main thread inside `show()` — i.e. between
     /// Wispr Flow opening the microphone and the ring for it appearing, which is
-    /// the one place in the day it must not be spent (Victor, 2026-09-12: the
+    /// the one place in the day it must not be spent (the original author, 2026-09-12: the
     /// ring is up *when Wispr starts recording*).
     ///
     /// It is the same trade `applicationDidFinishLaunching` already makes for
@@ -2065,7 +2065,7 @@ final class CaretHalo {
     // MARK: - Docked on the prompt panel (2026-10-07)
 
     /// **When the prompt panel opens, the effect flies into it and stays over
-    /// it, see-through, until the panel goes** (2026-10-07). Victor: *"atunci
+    /// it, see-through, until the panel goes** (2026-10-07). the original author: *"atunci
     /// când apare panel acela în colț care sumarizează prompt-ul, vreau ca să mi
     /// se ducă efectul … toate efectele, inclusiv puzzle … în colțul ecranului
     /// unde apare acel panel, micșorându-se … de la mouse … de la centrul
@@ -2136,7 +2136,7 @@ final class CaretHalo {
         // through the transcription is about to go down anyway.
         guard !live || coasting else { return }
         // **The Reverse tunnel stays on the window that got the words**
-        // (2026-10-07, Victor: *"I want the reverse tunnel to focus on the
+        // (2026-10-07, the original author: *"I want the reverse tunnel to focus on the
         // target terminal or application that received the dictation and not
         // the preview panel"*) — it ends there in its own fade.
         // **So does a bound sentence's effect that flew there** (2026-10-08).
@@ -2313,7 +2313,7 @@ final class CaretHalo {
     // MARK: - The idle sweep (2026-09-15)
 
     /// **Nothing here may stand at the pointer with no dictation in flight, and
-    /// on 2026-09-15 something did.** Victor: *"the mouse was having a caret,
+    /// on 2026-09-15 something did.** the original author: *"the mouse was having a caret,
     /// although there was no dictation currently open."* The sentence before it
     /// had begun at the caret, been redirected to the bound terminal a second
     /// later, and taken a highlight, a shot, an area crop and a picked element
@@ -2370,7 +2370,7 @@ final class CaretHalo {
     func windowsReport() -> [String: Any] {
         // **`styles` is which dress each destination is wearing**, which until
         // 2026-09-21 could be read nowhere but off a menu he had to open by
-        // hand — and a wrong one there was found by Victor dictating into a new
+        // hand — and a wrong one there was found by the original author dictating into a new
         // terminal and seeing the wrong effect, twice. `destination` is the one
         // this ring is drawn for right now.
         ["ring": ["visible": panel?.isVisible ?? false, "alpha": Double(panel?.alphaValue ?? 0),
@@ -2429,7 +2429,7 @@ final class CaretHalo {
         }
         let wanted = drawn.preset != nil ? panelFrame().origin : Self.origin()
         panel.setFrameOrigin(wanted)
-        // **Who moved it?** (2026-09-14). Victor: *"pe retina merge bine, pe
+        // **Who moved it?** (2026-09-14). the original author: *"pe retina merge bine, pe
         // ecranul al doilea îmi aleargă, îmi fuge de acolo, acolo"* — a ring that
         // tracks the pointer on the built-in display and runs away on the second
         // one. Nothing that rides the pointer can be screenshot, and the two
@@ -2466,7 +2466,7 @@ final class CaretHalo {
     private static var followTraceLeft = 6
 
     /// **Where the heads converge: the caret the words will be typed at, not
-    /// the pointer** (2026-10-13). Victor: *"the arrow heads that move towards
+    /// the pointer** (2026-10-13). the original author: *"the arrow heads that move towards
     /// the mouse should be centered on where the cursor is currently, which will
     /// receive the input … If … a hidden terminal or a text file [not] visible
     /// on the screen, don't display the arrowheads."* Written by `FocusFrame`
@@ -2480,7 +2480,7 @@ final class CaretHalo {
     }
 
     /// **No caret, and Accessibility says there is nowhere to type** (2026-10-14,
-    /// Victor: *"when you don't have where to put the pin, there is no cursor,
+    /// the original author: *"when you don't have where to put the pin, there is no cursor,
     /// tell that visually somehow"*): the middle of the window the words would
     /// go to (or of the pointer's screen when the app has no window), from
     /// `FocusFrame`. The pin stands there grey and crossed out
@@ -2570,7 +2570,7 @@ final class CaretHalo {
 
     // MARK: - Designs
 
-    /// **What the halo is made of.** Victor, 2026-09-10: *"cercul halou … să fie
+    /// **What the halo is made of.** the original author, 2026-09-10: *"cercul halou … să fie
     /// alcătuit din «spițe»: linii de 3-5 px grosime concentrice, mai
     /// transparente spre interior și exterior, exact ca haloul ca feeling, dar
     /// stilizat cu liniuțe."*
@@ -2627,14 +2627,14 @@ final class CaretHalo {
         /// mass-preserving half works and failed only because its cuts were 100%
         /// deep and reached the core.
         case ripple
-        /// **Four from Codex (GPT-5.5), on Victor's ask** — given the same brief,
+        /// **Four from Codex (GPT-5.5), on the original author's ask** — given the same brief,
         /// the same geometry, and the list of everything already tried and
         /// measured, so they had to be new rather than merely different.
         case codex1, codex2, codex3, codex4
         /// **Not drawn at all: `assets/caret-halo.png`, and what ships.**
         ///
         /// Everything above answers *what can be drawn that reads like the
-        /// reference*; this is the reference. Victor, 2026-09-10: *"use this as
+        /// reference*; this is the reference. the original author, 2026-09-10: *"use this as
         /// the halo when dictating at caret … faded out dynamically by the same
         /// rules"* — so the band is his picture and the rules around it are
         /// untouched: the same radius, the same envelope, the same 5%→22.5%
@@ -2664,13 +2664,13 @@ final class CaretHalo {
     /// contact sheet answers *what does it look like*, and this answers the
     /// question that actually decides it, which is whether it is still bearable
     /// an inch from the work after the twentieth sentence.
-    /// **`codex3` ships, since 2026-09-10.** Victor picked it out of the gallery
+    /// **`codex3` ships, since 2026-09-10.** the original author picked it out of the gallery
     /// of twelve — short radial reeds that stop short of the centre — and it is
     /// the one texture in the set that no round of this arrived at on its own:
     /// every design drawn here was either concentric or a full-band sunburst,
     /// and this is neither. `smooth`, the gradient band that shipped for a day,
     /// stays as the reference the contact sheet is judged against.
-    /// **`storm` ships since 2026-09-10** — Victor's picture, which is where a
+    /// **`storm` ships since 2026-09-10** — the original author's picture, which is where a
     /// day of drawing textures was always headed. `codex3`, the reeds that
     /// shipped for an afternoon, and `smooth`, the gradient band that shipped for
     /// a day, both stay: the first because it is the best thing this file drew on
@@ -2749,7 +2749,7 @@ final class CaretHalo {
     /// **The picture, resampled onto the band, masked by the same envelope, and
     /// running as a film.**
     ///
-    /// Victor, on seeing the still: *"nu e animat!! trebuie să fie multiframe: cu
+    /// the original author, on seeing the still: *"nu e animat!! trebuie să fie multiframe: cu
     /// frame-urile decupate din imaginea pe care ți-am dat-o … trebuie să pară că
     /// se animă ca un clip, nu doar fade in, fade out"*. The swell was never the
     /// animation — it is the *state*. The ring itself has to crackle.
@@ -2909,7 +2909,7 @@ final class CaretHalo {
         return container
     }
 
-    /// **A third of the GIF's own rate** — Victor, on watching it run at 20fps:
+    /// **A third of the GIF's own rate** — the original author, on watching it run at 20fps:
     /// *"mai lentă animația 3×"*. The frames were authored for a clip that is
     /// looked *at*; this one runs an inch from what he is reading while he
     /// dictates, and at 20fps a crackle that fast is a flicker in the corner of
@@ -3323,7 +3323,7 @@ final class CaretHalo {
                 // to be filling in: at a gain of 2.5 every pixel whose envelope
                 // is above 0.4 saturates, so both ramps are clipped to a hard
                 // edge somewhere inside themselves and the picture ends abruptly
-                // instead of thinning out. Victor saw it immediately — *"the
+                // instead of thinning out. the original author saw it immediately — *"the
                 // image itself should be fading out inner/outer"* — and it is
                 // the one arrangement in which the envelope cannot shape the
                 // light at all. Clamping the **ink** and then applying the
@@ -3417,7 +3417,7 @@ final class CaretHalo {
         p.hasShadow = false
         p.ignoresMouseEvents = true
         // **One level under the chip and the heads** (both `.statusBar`): the
-        // effects are drawn under the tooltip, never over it (Victor, 2026-09-20
+        // effects are drawn under the tooltip, never over it (the original author, 2026-09-20
         // late — a screen-sized web view ordered front had covered the chip).
         p.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue - 1)
         p.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
@@ -3822,7 +3822,7 @@ extension CaretHalo {
 /// near-silence every cycle) plus a little low hum so the bass bands have
 /// something to read. Generated on the audio clock, 16 kHz, into a ring the
 /// size of `MicRecorder.recentSamples`.
-/// **His own voice, looped, as the demo's signal** (2026-09-20, late; Victor:
+/// **His own voice, looped, as the demo's signal** (2026-09-20, late; the original author:
 /// *"după ce schimb efectul, redă câteva secunde de semnal audio simulat …
 /// eventual un wav din corpusul înregistrat"*). `assets/halo-voice.wav` is
 /// one 3.5 s clip copied out of the corpus (`2026-09-18/21-05-35-11l735.wav`,

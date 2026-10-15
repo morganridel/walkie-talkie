@@ -5,7 +5,7 @@ import QuartzCore
 /// **An orange outline round the window a caret sentence will be typed into,
 /// and the caret in it for the heads** (2026-10-13).
 ///
-/// Victor: *"When I'm dictating at caret, be sure to highlight in an orange line
+/// the original author: *"When I'm dictating at caret, be sure to highlight in an orange line
 /// visible the window which is receiving currently my prompt, basically the one
 /// that have the focus … The same should happen for the plain dictation. And of
 /// course, only show this border if the window … is visible … Clearly tell what

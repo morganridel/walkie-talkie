@@ -34,7 +34,7 @@ import Foundation
 /// boolean about a process id: *is its input running*. It is the same fact the
 /// orange dot in the menu bar is drawn from, and it would be just as true of any
 /// other app that opened the microphone — Wispr Flow is named only because it is
-/// the one that means *Victor is dictating*.
+/// the one that means *the original author is dictating*.
 ///
 /// ## The signal, and the two that were rejected
 ///
@@ -57,7 +57,7 @@ import Foundation
 ///   of the ways a Wispr dictation starts. It is still the wrong thing to draw a
 ///   ring from: it says *a chord went out*, not *the microphone opened*. It is a
 ///   **toggle**, so the relay's idea of the state drifts the first time Wispr
-///   misses one or Victor ends the dictation from Wispr's own window; and it
+///   misses one or the original author ends the dictation from Wispr's own window; and it
 ///   knows nothing at all about a dictation he started with the keyboard chord
 ///   himself. The device is the only thing that cannot be wrong about this.
 ///
@@ -95,7 +95,7 @@ final class WisprWatch {
     /// panel is on screen and writes the milliseconds into the log.
     private(set) var edgeAt: CFAbsoluteTime = 0
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.wispr-watch")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.wispr-watch")
     /// The process objects we hold an `IsRunningInput` listener on, and the block
     /// each was registered with — `AudioObjectRemovePropertyListenerBlock` matches
     /// on the block, so it has to be the same one.

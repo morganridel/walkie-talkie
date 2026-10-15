@@ -1,6 +1,6 @@
 import Foundation
 
-/// **Live captions from the local model** (2026-10-05). Victor: *"Pe stilul
+/// **Live captions from the local model** (2026-10-05). the original author: *"Pe stilul
 /// Eleven Labs Live Captions nu putem face ceva similar cu ajutorul modelului
 /// local … un fel de sliding window. Aceste window-uri să le trimiți atunci când
 /// fac o pauză în vorbire … de jumătate de secundă"*, then *"în niciun caz nu
@@ -35,7 +35,7 @@ final class LocalLiveCaption {
     var onCaption: ((_ committed: String, _ partial: String) -> Void)?
 
     static let rate = 16000
-    /// The pause that sends a window (Victor: *"jumătate de secundă"*).
+    /// The pause that sends a window (the original author: *"jumătate de secundă"*).
     static let pause: TimeInterval = 0.5
     /// A window anyway, this often, while he talks with no pause.
     static let steadyEvery: TimeInterval = 2.5

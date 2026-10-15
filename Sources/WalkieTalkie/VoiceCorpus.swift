@@ -20,7 +20,7 @@ import Foundation
 /// ## What a sample is
 ///
 /// ```
-/// voice-corpus/2026-08-17/14-30-22-local123.wav   ← what Victor said
+/// voice-corpus/2026-08-17/14-30-22-local123.wav   ← what the original author said
 /// voice-corpus/2026-08-17/14-30-22-local123.txt   ← what the model made of it
 /// voice-corpus/corpus.jsonl                        ← one line per sample
 /// ```
@@ -31,7 +31,7 @@ import Foundation
 /// ## Everything the microphone hears, whatever the relay then does with it
 ///
 /// Filing a recording is not *acting* on a dictation, so nothing that stops a
-/// delivery stops this: a dictation refused at a shell prompt is still Victor's
+/// delivery stops this: a dictation refused at a shell prompt is still the original author's
 /// voice with the model's reading of it, which is the only thing this collects,
 /// and the corpus is a file on his own disk rather than something sent anywhere.
 /// It is what kept this running through pause for as long as pause existed.
@@ -41,7 +41,7 @@ final class VoiceCorpus {
     static var root: URL { Outbox.home.appendingPathComponent("voice-corpus") }
     static var manifestURL: URL { root.appendingPathComponent("corpus.jsonl") }
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.corpus", qos: .utility)
+    private let queue = DispatchQueue(label: "local.walkie-talkie.corpus", qos: .utility)
 
     /// File one dictation: the audio the relay recorded and the local model's
     /// reading of it.
@@ -156,7 +156,7 @@ final class VoiceCorpus {
 
     // MARK: - Time
 
-    /// The folders and names are **local time**, because they are read by Victor
+    /// The folders and names are **local time**, because they are read by the original author
     /// against his own day; the manifest's `ts` is ISO 8601 for whoever reads it
     /// with a machine.
     private static let dayFormatter: DateFormatter = {

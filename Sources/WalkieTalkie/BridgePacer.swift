@@ -2,7 +2,7 @@ import Foundation
 
 /// **How the bridge gets Wispr back to live after starting late** (2026-09-29).
 ///
-/// Victor: *"the voice is captured the moment I start dictating and then is fed
+/// the original author: *"the voice is captured the moment I start dictating and then is fed
 /// with a bit of an offset … to Wispr Flow … We could also try a speed up of the
 /// voice to 1.1x for a few seconds to recover … after a few seconds there should
 /// be no lag between my voice and what Wispr hears."*
@@ -26,7 +26,7 @@ import Foundation
 /// `evals/wispr-catchup/`: at a flat 1.1× a start 5 s late took a median 7.9 s
 /// to reach live, so a short sentence was heard sped up from end to end — and a
 /// stop one second after Wispr started listening leaves ~6 s of him queued.
-/// Victor: *"accelerarea asta trebuie să aibă un anumit plafon, peste care
+/// the original author: *"accelerarea asta trebuie să aibă un anumit plafon, peste care
 /// probabil Wispr să nu mai poată înțelege … îmi asum această procesare
 /// întârziată"*. So the speed is capped at the fastest Wispr still transcribes
 /// (`maxRate`, `WT_BRIDGE_MAX_RATE`), and whatever that cannot absorb is drained

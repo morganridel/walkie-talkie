@@ -1,13 +1,13 @@
 import Foundation
 
-/// **Which microphone Victor picked, in the one place both apps read it.**
+/// **Which microphone the original author picked, in the one place both apps read it.**
 ///
-/// The relay is not the only thing on this Mac that opens a microphone: Victor
+/// The relay is not the only thing on this Mac that opens a microphone: the original author
 /// Addons transcribes the room continuously through the same four devices, and
 /// until 2026-09-22 each app kept its own answer — this one in `UserDefaults`
 /// under `micDevice`, the other in a `.preferred-me-source` file holding a
 /// CoreAudio name fragment. Two menus, the same six rows, and no way to tell
-/// from either of them what the other was listening through. Victor's ask is
+/// from either of them what the other was listening through. the original author's ask is
 /// the obvious one: *"când o schimb într-una, să se schimbe automat și în
 /// cealaltă"*.
 ///

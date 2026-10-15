@@ -3,7 +3,7 @@ import AppKit
 /// The menu bar glyph, repeated on the screens macOS refuses to put it on.
 ///
 /// `NSStatusItem` lives in **one** menu bar: the one on the display that has the
-/// keyboard focus. Victor works across three, and the state the glyph carries —
+/// keyboard focus. the original author works across three, and the state the glyph carries —
 /// loading, listening — is exactly the state he needs while looking at
 /// the *other* two, since the chip is hidden the moment he starts typing and the
 /// real status item has followed the focus somewhere he is not.
@@ -110,14 +110,14 @@ final class MenuBarMirror {
         // Above the menu bar (`.mainMenu` is 24) so it is not drawn behind the
         // strip it is pretending to be part of.
         panel.level = .statusBar
-        // On every space, including full-screen ones — the display Victor is
+        // On every space, including full-screen ones — the display the original author is
         // *not* typing on is very often the one with a full-screen window on it,
         // which is precisely when he cannot see the chip either.
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         // It is a sign, not a target: clicks go through to whatever is underneath,
         // which on a menu bar is the menu bar.
         panel.ignoresMouseEvents = true
-        // Never in a screenshot of Victor's own screen — the same rule the flash
+        // Never in a screenshot of the original author's own screen — the same rule the flash
         // panel follows, and for the same reason: this thing is about the recording,
         // it is not part of what is being recorded.
         panel.sharingType = .none

@@ -3,7 +3,7 @@ import Foundation
 /// **What the transcript loses: where he hesitated, and whether the whole
 /// sentence was hesitant** (2026-09-27).
 ///
-/// Victor's rules (spec: `~/workspace/voice-distill/docs/voice-affect.md`,
+/// the original author's rules (spec: `~/workspace/voice-distill/docs/voice-affect.md`,
 /// *Design propus*, decided 2026-09-26 — *"de acord"*):
 ///
 /// - **exactly two global tags**, `[voice: hesitant]` and `[voice: tense]`, and

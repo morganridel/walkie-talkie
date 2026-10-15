@@ -1,48 +1,33 @@
 import Foundation
 
-/// **⚡ A quick question: answered by a fast model, beside the pointer**
-/// (2026-10-09). Victor: *"a dumb mode or a quick fast mode to this walkie-talkie
-/// that will answer as fast as it can"*, on his subscription, not an API key.
+/// **⚡ A quick question: answered by a fast Codex model, beside the pointer.**
+/// A warmed `quick-worker` process answers through the signed-in Codex CLI; it
+/// uses the account session and does not need an API key. Each worker handles
+/// one question, then another is started while the answer is displayed.
 ///
-/// **One `claude -p` kept started, used for one question, then replaced.** A
-/// cold `claude -p` costs ~2 s to start and ~2 s to exit around a 1.5 s answer
-/// (measured 2026-10-09, `evals/quick-ask/`); one already running answers its
-/// first words in ~0.5 s. Each process takes exactly one question — Victor:
-/// *"a conversation history over the day … will make it slower after a
-/// while"* — and the next one is started the moment it has answered, so the
-/// start-up is paid while he is not waiting.
+/// The first answer stays lean: a short system prompt, no tools, and a private
+/// working directory. The default is `gpt-6-luna` at low effort; `WT_QUICK_MODEL`
+/// and `WT_QUICK_EFFORT` can override these values in the environment or
+/// `elevenlabs.env`.
 ///
-/// **Lean on purpose**: its own short system prompt instead of Claude Code's,
-/// no tools, no MCP servers, no settings files (no hooks, no CLAUDE.md), run
-/// from `~/.walkie-talkie/quick/` — ~700 input tokens instead of ~104 000, and
-/// the first word ~0.1 s sooner. Opus at low effort unless `WT_QUICK_MODEL` /
-/// `WT_QUICK_EFFORT` (env or `elevenlabs.env`) say otherwise.
-///
-/// **Then the answer is checked, twice** (2026-10-10, Victor: *"după ce termină
-/// de scris, trebuie să înceapă să caute pe net dovezi … ridici un subagent
-/// adversarial care să critice. Asta e rețeta"*): 🔎 a second process with
-/// WebSearch/WebFetch confirms or corrects the answer and cites its sources,
-/// then 🧐 a third, told to break it, reviews answer + sources. Each one is
+/// **Then the answer is checked, twice**: 🔎 a second process with web access
+/// confirms or corrects the answer and cites its sources, then 🧐 a third,
+/// told to challenge it, reviews the answer and sources. Each one is
 /// started while the stage before it runs, so its start-up is not waited for.
 /// The ✕ on the pop-up, or 🔼 ←, stops whatever stage is running.
 final class QuickAsk {
     static let shared = QuickAsk()
 
     static let systemPrompt = """
-        You answer Victor's spoken questions, dictated by voice, so the words may \
-        contain recognition mistakes: answer what he most likely meant. Be brief: \
+        Answer spoken questions, which may contain speech recognition mistakes; \
+        answer what the speaker most likely meant. Be brief: \
         what was asked in one short sentence, plus at most one closely related fact \
         worth knowing; plain text, no markdown, no lists unless asked. \
-        Answer in the language of the question (Romanian or English).
+        Answer in the language of the question.
         """
-    /// **Each check writes the whole answer again** (2026-10-10, Victor: *"un
-    /// răspuns imediat, apoi unul căutat, apoi unul criticat … în funcție de cât
-    /// timp îl las"*): the pop-up always holds the best answer so far, so closing
+    /// **Each check writes the whole answer again**: the pop-up always holds the best answer so far, so closing
     /// it at any moment leaves him with a complete one.
-    /// **Only the proven facts, in his language, no quotes** (2026-10-10,
-    /// Victor: *"Islanda are aproximativ 396.500 de locuitori … aproape două
-    /// treimi din ei locuiesc în regiunea capitalei. Atât"*; *"nu vreau citat
-    /// verbatim din site"*): the quote is written only inside the marker, for
+    /// **Only the proven facts, in the question's language, no quotes**: the quote is written only inside the marker, for
     /// the link to select it on the page.
     static let citeFormat = """
         Reply in the language of the question, plain text, no markdown. As short as \
@@ -57,14 +42,14 @@ final class QuickAsk {
         differs from the one you were given, a line with just: CHANGED
         """
     static let webPrompt = """
-        You were given a spoken question by Victor and a quick answer to it, written \
+        You were given a spoken question and a quick answer to it, written \
         from memory without any checking. Search the web for evidence, writing \
         nothing before your searches are done, and write the answer again: \
         corrected where the sources say otherwise, completed where they add \
         something that matters.
         """ + " " + citeFormat
     static let reviewPrompt = """
-        You are an adversarial reviewer. You get a spoken question by Victor and an \
+        You are an adversarial reviewer. You get a spoken question and an \
         answer to it with quotes and sources. Assume it is wrong somewhere and try \
         to prove it: open the cited pages and check that each quote is really \
         there and really means what the answer says (out of context, outdated, \
@@ -74,7 +59,7 @@ final class QuickAsk {
         """ + " " + citeFormat
     /// A question with no answer by then is given up.
     static let timeout: TimeInterval = 45
-    /// **The answer as shown** (2026-10-10, Victor: *"nu mă interesează să văd
+    /// **The answer as shown** (2026-10-10, the original author: *"nu mă interesează să văd
     /// URL-urile complete … pune în paranteze rotunde numele site-ului, iar la
     /// hover … URL-ul complet. La click … să mă ducă la acel site, preferabil
     /// selectând textele"*): every `[n: "quote"]` becomes a blue ↗, a
@@ -106,7 +91,7 @@ final class QuickAsk {
             at = m.range.location + m.range.length
             guard let url = urls[ns.substring(with: m.range(at: 1))] else { continue }
             let quote = m.range(at: 2).location != NSNotFound ? ns.substring(with: m.range(at: 2)) : ""
-            // **Just a blue ↗** (same day, Victor: *"doar o iconiță care să arate
+            // **Just a blue ↗** (same day, the original author: *"doar o iconiță care să arate
             // o săgeată … pe un albastru, fără subliniere"*): the site's name is
             // the hover's, with the rest of the URL.
             out += " " + ReplyPanel.link("↗", quote.isEmpty ? url : fragment(url, quote: quote))
@@ -136,8 +121,6 @@ final class QuickAsk {
 
     /// The web check and the review, each.
     static let checkTimeout: TimeInterval = 120
-    static let webTools = "WebSearch,WebFetch"
-
     /// The follow-ups of one question, after its answer. Each gets its text so
     /// far, and `done: true` once, with the last of it — or why it failed.
     struct Checks {
@@ -147,7 +130,7 @@ final class QuickAsk {
         var end: () -> Void
     }
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.quick-ask")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.quick-ask")
     private var ready: Worker?
     /// The question being answered or checked — 🔼 ← or the ✕ take it down.
     private var current: Run?
@@ -160,7 +143,11 @@ final class QuickAsk {
         var checks: Checks?
     }
 
-    var model: String { Self.setting("WT_QUICK_MODEL") ?? "opus" }
+    var model: String {
+        guard let configured = Self.setting("WT_QUICK_MODEL"),
+              configured != "opus", !configured.hasPrefix("claude-") else { return "gpt-6-luna" }
+        return configured
+    }
     var effort: String { Self.setting("WT_QUICK_EFFORT") ?? "low" }
 
     private static func setting(_ key: String) -> String? {
@@ -168,33 +155,28 @@ final class QuickAsk {
         return v?.isEmpty == false ? v : nil
     }
 
-    static var claudePath: String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return ["\(home)/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
-            .first { FileManager.default.isExecutableFile(atPath: $0) }
-    }
-
     /// True while a question is being answered.
     var isAnswering: Bool { queue.sync { current != nil } }
 
-    /// **Who will answer the next question** (2026-10-14, Victor: *"I don't know
-    /// who's answering me"*): the pop-up is signed with it before the first word,
-    /// under `Replying from training data…`. The model the last process said it
-    /// ran (`Opus 5.5`), kept across launches per setting; else the setting's
-    /// own name (`Opus`). `onDone` still signs with the one that answered.
+    /// Who will answer the next question: the pop-up is signed with this name
+    /// before the first word. The last served model is kept across launches;
+    /// `onDone` still signs with the model that answered.
     var answererName: String {
         UserDefaults.standard.string(forKey: servedKey).map(Self.displayName) ?? Self.displayName(model)
     }
     private var servedKey: String { "WTQuickServed.\(model)" }
 
-    /// `claude-opus-5-5` → `Opus 5.5`, for the signature under the answer.
+    /// Turn a Codex model ID such as `gpt-6-luna` into a short signature.
     static func displayName(_ id: String) -> String {
-        var parts = id.replacingOccurrences(of: "[1m]", with: "").split(separator: "-").map(String.init)
-        if parts.first == "claude" { parts.removeFirst() }
-        parts.removeAll { $0.count == 8 && Int($0) != nil }   // a date suffix
-        guard let name = parts.first else { return id }
-        let version = parts.dropFirst().joined(separator: ".")
-        return name.prefix(1).uppercased() + name.dropFirst() + (version.isEmpty ? "" : " \(version)")
+        let parts = id.split(separator: "-").map(String.init)
+        guard !parts.isEmpty else { return id }
+        if parts[0].lowercased() == "gpt" {
+            let name = parts.dropFirst().map { part in
+                Double(part) != nil ? part : part.prefix(1).uppercased() + part.dropFirst()
+            }
+            return "GPT" + (name.isEmpty ? "" : "-" + name.joined(separator: " "))
+        }
+        return id
     }
 
     /// Starts the next process if none is waiting. Cheap to call often.
@@ -206,7 +188,7 @@ final class QuickAsk {
         if let r = ready, r.alive { return }
         guard failedStarts < 3 else { return }
         do {
-            ready = try Worker(model: model, effort: effort, prompt: Self.systemPrompt)
+            ready = try Worker()
             ready?.onExit = { [weak self] w in
                 self?.queue.async {
                     guard let self, self.ready === w else { return }
@@ -227,7 +209,7 @@ final class QuickAsk {
 
     /// Asks one question. `onText` gets the answer so far, as it streams;
     /// `onDone` the whole answer, or nil and why it failed, and the model that
-    /// answered (`Opus 5.5`). Then, when `checks` is given, the 🔎 web check and
+    /// answered. Then, when `checks` is given, the 🔎 web check and
     /// the 🧐 review of it. All callbacks on main.
     func ask(_ question: String, checks: Checks? = nil, onText: @escaping (String) -> Void,
              onDone: @escaping (_ answer: String?, _ error: String?, _ firstWord: TimeInterval?, _ model: String) -> Void) {
@@ -239,7 +221,10 @@ final class QuickAsk {
             let modelName = Self.displayName(self.model)
             guard let w = self.ready, w.alive else {
                 DispatchQueue.main.async {
-                    onDone(nil, Self.claudePath == nil ? "claude is not installed" : "the quick model did not start", nil, modelName)
+                    let reason = CodexBridge.helperPath == nil ? "the Codex helper is missing"
+                        : CodexBridge.binaryPath == nil ? "the Codex CLI is not installed"
+                        : "the quick-answer worker did not start"
+                    onDone(nil, reason, nil, modelName)
                     checks?.end()
                 }
                 return
@@ -250,10 +235,11 @@ final class QuickAsk {
             run.workers = [w]
             self.current = run
             // The web check starts now, while the answer is being written.
-            let web = checks == nil ? nil : self.start(run, prompt: Self.webPrompt, tools: Self.webTools)
+            let web = checks == nil ? nil : self.start(run)
             let started = CFAbsoluteTimeGetCurrent()
             var first: TimeInterval?
-            self.stage(run, w, question, timeout: Self.timeout, onText: { text in
+            self.stage(run, w, question, system: Self.systemPrompt, web: false,
+                       timeout: Self.timeout, onText: { text in
                 if first == nil { first = CFAbsoluteTimeGetCurrent() - started }
                 DispatchQueue.main.async { onText(text) }
             }, onDone: { answer, error in
@@ -275,9 +261,10 @@ final class QuickAsk {
             return endLocked(run)
         }
         // The reviewer starts while the web is searched.
-        let reviewer = start(run, prompt: Self.reviewPrompt, tools: Self.webTools)
+        let reviewer = start(run)
         let asked = "Question: \(question)\n\nQuick answer, from memory: \(answer)"
-        stage(run, web, asked, timeout: Self.checkTimeout, onText: { text in
+        stage(run, web, asked, system: Self.webPrompt, web: true,
+              timeout: Self.checkTimeout, onText: { text in
             DispatchQueue.main.async { checks.web(text, false) }
         }, onDone: { found, error in
             DispatchQueue.main.async { checks.web(found ?? "⚠️ \(error ?? "no result")", true) }
@@ -289,7 +276,8 @@ final class QuickAsk {
             // search failed, the quick one.
             let all = found.map { "Question: \(question)\n\nAnswer, checked on the web:\n\($0)" }
                 ?? asked + "\n\n(The web check failed: \(error ?? "?"). Search yourself.)"
-            self.stage(run, reviewer, all, timeout: Self.checkTimeout, onText: { text in
+            self.stage(run, reviewer, all, system: Self.reviewPrompt, web: true,
+                       timeout: Self.checkTimeout, onText: { text in
                 DispatchQueue.main.async { checks.review(text, false) }
             }, onDone: { verdict, error in
                 DispatchQueue.main.async { checks.review(verdict ?? "⚠️ \(error ?? "no review")", true) }
@@ -299,15 +287,16 @@ final class QuickAsk {
     }
 
     /// A process for a later stage of `run`, started now; nil when it could not be.
-    private func start(_ run: Run, prompt: String, tools: String) -> Worker? {
-        guard let w = try? Worker(model: model, effort: effort, prompt: prompt, tools: tools) else { return nil }
+    private func start(_ run: Run) -> Worker? {
+        guard let w = try? Worker() else { return nil }
         run.workers.append(w)
         return w
     }
 
     /// Sends `input` to `w` and calls `onDone` once — the result, its exit, or
     /// the timeout — on `queue`, unless the run was cancelled. Stops `w` after.
-    private func stage(_ run: Run, _ w: Worker, _ input: String, timeout: TimeInterval,
+    private func stage(_ run: Run, _ w: Worker, _ input: String, system: String, web: Bool,
+                       timeout: TimeInterval,
                        onText: @escaping (String) -> Void, onDone: @escaping (String?, String?) -> Void) {
         var finished = false
         let finish: (String?, String?) -> Void = { text, error in
@@ -320,8 +309,8 @@ final class QuickAsk {
         }
         w.onText = { text in if !run.cancelled { onText(text) } }
         w.onResult = { text, error in finish(text, error) }
-        w.onExit = { w in finish(nil, "the model exited — \(w.stderrTail)") }
-        w.send(input)
+        w.onExit = { w in finish(nil, "the Codex worker exited — \(w.stderrTail)") }
+        w.send(input, system: system, model: model, effort: effort, web: web)
         queue.asyncAfter(deadline: .now() + timeout) { finish(nil, "nothing in \(Int(timeout)) s") }
     }
 
@@ -349,18 +338,19 @@ final class QuickAsk {
         return true
     }
 
-    /// One `claude -p` speaking stream-json both ways.
+    /// One persistent `quick-worker` process speaking JSONL both ways.
     private final class Worker {
         private let process = Process()
         private let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
         private var buffer = Data()
         private var text = ""
+        private var requestID: String?
         private var errText = ""
         private let lock = NSLock()
         var onText: ((String) -> Void)?
         var onResult: ((String?, String?) -> Void)?
         var onExit: ((Worker) -> Void)?
-        /// The model id the process says it runs (`claude-opus-5-5`), from its init line.
+        /// The model ID reported by the worker for its completed response.
         private(set) var servedModel: String?
 
         var alive: Bool { process.isRunning }
@@ -370,24 +360,20 @@ final class QuickAsk {
             return t.isEmpty ? "no stderr" : String(t.suffix(200))
         }
 
-        init(model: String, effort: String, prompt: String, tools: String = "") throws {
-            guard let claude = QuickAsk.claudePath else {
-                throw NSError(domain: "QuickAsk", code: 1, userInfo: [NSLocalizedDescriptionKey: "claude not found"])
+        init() throws {
+            guard let helper = CodexBridge.helperPath else {
+                throw NSError(domain: "QuickAsk", code: 1, userInfo: [NSLocalizedDescriptionKey: "codex_bridge.py not found"])
+            }
+            guard let binary = CodexBridge.binaryPath else {
+                throw NSError(domain: "QuickAsk", code: 2, userInfo: [NSLocalizedDescriptionKey: "Codex CLI not found"])
             }
             let dir = Outbox.home.appendingPathComponent("quick")
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            process.executableURL = URL(fileURLWithPath: claude)
-            process.arguments = ["-p", "--model", model, "--effort", effort,
-                                 "--input-format", "stream-json", "--output-format", "stream-json",
-                                 "--verbose", "--include-partial-messages", "--no-session-persistence",
-                                 "--tools", tools, "--strict-mcp-config", "--setting-sources", "",
-                                 "--system-prompt", prompt]
-            // -p has no one to ask: the tools it is given are allowed.
-            if !tools.isEmpty { process.arguments! += ["--allowedTools", tools] }
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            process.arguments = [helper, "quick-worker"]
             process.currentDirectoryURL = dir
             var env = ProcessInfo.processInfo.environment
-            // Not a session of the terminal this app was started from.
-            for k in env.keys where k.hasPrefix("CLAUDE_CODE_") || k == "CLAUDECODE" { env[k] = nil }
+            env["CODEX_BIN"] = binary
             process.environment = env
             process.standardInput = stdin
             process.standardOutput = stdout
@@ -407,8 +393,18 @@ final class QuickAsk {
             try process.run()
         }
 
-        func send(_ question: String) {
-            let line: [String: Any] = ["type": "user", "message": ["role": "user", "content": question]]
+        func send(_ question: String, system: String, model: String, effort: String, web: Bool) {
+            let id = UUID().uuidString
+            requestID = id
+            let line: [String: Any] = [
+                "id": id,
+                "text": question,
+                "system": system,
+                "model": model,
+                "effort": effort,
+                "web": web,
+                "cwd": Outbox.home.appendingPathComponent("quick").path,
+            ]
             guard var data = try? JSONSerialization.data(withJSONObject: line) else { return }
             data.append(0x0A)
             try? stdin.fileHandleForWriting.write(contentsOf: data)
@@ -432,20 +428,21 @@ final class QuickAsk {
         }
 
         private func handle(_ e: [String: Any]) {
+            if let expected = requestID, let actual = e["id"] as? String, actual != expected { return }
             switch e["type"] as? String {
-            case "system":
-                if e["subtype"] as? String == "init" { servedModel = e["model"] as? String }
-            case "stream_event":
-                guard let ev = e["event"] as? [String: Any], ev["type"] as? String == "content_block_delta",
-                      let d = ev["delta"] as? [String: Any], d["type"] as? String == "text_delta",
-                      let t = d["text"] as? String else { return }
-                text += t
+            case "ready":
+                servedModel = e["model"] as? String ?? servedModel
+            case "delta":
+                guard let t = e["text"] as? String else { return }
+                text = t
                 onText?(text)
-            case "result":
-                let isError = e["is_error"] as? Bool ?? false
-                let result = (e["result"] as? String) ?? text
-                if isError { onResult?(nil, result.isEmpty ? "the quick model failed" : result) }
-                else { onResult?(result.isEmpty ? text : result, nil) }
+            case "completed":
+                let result = (e["text"] as? String) ?? text
+                servedModel = e["model"] as? String ?? servedModel
+                onResult?(result, nil)
+            case "error":
+                let message = e["error"] as? String ?? "the quick model failed"
+                onResult?(nil, message)
             default:
                 return
             }

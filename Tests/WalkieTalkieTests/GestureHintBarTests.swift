@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 @testable import WalkieTalkie
 
 /// The corner hint bar per stage: what each gesture does *now*, drawn as two

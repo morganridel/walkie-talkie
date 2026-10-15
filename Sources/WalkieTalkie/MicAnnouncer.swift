@@ -5,7 +5,7 @@ import CoreAudio
 /// bottom edge of the screen under the mouse when the microphone this app would
 /// record through changes, holds ~2.5 s and falls away (2026-09-23).
 ///
-/// Victor: *"pune notificarea verde de jos sa vina de la walkie"*. It was Victor
+/// the original author: *"pune notificarea verde de jos sa vina de la walkie"*. It was the original author
 /// Addons' for one afternoon, announcing the **system default input** — and on
 /// the first real plug-in it said nothing at all: the DJI receiver went in,
 /// this app and addons' Whisper both moved to it, and the system default stayed
@@ -20,26 +20,26 @@ import CoreAudio
 /// asked once when it expires; a burst that ends where it began says nothing.
 /// **Never at launch**: the device present then is the baseline. The system
 /// default input is deliberately **not** a trigger: it is not what this app
-/// records through, and Victor Addons now moves it off the WH-1000XM3 on its
+/// records through, and the original author Addons now moves it off the WH-1000XM3 on its
 /// own, which would otherwise raise a second tab about a device nobody records.
 ///
-/// **The look is Victor Addons' `BottomTabBanner`, reproduced** — green, flush
+/// **The look is the original author Addons' `BottomTabBanner`, reproduced** — green, flush
 /// on the bottom edge, top corners rounded, click-through, non-activating.
 /// Reproduced rather than shared because this app must not depend on that
 /// private one; the ~100 lines here are the accepted price.
 ///
 /// **Same words as addons' pill, behind the app's own icon** (2026-09-26,
-/// Victor: *"walkie talkie sa aiba acelasi mesaj, dar precedat de iconul lui
+/// the original author: *"walkie talkie sa aiba acelasi mesaj, dar precedat de iconul lui
 /// cu portocaliu in jur"*). The orange-ringed `walkie-bound` device in front
 /// is what says *which* app is saying it. **No `Listening` prefix** (2026-10-13,
-/// Victor: *"sometimes it says listening, but sometimes it just says the device
+/// the original author: *"sometimes it says listening, but sometimes it just says the device
 /// … remove the listening prefix"*) — the launch tab never had one.
 final class MicAnnouncer {
 
     static let settle: TimeInterval = 0.6
     static let hold: TimeInterval = 2.5
     static let tint = NSColor.systemGreen.withAlphaComponent(0.85)
-    /// **The launch tab** (2026-09-28, Victor: *"when walkie starts up, it should
+    /// **The launch tab** (2026-09-28, the original author: *"when walkie starts up, it should
     /// show an overlay on the bottom saying what source/engine it uses. this way
     /// I know when it restarted"*) — the same tab, blue so it is not mistaken for
     /// the microphone's green, up for 3 s with the Engine row's words.
@@ -50,7 +50,7 @@ final class MicAnnouncer {
     private(set) var startupText: String?
 
     /// **A sound wave between the microphone and the engine** (2026-10-08,
-    /// Victor, over a seven-bar wave: *"put such a wave, but symmetrical both
+    /// the original author, over a seven-bar wave: *"put such a wave, but symmetrical both
     /// sides … in between the microphone and the engine"* — the ` / ` of the
     /// same morning, drawn). A private-use character in the text; `BottomTab`
     /// draws `WaveGlyph` in its place.
@@ -61,7 +61,7 @@ final class MicAnnouncer {
     /// so a device change names the engine that will hear it.
     var engine: (() -> String?)?
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.mic-announcer", qos: .utility)
+    private let queue = DispatchQueue(label: "local.walkie-talkie.mic-announcer", qos: .utility)
     private var pending: DispatchWorkItem?
     private var listener: AudioObjectPropertyListenerBlock?
     /// What was last announced (or the baseline): `glyph + label`, or the bare
@@ -98,7 +98,7 @@ final class MicAnnouncer {
     /// **Say what engine this launch runs on** — main thread, once, right after
     /// the engine is decided. Never under `RELAY_SHOOT`.
     ///
-    /// **The microphone in front of it** (2026-10-05, Victor: *"să afișeze
+    /// **The microphone in front of it** (2026-10-05, the original author: *"să afișeze
     /// înaintea motorului folosit și device-ul de microfon, simbolul pentru
     /// microfonul în folosire la pornire"*) — the resolved device's glyph, the
     /// green tab's own, or `🎙️ <name>` for one `known` does not name.
@@ -106,7 +106,7 @@ final class MicAnnouncer {
         guard !RelayWindow.shooting else { return }
         let r = InputDevice.resolve()
         let mic = r.known?.glyph ?? r.device.map { "🎙️ \($0.name)" }
-        // **A slash between the microphone and the engine** (2026-10-08, Victor:
+        // **A slash between the microphone and the engine** (2026-10-08, the original author:
         // *"put a slash between the emoji meaning the input source and … the
         // transcription engine"*) — `🎤 / ☁️ ElevenLabs + Live` (the ☁️ first since 2026-10-09).
         let text = [mic, engine].compactMap { $0 }.joined(separator: " \(Self.wave) ")
@@ -127,7 +127,7 @@ final class MicAnnouncer {
         let now = Self.current()
         guard !now.key.isEmpty, now.key != last else { return }
         last = now.key
-        // **Logged, no longer shown** (2026-10-14, Victor: *"I don't want to see the
+        // **Logged, no longer shown** (2026-10-14, the original author: *"I don't want to see the
         // gigabytes and the notification overlay coming from the bottom center"*) —
         // the green tab rose three times that morning over his work. The launch tab
         // (blue, `announceStartup`) still rises: it is the restart signal he asked for.
@@ -155,7 +155,7 @@ final class MicAnnouncer {
     }
 }
 
-/// Victor Addons' `BottomTabBanner`, cut down to what the announcer uses: one
+/// the original author Addons' `BottomTabBanner`, cut down to what the announcer uses: one
 /// panel on the screen under the mouse, nailed to its bottom edge, with the
 /// tab sliding *inside* it so no pixel of the motion lands on a display below.
 private final class BottomTab {
@@ -282,18 +282,18 @@ private final class BottomTab {
     }
 
     /// **A bright spot runs along the wave, microphone → engine** (2026-10-08,
-    /// Victor: *"a bit animated … from the microphone towards the
+    /// the original author: *"a bit animated … from the microphone towards the
     /// transcription … like a bright section moving, from left to right …
     /// something gentle"*). The attachment is redrawn with the glint further on.
     ///
-    /// **Once, timed to the tab** (same day, Victor: *"the light moving through
+    /// **Once, timed to the tab** (same day, the original author: *"the light moving through
     /// should get at its end when the overlay disappears, (not restart from
     /// left)"*), then *"it finishes too late now. When it's done … only then …
     /// falls out of screen"*: `lasting` is the rise and the hold, so the head
     /// reaches the wave's right end as the fall begins. A `show` over a tab
     /// already up starts a new pass over its new hold.
     ///
-    /// **A beat of nothing on either side** (2026-10-08, Victor: *"should start
+    /// **A beat of nothing on either side** (2026-10-08, the original author: *"should start
     /// animating half a second after the overlay flies in from the bottom, and
     /// end … 300 milliseconds … [before], to be a time that there is no more
     /// signal to increase the suspense"*): the wire sits dim and empty for
@@ -340,7 +340,7 @@ private final class BottomTab {
     }
 
     /// **Three lights, one after the other: the microphone, the wire, the
-    /// engine** (2026-10-12, Victor: *"fă să strălucească microfonul, apoi, în
+    /// engine** (2026-10-12, the original author: *"fă să strălucească microfonul, apoi, în
     /// continuare, să vină acel semnal și apoi să strălucească și emoji-ul din
     /// label-ul engine-ului … ca o strălucire așa diagonală"*). `pass` runs 0…1
     /// over the one pass `startGlint` times; each light gets its own stretch
@@ -392,7 +392,7 @@ private final class BottomTab {
             // line, so the emoji sits where the bare character would (kern could
             // not do it: it is ignored on an attachment and stops at a space's
             // own width — 2026-10-12, the wave had 28 pt on one side, 19.5 on
-            // the other, until Victor: "reduce a bit the space to left/right of
+            // the other, until the original author: "reduce a bit the space to left/right of
             // the sound wave").
             out.append(NSAttributedString(string: String(part[..<at]), attributes: attrs))
             let glyph = ShineGlyph.image(String(part[at]), font: font, shine: shine)
@@ -565,7 +565,7 @@ enum ShineGlyph {
     }
 }
 
-/// **The wave Victor picked** (2026-10-08, an icon he pasted: *"use this"*) —
+/// **The wave the original author picked** (2026-10-08, an icon he pasted: *"use this"*) —
 /// a flat lead-in, a zigzag of sharp peaks with rounded corners, a flat
 /// lead-out, drawn as one white wire at the text's size. It replaced the same
 /// morning's seven mirrored bars and then the rounded serpentine through them.
@@ -591,7 +591,7 @@ enum WaveGlyph {
     /// it — the left end at 0, and at 1 past the right end by its own tail, so
     /// the last of it has just left (2026-10-08). Below 0: a dim, empty wire.
     ///
-    /// **The light travels the wave's own trajectory** (2026-10-08, Victor drew
+    /// **The light travels the wave's own trajectory** (2026-10-08, the original author drew
     /// it on screen: a short bright segment running along the wave's line —
     /// *"draw segments of it … progressing through, glowing … following the
     /// trajectory of the wavelength itself"*): a stroke of the wire's width

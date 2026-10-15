@@ -1,13 +1,13 @@
 import Foundation
 import Network
 
-/// One element Victor pointed at in a web page — a single ⌘-click in Chrome.
+/// One element the original author pointed at in a web page — a single ⌘-click in Chrome.
 ///
 /// The whole reason this exists: "make *this* button blue" is a sentence the
 /// agent cannot act on. A CSS path is the same sentence with the pronoun
 /// resolved.
 extension ElementPick {
-    /// **The whole of it, for the middle of his sentence** — Victor's own mock,
+    /// **The whole of it, for the middle of his sentence** — the original author's own mock,
     /// 2026-09-14: `(selected DOM element: body > table > th, with text:
     /// "Header1" in page "https://interact.victorrentea.ro")`.
     ///
@@ -65,7 +65,7 @@ struct ElementPick {
     ///
     /// Nothing in the page moves: the extension drags an outline of the element
     /// and puts the two corners in the message, which is the whole feature.
-    /// Victor's ask, 2026-09-09: *"să capturăm poziția originală și coordonatele
+    /// the original author's ask, 2026-09-09: *"să capturăm poziția originală și coordonatele
     /// … dragul să se ducă translucent, doar chenarul … și să transmită în text
     /// unde sunt noile coordonate ale acelui element"*.
     ///
@@ -195,7 +195,7 @@ struct ElementPick {
 ///
 /// **Why an extension and not the DevTools protocol.** CDP is the obvious answer
 /// and it is the wrong one here: since Chrome 136 `--remote-debugging-port` is
-/// refused on the default profile, so reaching Victor's actual browser — his
+/// refused on the default profile, so reaching the original author's actual browser — his
 /// tabs, his logins, the page he is actually looking at — would mean relaunching
 /// it against a throwaway `--user-data-dir`. An extension needs no flags, no
 /// relaunch and no second profile.
@@ -231,7 +231,7 @@ final class ElementPicker {
     ///
     /// It exists for the one caller that knows which session it means and
     /// cannot point at it: the build script, which puts the binding back after
-    /// it has replaced the app underneath it. Victor's rule, 2026-09-09 —
+    /// it has replaced the app underneath it. the original author's rule, 2026-09-09 —
     /// restarting while a terminal is bound is fine, *"ideal ar fi să-l re-legi
     /// la același terminal automat"* — and the frontmost window at the end of a
     /// build is whatever the build was watched in, which is exactly not it.
@@ -445,13 +445,13 @@ final class ElementPicker {
     /// Wispr Flow's own `fn ⌃ Space` through `HotkeyTap.postWisprHandsFree`, the
     /// same call the forward button makes. Unlike `/test/wispr` this does not
     /// fake anything: a real Wispr dictation starts, and the relay learns about
-    /// it exactly as it learns about one Victor started himself.
+    /// it exactly as it learns about one the original author started himself.
     ///
     /// **Only useful from the installed build.** A `.build/debug` binary has no
     /// Accessibility grant of its own, so `CGEventPost` does nothing and does it
     /// silently — see `tools/wispr-test.sh`, which checks before it runs.
     ///
-    /// - Parameter hand: `{"hand": true}` — post it **as though Victor had
+    /// - Parameter hand: `{"hand": true}` — post it **as though the original author had
     ///   pressed it**: ring only, nothing swallowed, nothing delivered. Without
     ///   it the route stays the transcribe primitive, which the relay does
     ///   intercept; the two were one call until the adversarial round found the
@@ -556,7 +556,7 @@ final class ElementPicker {
 
     /// `POST /test/gesture` `{"name": "forward-left"}` — post the ⌃⌥⌘F-key chord
     /// Logi Options+ makes for one mouse gesture, so the gesture branch of
-    /// `HotkeyTap` runs exactly as it does for Victor's hand.
+    /// `HotkeyTap` runs exactly as it does for the original author's hand.
     ///
     /// It is the missing half of the harness: `/test/wispr-handsfree` posts the
     /// chord that starts a *dictation*, and every other route enters below the
@@ -626,7 +626,7 @@ final class ElementPicker {
     /// straight back to being Chrome's ⌘.
     ///
     /// Gated on the dictation for the same reason mouse 4 is (`HotkeyTap.dictating`)
-    /// and not one of its own: ⌘-click opens a link in a new tab and Victor uses it
+    /// and not one of its own: ⌘-click opens a link in a new tab and the original author uses it
     /// all day. Borrowing a gesture that load-bearing is only defensible while the
     /// window is narrow and *visible* — the recording row is on screen saying the
     /// gesture is live, and both appear and disappear together. A picker armed
@@ -645,7 +645,7 @@ final class ElementPicker {
     /// can say which one is missing.** `dictating` is `hasDestination &&
     /// listening`, and a false read of it used to be reported as the undivided
     /// "no", which left exactly one question standing — *was the terminal bound,
-    /// or was I simply not recording?* Victor asked it in those words on
+    /// or was I simply not recording?* the original author asked it in those words on
     /// 2026-09-09 (*"nu știu dacă [terminalul] aveam pornit"*), and nothing in
     /// the app or the extension could answer it.
     ///
@@ -689,7 +689,7 @@ final class ElementPicker {
 
     private(set) var port: UInt16?
     private var listener: NWListener?
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.inspect")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.inspect")
 
     func start() { bind(0) }
 
@@ -800,7 +800,7 @@ final class ElementPicker {
         // Bind / unbind / inspect the terminal a dictation gets typed into.
         //
         // **Not gated on `dictating`**, unlike everything above it: pointing the
-        // relay at a terminal is something Victor does at rest, on his way into
+        // relay at a terminal is something the original author does at rest, on his way into
         // a session, and a bind that only worked mid-sentence would be a bind he
         // could never make.
         case ("POST", "/bind"):
@@ -1329,7 +1329,7 @@ final class ElementPicker {
         var head = "HTTP/1.1 \(status) \(Self.reason(status))\r\n"
         head += "Content-Type: application/json\r\n"
         head += "Content-Length: \(payload.count)\r\n"
-        // The POST arrives from whatever page Victor happens to be on, so the
+        // The POST arrives from whatever page the original author happens to be on, so the
         // browser will not let the extension read the answer without these.
         head += "Access-Control-Allow-Origin: *\r\n"
         head += "Access-Control-Allow-Headers: content-type\r\n"

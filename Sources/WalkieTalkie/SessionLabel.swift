@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the overlay calls itself: `ai@master` — the same `folder@branch` Victor
+/// What the overlay calls itself: `ai@master` — the same `folder@branch` the original author
 /// reads in Claude Code's status line.
 ///
 /// It used to say "Agent", which is fine until a second overlay exists. With two
@@ -23,7 +23,7 @@ enum SessionLabel {
         overridden = true
     }
 
-    /// Re-read the branch periodically: Victor switches branches mid-session, and
+    /// Re-read the branch periodically: the original author switches branches mid-session, and
     /// an overlay still claiming `@master` while he works on a feature branch is a
     /// label that lies. Returns true when it changed, so the caller can relayout
     /// (the title drives the overlay's width).

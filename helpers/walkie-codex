@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Start a Codex CLI chat with an explicit conversation identity for Walkie Talkie."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from codex_bridge import BridgeError, RpcClient, find_codex, sidecar_dir, make_input
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cd", default=os.getcwd(), help="Project folder")
+    parser.add_argument("--resume", help="Resume this exact Codex conversation ID")
+    parser.add_argument("--model", help="Optional model override")
+    parser.add_argument("--image", action="append", default=[], help="Attach a screenshot to the first prompt")
+    parser.add_argument("prompt", nargs="?", default="")
+    args = parser.parse_args()
+    if not args.resume and not args.prompt.strip():
+        parser.error("a new session needs its first prompt; use --resume for an existing chat")
+    cwd = Path(args.cd).expanduser().resolve()
+    if not cwd.is_dir():
+        parser.error("project folder does not exist")
+    try:
+        tty = os.ttyname(sys.stdin.fileno()).removeprefix("/dev/")
+    except OSError:
+        raise BridgeError("walkie-codex needs an interactive terminal")
+    binary = str(find_codex())
+    # Idempotent local startup; it does not restart existing work or enable remote access.
+    subprocess.run([binary, "app-server", "daemon", "start"], check=True,
+                   stdout=subprocess.DEVNULL)
+    with RpcClient(timeout=20) as client:
+        if args.resume:
+            started = client.request("thread/resume", {"threadId": args.resume}, timeout=30)
+        else:
+            params = {"cwd": str(cwd)}
+            if args.model:
+                params["model"] = args.model
+            started = client.request("thread/start", params, timeout=30)
+        thread = started.get("thread") or {}
+        thread_id = thread.get("id")
+        if not thread_id:
+            raise BridgeError("Codex did not return a conversation ID")
+        if args.prompt:
+            # A new empty thread has no durable rollout and cannot yet be resumed
+            # by the TUI. Persist the actual user prompt before attaching it.
+            client.request("turn/start", {"threadId": thread_id,
+                           "input": make_input(args.prompt, args.image)}, timeout=30)
+    folder = sidecar_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    record = folder / (tty + ".json")
+    temp = record.with_suffix(".tmp")
+    temp.write_text(json.dumps({"threadId": thread_id, "tty": tty, "pid": os.getpid()}) + "\n")
+    temp.replace(record)
+    os.environ.setdefault("WALKIE_SHOTS", str(Path.home() / "Library/Caches/local.walkie-talkie/shots"))
+    os.chdir(cwd)
+    command = [binary, "--remote", "unix://", "resume", thread_id]
+    if args.model:
+        command += ["--model", args.model]
+    os.execv(binary, command)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (BridgeError, subprocess.CalledProcessError) as error:
+        print("walkie-codex: " + str(error), file=sys.stderr)
+        raise SystemExit(1)

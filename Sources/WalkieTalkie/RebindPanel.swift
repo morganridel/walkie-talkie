@@ -5,7 +5,7 @@ import AppKit
 ///
 /// **Why it stopped being an `NSMenu`** (2026-09-12). The pop-up was right for
 /// as long as the answer was always in the twelve destinations the relay had
-/// spoken to. Victor's ask: *"când apare ecranul de sesiuni recente … trebuie să
+/// spoken to. the original author's ask: *"când apare ecranul de sesiuni recente … trebuie să
 /// pot să încep să tastez direct"* — and a menu cannot take typing. AppKit's
 /// menus have type-select, which matches the first letters of a row's title and
 /// nothing else; what he types is a sentence he remembers from inside a session,
@@ -51,7 +51,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         /// rebinding. See `hint`.
         var resume: (session: String, cwd: String)?
         /// **What ⏎ would do to this row, in three words**, drawn on the selected
-        /// row only. Victor's ask when the resume was offered: *"cu un visual
+        /// row only. the original author's ask when the resume was offered: *"cu un visual
         /// hint, să ofere și asta"* — an action nothing on screen mentions is an
         /// action nobody uses, and a hint repeated down twenty-five rows is
         /// noise. The selected row is the one ⏎ is about.
@@ -60,7 +60,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
 
     // MARK: - The pause before the disk is touched
 
-    /// **370 ms.** Victor's number (*"live filtering la taste, cu [debounce]
+    /// **370 ms.** the original author's number (*"live filtering la taste, cu [debounce]
     /// când mă [opresc] 370 … sau 500"*), and the low end of the two on purpose:
     /// the scan it gates is around a second, so the pause is what keeps four
     /// keystrokes from starting four scans, not what keeps the panel calm. The
@@ -226,7 +226,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         field.focusRingType = .none
         field.font = .systemFont(ofSize: 16, weight: .regular)
         field.textColor = .labelColor
-        field.placeholderString = "Search what you or Claude said…"
+        field.placeholderString = "Search what you or Codex said…"
         field.delegate = self
         field.cell?.usesSingleLineMode = true
         blur.addSubview(field)
@@ -420,7 +420,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         let resumable = tty == nil && !hit.cwd.isEmpty
             && FileManager.default.fileExists(atPath: hit.cwd)
 
-        let who = hit.role == "me" ? "you" : "claude"
+        let who = hit.role == "me" ? "you" : "Codex"
         let name = hit.title.isEmpty ? hit.label : hit.title
         var title = name
         if !hit.title.isEmpty { title += "  —  \(hit.label)" }
@@ -437,7 +437,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
 
     /// **Is this session still in the tab it last reported?**
     ///
-    /// The tty comes from the cache Victor's `terminal-title.sh` hook keeps, and
+    /// The tty comes from the cache the original author's `terminal-title.sh` hook keeps, and
     /// a tty is recycled the moment a tab is reused — so the answer is not "does
     /// `ttys016` exist" but "is `ttys016` still showing *this* session". What
     /// makes that answerable for free is that the same hook writes the session's
@@ -451,6 +451,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     /// get wrong.
     private func liveTTY(for hit: SessionSearch.Hit) -> String? {
         if let device = hit.tty {
+            if device.hasPrefix("codex:"), hit.ttyOwner { return device }
             let short = (device as NSString).lastPathComponent
             if let shown = live[short], hit.ttyOwner || matches(shown, hit) {
                 return device
@@ -534,10 +535,10 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         // sentence any more: most rows are a terminal to point at, and a session
         // whose window is gone is a terminal to open.
         let action = shown.indices.contains(selected) && shown[selected].resume != nil
-            ? "⏎ reopen it with claude --resume"
+            ? "⏎ reopen it with codex resume"
             : "⏎ bind"
         hintLabel.stringValue = query.isEmpty
-            ? "Type to search every message you and Claude exchanged   ·   ↑↓ choose   ·   \(action)   ·   esc close"
+            ? "Type to search every message you and Codex exchanged   ·   ↑↓ choose   ·   \(action)   ·   esc close"
             : "↑↓ choose   ·   \(action)   ·   esc close"
     }
 

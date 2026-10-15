@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// **A short screen recording, for the things a screenshot cannot say**
 /// (2026-09-18).
 ///
-/// Victor's ask: *"sunt animații pe care uneori nu poți să le arăți [într-o
+/// the original author's ask: *"sunt animații pe care uneori nu poți să le arăți [într-o
 /// poză]"*. A frame shows a dialog; it cannot show the dialog arriving, a layout
 /// reflowing, or a hover that only exists while the pointer is over it. Three to
 /// ten seconds at five frames a second is enough for all three, and is the whole
@@ -17,7 +17,7 @@ import UniformTypeIdentifiers
 /// **cannot watch a video at all**:
 ///
 /// - **the frames**, full resolution, one JPEG each, numbered — what the agent
-///   opens when it needs to read the screen, and what Victor scrubs;
+///   opens when it needs to read the screen, and what the original author scrubs;
 /// - **the contact sheet** (`FilmSheet`), a sample of them laid out as a grid —
 ///   what the agent looks at to know *what moved and when*.
 ///
@@ -41,7 +41,7 @@ import UniformTypeIdentifiers
 /// it stops working the replacement is one function, not a rewrite.
 final class ScreenFilm {
 
-    /// Five a second, Victor's number, and the ceiling is his too: *"nu plănuiesc
+    /// Five a second, the original author's number, and the ceiling is his too: *"nu plănuiesc
     /// să înregistrez mai mult de 3, 5, 10 secunde maximum, vreodată"*. The cap
     /// is a safety net for a stop gesture that never comes, not a limit he is
     /// expected to reach.
@@ -76,9 +76,9 @@ final class ScreenFilm {
     /// 80–150 ms to encode and a frame is due every 200 ms; encoding on the
     /// capture queue would spend most of the budget and drift the timer, so the
     /// labels under the sheet's cells would stop being true.
-    private let captureQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.film.capture",
+    private let captureQueue = DispatchQueue(label: "local.walkie-talkie.film.capture",
                                              qos: .userInitiated)
-    private let encodeQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.film.encode",
+    private let encodeQueue = DispatchQueue(label: "local.walkie-talkie.film.encode",
                                             qos: .utility)
     /// **Backpressure, and it drops rather than queues.** If the encoder is two
     /// frames behind, the next capture is skipped and counted. The alternative —
@@ -319,7 +319,7 @@ final class ScreenFilm {
 }
 
 /// **A plain red border round the screen being filmed, blinking** (2026-10-08,
-/// Victor: *"when the movie is recorded, there should be a red border, not any
+/// the original author: *"when the movie is recorded, there should be a red border, not any
 /// fade, just a plain red border, a few pixels solid, around the screen
 /// recorded, and blinking 50% transparent to 100% opaque"*). Solid 5 pt, a
 /// hard step between 100 % and 50 % every half second — no ease. Clicks pass
@@ -330,7 +330,7 @@ final class ScreenFilm {
 /// 2026-10-13 by the camcorder badge below.
 ///
 /// **One `● REC` in the top-right corner, like a camcorder's viewfinder**
-/// (2026-10-13, Victor: *"the record circles in the corners should be like three
+/// (2026-10-13, the original author: *"the record circles in the corners should be like three
 /// x large and be blinking slowly … say REC … It should only appear in the top
 /// right. To resemble a VCR camera"*). The dot is 3 × the old 14 pt and blinks
 /// on its own slow clock — a hard step, a second lit and a second dark — while

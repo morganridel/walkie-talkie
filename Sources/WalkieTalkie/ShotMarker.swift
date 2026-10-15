@@ -6,7 +6,7 @@ import Foundation
 /// the shutter, so the transcript says *where in the sentence* the picture
 /// belongs** (2026-09-14).
 ///
-/// The problem it solves is Victor's: *"aș lua și referi precis … e mult mai
+/// The problem it solves is the original author's: *"aș lua și referi precis … e mult mai
 /// util dacă le-aș referi după index și le-aș trece direct în text care e
 /// indexul care. Că, după timp, e greu să estimezi."* Every frame already
 /// carries the second it was taken at (`shot-00:56…`), and an agent handed five
@@ -51,7 +51,7 @@ enum ShotMarker {
     // MARK: - What is said
 
     /// **What a marker is naming** (2026-09-14, the same day the shot marker was
-    /// built — Victor: *"Vreau același lucru și pentru selecție"*).
+    /// built — the original author: *"Vreau același lucru și pentru selecție"*).
     ///
     /// Two kinds, one mechanism, and deliberately one file: the phrase, the
     /// number words, the digit forms and the pattern that reads them back are a
@@ -145,7 +145,7 @@ enum ShotMarker {
     /// The idea was that a spoken index survives into the transcript and can be
     /// swapped for the thing it names, so `[shot 1]` lands at the word he pressed
     /// the shutter at. It works only if the recogniser writes the injected phrase
-    /// back **exactly**, and that is a promise no recogniser makes. Victor's
+    /// back **exactly**, and that is a promise no recogniser makes. the original author's
     /// evidence, the day ElevenLabs became the engine:
     ///
     /// > Beige-ul ăsta n-are aceeași mărime cu- **Pict element one**. […]
@@ -198,7 +198,7 @@ enum ShotMarker {
     /// presses a third of a second apart must not race each other into the same
     /// engine. Never the main thread — the shutter's whole contract is that the
     /// flash lands on the keypress.
-    private static let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.shot-marker")
+    private static let queue = DispatchQueue(label: "local.walkie-talkie.shot-marker")
 
     private static var engine: AVAudioEngine?
     private static var player: AVAudioPlayerNode?
@@ -210,7 +210,7 @@ enum ShotMarker {
     /// beside them rather than inside them.
     private static let cacheDir = FileManager.default
         .urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("ro.victorrentea.wispr-relay/markers")
+        .appendingPathComponent("local.walkie-talkie/markers")
 
     /// **Synthesise and load before a gesture is waiting on it.** `say` is a
     /// subprocess and takes a few hundred milliseconds per clip; a shutter press
@@ -246,7 +246,7 @@ enum ShotMarker {
     ///
     /// `~/.walkie-talkie/markers/<slug>-<n>.wav`, beside the corpus, because
     /// unlike the synthesised clips these **cannot be regenerated** — macOS may
-    /// purge Caches under disk pressure and a purged marker is a marker Victor
+    /// purge Caches under disk pressure and a purged marker is a marker the original author
     /// has to record again.
     static var recordedDir: URL { Outbox.home.appendingPathComponent("markers") }
 
@@ -269,7 +269,7 @@ enum ShotMarker {
     /// each measured and each moved nothing, because all five are about the
     /// *words* and the problem was the *source*.
     ///
-    /// Victor recorded the thirty of them in four dictations through the relay
+    /// the original author recorded the thirty of them in four dictations through the relay
     /// itself; they were cut on the pauses and each one verified by transcribing
     /// it alone. → `evals/marker-phrases.py`
     private static func recorded(_ clip: Clip) -> URL? {
@@ -347,7 +347,7 @@ enum ShotMarker {
     /// mechanisms now share (2026-09-14).
     ///
     /// It was the played path's alone, on the reasoning that a marker *summed*
-    /// with his voice is lost. Victor, asking about the other one: *"tu cum îi
+    /// with his voice is lost. the original author, asking about the other one: *"tu cum îi
     /// inserezi liniștea? Brutal, exact în momentul ăla? Sau când fac o mică
     /// pauză? Ar fi mai prudent să aștept să iau un respiro."* He is right, and
     /// the spliced path was doing the brutal thing — writing the clip at the
@@ -757,7 +757,7 @@ enum ShotMarker {
     /// **Put the spliced markers where the recogniser heard them — every one of
     /// them, or none** (2026-09-30).
     ///
-    /// Victor: *"only fill the placeholders if and only if all of them come in
+    /// the original author: *"only fill the placeholders if and only if all of them come in
     /// cleanly … keep the fallback as well in case a marker is ever lost"*. So:
     ///
     /// 1. **The check is on `asr`** — Wispr's `asrText`, the recogniser's words
@@ -958,7 +958,7 @@ enum ShotMarker {
         }
     }
 
-    /// **The envelope's vocabulary, in one place** (2026-09-19, Victor's own
+    /// **The envelope's vocabulary, in one place** (2026-09-19, the original author's own
     /// template). Every attachment is a bracket where he made it, and the
     /// bracket says which kind, which number and the one fact that cannot be
     /// derived from the file:

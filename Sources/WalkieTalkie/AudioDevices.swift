@@ -94,7 +94,7 @@ enum AudioDevices {
     /// Settings ▸ Sound ▸ Input.**
     ///
     /// It is not a user preference that sits where it is put. macOS's voice
-    /// processing runs an AGC on it, and Victor watched it happen: *"dacă țip
+    /// processing runs an AGC on it, and the original author watched it happen: *"dacă țip
     /// mai tare, el într-adevăr coboară, și dacă tac mai mult timp se ridică la
     /// loc la 100%"*. Measured on his built-in microphone the evening of
     /// 2026-09-21, it walked 100 → 94 → 87 → 72 → 60 % inside five minutes of

@@ -5,7 +5,7 @@ import Foundation
 /// recogniser over a websocket, fed the same 16 kHz mono buffers the recording
 /// is made of (2026-09-25, `☁️ ElevenLabs + Live`).
 ///
-/// Victor: *"the option+streaming will display +1 line in the mouse caption 💬
+/// the original author: *"the option+streaming will display +1 line in the mouse caption 💬
 /// <the last 7 words of dictation live-transcribed> … to show me what I'm
 /// talking about"*. It is a **caption, never the delivery**: the sentence that
 /// reaches the destination is still the batch transcript of the WAV
@@ -40,7 +40,7 @@ final class ElevenLabsLive {
     var onText: ((_ committed: String, _ partial: String, _ gentle: Bool) -> Void)?
 
     /// **The batch model corrects the live words behind him** (2026-09-26,
-    /// Victor: *"implementează și 5 … trimite doar bucata care mai apare pe
+    /// the original author: *"implementează și 5 … trimite doar bucata care mai apare pe
     /// ecran; la final de tot oricum trimitem tot"*). **At every segment the
     /// server commits** (its VAD closes one after 1.5 s of silence), the audio
     /// since the previous cut is uploaded to `ElevenLabsSource.transcribe` and
@@ -50,7 +50,7 @@ final class ElevenLabsLive {
     /// delivery). A failure leaves the cut where it was: the next commit
     /// covers the longer span. The first version waited for a 3 s pause
     /// instead; by then the eraser had wiped the words the correction was for
-    /// (Victor, 07:20: *"the correction at pause finds no text on screen as it
+    /// (the original author, 07:20: *"the correction at pause finds no text on screen as it
     /// fades out — drop the silence rule, this thing is too dynamic"*). The
     /// 0.5 s timer stays only as the catch-up for a commit that arrived while
     /// an upload was in flight.
@@ -116,7 +116,7 @@ final class ElevenLabsLive {
             .prefix(50).map { $0 }
     }
 
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.eleven-live")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.eleven-live")
     private var task: URLSessionWebSocketTask?
     /// Chunks that arrived before `session_started` — the recording opens the
     /// microphone and the socket at the same moment, and the first words are
@@ -132,7 +132,7 @@ final class ElevenLabsLive {
     // MARK: - The socket, one per sentence (2026-09-26: warm in batch 5, cold again in batch 6, Q11)
 
     /// **Opened at the gesture, closed at the stop** (Q11, 2026-09-26, 18:55,
-    /// Victor: *"rece. E un waste de resurse pentru câștig mic"*). Batch 5 kept a
+    /// the original author: *"rece. E un waste de resurse pentru câștig mic"*). Batch 5 kept a
     /// socket open between sentences (empty chunks every 5 s, a 15-minute
     /// window, a 2/10/60 s retry ladder) to take the handshake off the path to
     /// the first caption word; that is gone. What stays from batch 5: one

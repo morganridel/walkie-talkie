@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""Finish a Codex CLI task and close only its verified Terminal tab.
+
+For desktop-owned Codex conversations this helper deliberately reports
+unsupported. Desktop chats must be archived through the owning app integration.
+"""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shlex
+import signal
+import subprocess
+import sys
+import time
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import codex_bridge
+
+
+def emit(value, *, stream=None):
+    (stream or sys.stdout).write(json.dumps(value, separators=(",", ":")) + "\n")
+    (stream or sys.stdout).flush()
+
+
+def process_matches(record, thread_id):
+    """Require the exact native Codex resume process, PID, and controlling tty."""
+    try:
+        pid = int(record["pid"])
+        tty = codex_bridge.validated_tty(record["tty"])
+    except (KeyError, TypeError, ValueError, codex_bridge.BridgeError):
+        return False
+    for process in codex_bridge.process_rows():
+        if process.get("pid") != pid or Path(process.get("tty", "")).name != Path(tty).name:
+            continue
+        try:
+            argv = shlex.split(process.get("command", ""))
+        except ValueError:
+            return False
+        return (bool(argv) and Path(argv[0]).name == "codex"
+                and "resume" in argv
+                and thread_id.lower() in {arg.lower() for arg in argv})
+    return False
+
+
+def verified_record(thread_id):
+    """Return the helper-validated sidecar, rechecking its process identity."""
+    record = codex_bridge.sidecar_tty_map().get(thread_id)
+    if not record or not process_matches(record, thread_id):
+        return None
+    return record
+
+
+def terminal_tab_count(tty):
+    device = codex_bridge.validated_tty(tty)
+    script = f'''tell application "Terminal"
+    set matches to 0
+    repeat with w in windows
+        repeat with t in tabs of w
+            try
+                if (tty of t as text) is "{device}" then set matches to matches + 1
+            end try
+        end repeat
+    end repeat
+    return matches as text
+end tell'''
+    result = subprocess.run(["/usr/bin/osascript", "-e", script],
+                            capture_output=True, text=True, timeout=8, check=False)
+    try:
+        return int(result.stdout.strip()) if result.returncode == 0 else 0
+    except ValueError:
+        return 0
+
+
+def tty_owner_identity(tty):
+    """Return the newest root/login (PID, lstart) owning this controlling tty.
+
+    This mirrors TerminalBinding.TTYOwner: if a tab is closed and the tty number
+    is reused, the replacement login has a different PID/start identity.
+    """
+    device = Path(codex_bridge.validated_tty(tty)).name
+    try:
+        result = subprocess.run(
+            ["/bin/ps", "-t", device, "-o", "pid=,ppid=,lstart=,comm="],
+            capture_output=True, text=True, timeout=5, check=False,
+            env={**os.environ, "LC_ALL": "C", "PATH": "/usr/bin:/bin"})
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    rows = []
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        # pid ppid Dow Mon DD HH:MM:SS YYYY comm…
+        if len(fields) < 8:
+            continue
+        try:
+            pid, ppid = int(fields[0]), int(fields[1])
+            started = int(datetime.strptime(" ".join(fields[3:7]),
+                                            "%b %d %H:%M:%S %Y").timestamp())
+        except (ValueError, OverflowError):
+            continue
+        rows.append((pid, ppid, started, " ".join(fields[7:])))
+    on_tty = {row[0] for row in rows}
+    roots = [row for row in rows if row[1] not in on_tty]
+    logins = [row for row in roots if Path(row[3]).name == "login"]
+    candidates = logins or roots
+    if not candidates:
+        return None
+    pid, _, started, _ = max(candidates, key=lambda row: (row[2], row[0]))
+    return pid, started
+
+
+def close_terminal_tab(tty):
+    """Close exactly one Terminal tab with this tty; never close its window/app."""
+    device = codex_bridge.validated_tty(tty)
+    script = f'''tell application "Terminal"
+    set foundTabs to {{}}
+    repeat with w in windows
+        repeat with t in tabs of w
+            try
+                if (tty of t as text) is "{device}" then set end of foundTabs to t
+            end try
+        end repeat
+    end repeat
+    if (count of foundTabs) is not 1 then return "ambiguous"
+    close item 1 of foundTabs
+    return "closed"
+end tell'''
+    result = subprocess.run(["/usr/bin/osascript", "-e", script],
+                            capture_output=True, text=True, timeout=8, check=False)
+    return (result.stdout or "").strip() == "closed" and result.returncode == 0
+
+
+def finish_verified(thread_id, *, dry_run=False):
+    record = verified_record(thread_id)
+    if record is None:
+        return {"ok": False, "action": "unsupported",
+                "reason": "no_verified_cli_terminal_sidecar",
+                "threadId": thread_id}
+    tty = record["tty"]
+    if terminal_tab_count(tty) != 1:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_tab_not_unique", "threadId": thread_id}
+    owner_before = tty_owner_identity(tty)
+    if owner_before is None:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_owner_unknown", "threadId": thread_id}
+    if dry_run:
+        return {"ok": True, "action": "would_close_tab", "threadId": thread_id,
+                "tty": tty, "pid": record["pid"], "terminalOwner": owner_before[0]}
+
+    # The sidecar is checked again immediately before signaling. Never signal
+    # Codex's shared app-server daemon or a desktop app process.
+    if not process_matches(record, thread_id):
+        return {"ok": False, "action": "unsupported",
+                "reason": "cli_process_changed", "threadId": thread_id}
+    try:
+        os.kill(int(record["pid"]), signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    except OSError as error:
+        return {"ok": False, "action": "failed", "reason": "cli_signal_failed",
+                "detail": str(error), "threadId": thread_id}
+
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if not process_matches(record, thread_id):
+            # A changed command is not proof that the target exited. Require the
+            # PID to be absent before closing the tab to avoid interrupting reuse.
+            if not any(row.get("pid") == int(record["pid"])
+                       for row in codex_bridge.process_rows()):
+                break
+        time.sleep(0.1)
+    else:
+        return {"ok": False, "action": "failed", "reason": "cli_did_not_exit",
+                "threadId": thread_id}
+
+    # A live shell may remain in the same tab after Codex exits. Reconfirm one
+    # exact tab and its root/login identity. The same tty number can be reused
+    # after the original tab closes; never apply the old sidecar to a new owner.
+    owner_after = tty_owner_identity(tty)
+    if owner_after is None or owner_after != owner_before:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_owner_changed", "threadId": thread_id,
+                "tty": tty}
+    if terminal_tab_count(tty) != 1:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_tab_not_unique", "threadId": thread_id}
+    # Check again immediately before the AppleScript operation to minimize the
+    # tty-reuse race between owner discovery and addressing the tab by tty.
+    if tty_owner_identity(tty) != owner_before:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_owner_changed", "threadId": thread_id,
+                "tty": tty}
+    if not close_terminal_tab(tty):
+        return {"ok": False, "action": "failed", "reason": "terminal_tab_close_failed",
+                "threadId": thread_id, "tty": tty}
+    return {"ok": True, "action": "closed_tab", "threadId": thread_id,
+            "tty": tty, "pid": record["pid"]}
+
+
+def watch_then_finish(thread_id, turn_id, timeout):
+    result = codex_bridge.watch_until_idle(
+        argparse.Namespace(thread=thread_id, turn=turn_id, timeout=timeout))
+    if not result.get("idle"):
+        raise codex_bridge.BridgeError("Codex turn did not reach idle", code="watch_failed")
+    return finish_verified(thread_id)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--thread", help="Codex thread UUID; defaults to CODEX_THREAD_ID")
+    parser.add_argument("--turn", help="Wait for this exact turn before finishing")
+    parser.add_argument("--timeout", type=float, default=600,
+                        help="Maximum exact-turn wait in seconds (default: 600)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Verify the target and report the action without waiting or closing")
+    parser.add_argument("--_after-turn", dest="after_turn", help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+
+    thread_id = (args.thread or os.environ.get("CODEX_THREAD_ID", "")).strip().lower()
+    if not codex_bridge.UUID_RE.fullmatch(thread_id):
+        emit({"ok": False, "action": "unsupported", "reason": "missing_or_invalid_thread_id"})
+        return 2
+    # The database's active turn is authoritative for a bare final-action call:
+    # returning the tool immediately must not terminate the CLI while its model
+    # is still composing the final answer. Ignore a potentially stale
+    # CODEX_TURN_ID environment value; callers can request a precise turn with
+    # --turn when needed.
+    active_turn = None
+    if not args.after_turn and not args.turn:
+        active_turn = codex_bridge.active_turn_id(thread_id)
+    turn_id = args.after_turn or args.turn or active_turn
+    if turn_id and not codex_bridge.UUID_RE.fullmatch(turn_id):
+        emit({"ok": False, "action": "unsupported", "reason": "invalid_turn_id",
+              "threadId": thread_id})
+        return 2
+    if args.timeout <= 0:
+        emit({"ok": False, "action": "failed", "reason": "invalid_timeout",
+              "threadId": thread_id})
+        return 2
+
+    if args.after_turn:
+        try:
+            result = watch_then_finish(thread_id, turn_id, args.timeout)
+        except codex_bridge.BridgeError as error:
+            emit({"ok": False, "action": "failed", "reason": error.code,
+                  "threadId": thread_id})
+            return 1
+        emit(result)
+        return 0 if result.get("ok") else 1
+
+    record = verified_record(thread_id)
+    if record is None:
+        emit({"ok": False, "action": "unsupported",
+              "reason": "no_verified_cli_terminal_sidecar", "threadId": thread_id})
+        return 3
+    if terminal_tab_count(record["tty"]) != 1:
+        emit({"ok": False, "action": "unsupported", "reason": "terminal_tab_not_unique",
+              "threadId": thread_id})
+        return 3
+    if args.dry_run:
+        emit({"ok": True, "action": "would_wait_and_close_tab" if turn_id else "would_close_tab",
+              "threadId": thread_id, "turnId": turn_id, "tty": record["tty"],
+              "pid": record["pid"]})
+        return 0
+    if turn_id:
+        command = [sys.executable, str(Path(__file__).resolve()), "--thread", thread_id,
+                   "--_after-turn", turn_id, "--timeout", str(args.timeout)]
+        try:
+            subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True,
+                             close_fds=True)
+        except OSError as error:
+            emit({"ok": False, "action": "failed", "reason": "watcher_start_failed",
+                  "detail": str(error), "threadId": thread_id})
+            return 1
+        emit({"ok": True, "action": "watching_exact_turn", "threadId": thread_id,
+              "turnId": turn_id})
+        return 0
+
+    result = finish_verified(thread_id)
+    emit(result)
+    return 0 if result.get("ok") else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

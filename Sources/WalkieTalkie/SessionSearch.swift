@@ -6,7 +6,7 @@ import Foundation
 /// **Why the transcripts and not a list this app keeps.** `RebindHistory` knows
 /// the twelve destinations the relay has spoken to, which is the right answer
 /// while the session is still on screen and no answer at all for the one from
-/// Tuesday afternoon. The thing Victor remembers about that one is a sentence —
+/// Tuesday afternoon. The thing the original author remembers about that one is a sentence —
 /// *"trebuie să fie un search peste mesajele scrise de mine sau de agent … ca să
 /// pot găsi sesiunea care îmi trebuie"* — and the sentence is written down, in
 /// `~/.claude/projects/<folder>/<session>.jsonl`, by Claude Code itself.
@@ -14,7 +14,7 @@ import Foundation
 /// **Nothing is indexed and nothing is held.** The scan is
 /// `helpers/session_search.py`, which ripgreps the window down to the files that
 /// contain the word at all and then streams those line by line; this side never
-/// sees a transcript, only the rows the helper prints. That is Victor's
+/// sees a transcript, only the rows the helper prints. That is the original author's
 /// constraint as he put it — *"fără să mai ții lucruri în memorie, ci direct pe
 /// jurnalele de sesiuni"* — and it is also what makes the answer current: there
 /// is no cache that can be out of date, because there is no cache.
@@ -35,7 +35,7 @@ final class SessionSearch {
         let cwd: String
         let branch: String
         /// The `/rename` title, else the topic title Claude Code generated —
-        /// the same string, by the same precedence, that Victor's
+        /// the same string, by the same precedence, that the original author's
         /// `terminal-title.sh` hook has been writing into the tab's title. That
         /// is not a coincidence, it is the join: see `RebindPanel.liveTTY`.
         let title: String
@@ -89,7 +89,7 @@ final class SessionSearch {
     static func run(query: String,
                     onRow: @escaping (Hit) -> Void,
                     onDone: @escaping (Int) -> Void) -> SessionSearch? {
-        guard let helper = helperPath else {
+        guard let helper = CodexBridge.helperPath else {
             Log.info("🔎 session_search.py not found beside the binary")
             return nil
         }
@@ -99,10 +99,7 @@ final class SessionSearch {
         // standard library, and probing for an interpreter costs more process
         // launches than the scan itself.
         search.process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        search.process.arguments = [helper,
-                                    "--query", query,
-                                    "--days", String(Int(days)),
-                                    "--limit", String(limit)]
+        search.process.arguments = [helper, "search", "--query", query, "--limit", String(limit)]
         search.process.standardOutput = pipe
         search.process.standardError = FileHandle.nullDevice
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""walkie-reply "<answer>" [--image <path>]… — show a short answer beside Victor's mouse (2026-10-07).
+"""walkie-reply "<answer>" [--image <path>]… — show a short answer beside the user's mouse (2026-10-07).
 
 `--image` (2026-10-09, repeatable): a small picture rides the answer — thumbnails under
 the words, as many as fit; a click opens one full size. PNG/JPEG/GIF/TIFF/HEIC/PDF.
@@ -19,10 +19,15 @@ import sys
 import urllib.request
 
 args, images = [], []
+thread_id = os.environ.get("CODEX_THREAD_ID")
 argv = sys.argv[1:]
 while argv:
     a = argv.pop(0)
-    if a in ("--image", "-i"):
+    if a == "--thread":
+        if not argv:
+            sys.exit("walkie-reply: --thread needs a Codex conversation ID")
+        thread_id = argv.pop(0)
+    elif a in ("--image", "-i"):
         if not argv:
             sys.exit("walkie-reply: --image needs a path")
         path = os.path.abspath(os.path.expanduser(argv.pop(0)))
@@ -63,7 +68,7 @@ def session_tty():
 
 
 body = json.dumps({"token": token, "text": text, "from": os.path.basename(top or os.getcwd()),
-                   "tty": session_tty(), "images": images}).encode()
+                   "tty": ("codex:" + thread_id) if thread_id else session_tty(), "images": images}).encode()
 for port in (8917, 8918, 8919):
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{port}/reply", data=body,

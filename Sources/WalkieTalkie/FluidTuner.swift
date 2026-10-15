@@ -2,7 +2,7 @@ import AppKit
 import CProjectM
 
 /// **Sliders for the pure fluid, on screen for as long as it is the halo**
-/// (Victor, 2026-09-23: *"can you provide some sliders for a few params on
+/// (the original author, 2026-09-23: *"can you provide some sliders for a few params on
 /// screen permanent when using this animation?"*). A small panel in the bottom
 /// right corner of the screen, attached while a `ProjectMHalo` in modes 3–6
 /// (Fluid cursor, Liquid cursor, Ink, Smoke) exists, and **shown only during
@@ -15,7 +15,7 @@ import CProjectM
 /// judged without dictating.
 ///
 /// **And the voice, for every effect** (2026-09-23 for three of them; for all of
-/// them since 2026-09-24 — Victor: *"the settings for the voice processing and
+/// them since 2026-09-24 — the original author: *"the settings for the voice processing and
 /// the thresholds should apply to all the effects, not only to one of them …
 /// the effects themselves might have an additional threshold"*). Two rows on
 /// top, **global**: *Voice filter* — the same `HaloVoice` chain the menu row
@@ -70,7 +70,7 @@ final class FluidTuner: NSObject {
     private var mode = 0
     private var defaults: [Float] = []
 
-    /// **Only while previewing** (Victor, 2026-09-23: *"smoke sliders shouldn't
+    /// **Only while previewing** (the original author, 2026-09-23: *"smoke sliders shouldn't
     /// display unless in F7/F9 iteration through effects, not in real use"*).
     /// The panel is attached whenever a fluid host exists, as before, but shown
     /// only between `CaretHalo.preview`'s start and end — over a real dictation

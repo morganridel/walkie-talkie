@@ -5,7 +5,7 @@ import Foundation
 
 /// **Wispr Flow, driven and read as if it were this app's own microphone.**
 ///
-/// Victor's decision, 2026-09-12: *Wispr Flow is the dictation source for
+/// the original author's decision, 2026-09-12: *Wispr Flow is the dictation source for
 /// everything* — the caret, a spawned session, and the bound terminal that used
 /// to be the local model's alone. Wispr is better at his accent, it is already
 /// running, and it is what his hand reaches for; the relay's job is to stop
@@ -24,11 +24,11 @@ import Foundation
 /// `HotkeyTap.postWisprHandsFree` and the dismiss one (`53+59` = ⌃Escape)
 /// through `postWisprCancel`. Both were already here and both are correct in
 /// ways that took a day each to find — the Options+ settle, the wait for
-/// Victor's own modifiers to come off the wire, the `hidSystemState` source,
+/// the original author's own modifiers to come off the wire, the `hidSystemState` source,
 /// the stamp that keeps this app's own tap from reading them as gestures.
 ///
 /// **The chord is a toggle and its state is never tracked from here.** Wispr
-/// misses one, or Victor ends a dictation from Wispr's own window, and a
+/// misses one, or the original author ends a dictation from Wispr's own window, and a
 /// counter in this process is wrong for the rest of the day. `WisprWatch`'s
 /// CoreAudio edge is the only truth about whether the microphone is open.
 ///
@@ -52,7 +52,7 @@ import Foundation
 /// 2026-09-12: `polishAutoPaste`, `instructPasteOnEmptyContext`,
 /// `focusModeBlockedApps` and three notification strings, and nothing that
 /// turns the paste off), and **its database is not an option** — the 2026-08-29
-/// rule stands and Victor restated it when he asked for this.
+/// rule stands and the original author restated it when he asked for this.
 ///
 /// What is left is the delivery itself. Wispr writes the transcript to the
 /// pasteboard and presses ⌘V, and this app's event tap is head-inserted on the
@@ -65,7 +65,7 @@ import Foundation
 ///
 /// The swallow is narrow on purpose: the key has to be **V with ⌘**, from a
 /// **process whose name says Wispr**, inside the window between the microphone
-/// closing and the deadline. Victor's own ⌘V carries pid 0 and can never match.
+/// closing and the deadline. the original author's own ⌘V carries pid 0 and can never match.
 final class WisprFlowSource: DictationSource {
     /// What `Message.engine` says for these words — and what tells the envelope
     /// they came with no word timings (`Message.wordsUntimed`).
@@ -87,7 +87,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// **How the relay takes Wispr's words**, and the three answers are three
-    /// different relationships with another app (Victor's decisions, 2026-09-13).
+    /// different relationships with another app (the original author's decisions, 2026-09-13).
     ///
     /// | mode | Wispr is told | the words come from | what it costs |
     /// |---|---|---|---|
@@ -98,7 +98,7 @@ final class WisprFlowSource: DictationSource {
     /// The order matters and so does why the other two were rejected. **The sink
     /// works** — measured 3/3 on 2026-09-13: Wispr picks its insertion target at
     /// the *end*, so a window taking the keyboard 1–5 ms after the stop chord
-    /// receives the text. Victor rejected it as the primary path anyway, because
+    /// receives the text. the original author rejected it as the primary path anyway, because
     /// it takes the focus off a man who may be clicking or typing at that
     /// instant, and a dictation helper whose ordinary behaviour is to interrupt
     /// him is not one he can leave running. **Revoking Wispr's Accessibility
@@ -171,7 +171,7 @@ final class WisprFlowSource: DictationSource {
 
     /// **Whether this dictation is the relay's to take.**
     ///
-    /// Victor's line, 2026-09-13: a dictation *he* starts — his own keyboard
+    /// the original author's line, 2026-09-13: a dictation *he* starts — his own keyboard
     /// chord, or 🔽→ which posts Wispr's chord raw — is Wispr's. The relay draws
     /// the ring for it because the ring is *a microphone is open* and that is
     /// true, and it does nothing else: no swallow, no Scratchpad, no routing.
@@ -288,7 +288,7 @@ final class WisprFlowSource: DictationSource {
     ///
     /// The five events above are `DictationSource`'s, and they only reach the app
     /// when this object *is* `source`: with the Engine on the local model nobody
-    /// wires them, and a dictation Victor starts himself with ⌘⌥ then happens
+    /// wires them, and a dictation the original author starts himself with ⌘⌥ then happens
     /// with the relay silent about it — which is what he found on 2026-09-18,
     /// music playing over a push-to-talk sentence that the log had already named
     /// (`⚡ right ⌘⌥ — Wispr push-to-talk`).
@@ -514,7 +514,7 @@ final class WisprFlowSource: DictationSource {
     /// **No ceiling since 2026-09-30** (was 8 s, 3 before From Walkie). The
     /// catch-up speed is capped at what Wispr can still transcribe
     /// (`BridgePacer.maxRate`), so a late start leaves seconds of him queued at
-    /// the stop, and every one of them is his sentence — Victor: *"îmi asum
+    /// the stop, and every one of them is his sentence — the original author: *"îmi asum
     /// această procesare întârziată"*. The only thing that ends the wait early is
     /// a queue that stops moving (`drainStall`): a stuck player must not leave
     /// the microphone open.
@@ -538,7 +538,7 @@ final class WisprFlowSource: DictationSource {
     private var markersInAudio = false
 
     /// **Markers pressed and not yet spliced** — waiting for his next pause
-    /// (2026-09-30). Victor: *"I'd prefer waiting the next pause to insert the
+    /// (2026-09-30). the original author: *"I'd prefer waiting the next pause to insert the
     /// marker to missing the marker."* No ceiling while the take is open; the
     /// stop hands whatever is still waiting straight to the bridge. Under
     /// `markerLock`, with `said` — read from the main thread at the stop and at
@@ -577,7 +577,7 @@ final class WisprFlowSource: DictationSource {
     /// `AppDelegate.wisprMeterQueue`, whose whole argument moved here with it:
     /// `MicRecorder.start(to:)` is a synchronous device open and it was being
     /// run on the edge, in front of the ring.
-    private let meterQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.wispr-meter")
+    private let meterQueue = DispatchQueue(label: "local.walkie-talkie.wispr-meter")
     /// Touched only on `meterQueue`, so the stop queued at the closing edge can
     /// never be overtaken by the read that wants its result.
     private var recording: (url: URL, duration: TimeInterval)?
@@ -598,7 +598,7 @@ final class WisprFlowSource: DictationSource {
     ///
     /// It was 1.5 s, fitted to the five `mic edge confirms the ring N ms after
     /// the hotkey` lines in `relay.log`: 324, 478, 528, 634, 674 ms. Every one of
-    /// those is a *warm* Wispr. Victor's dictations on the evening of 09-12
+    /// those is a *warm* Wispr. the original author's dictations on the evening of 09-12
     /// measured **5.0 s and 6.0 s** from the chord to `wispr flow opened the
     /// microphone`, and the whole of what he saw was the bug: the ring came up
     /// on his keystroke, **shrank away** two seconds later when the grace ran
@@ -639,7 +639,7 @@ final class WisprFlowSource: DictationSource {
     /// own write, so the only move the relay ever saw was the restore, and it
     /// delivered the restored clipboard as the transcript. Measured in the
     /// corpus: three runs on the evening of 09-13 filed 166 characters of a Word
-    /// rental contract (`Semnături, PROPRIETAR CHIRIAȘ …`) as Victor's dictation,
+    /// rental contract (`Semnături, PROPRIETAR CHIRIAȘ …`) as the original author's dictation,
     /// against audio of him saying *"Commit and push the fix"*.
     ///
     /// Arming at the start chord fixes the ordering; this is the belt beside it,
@@ -689,7 +689,7 @@ final class WisprFlowSource: DictationSource {
     /// six.
     ///
     /// This is the wrap's own window and it is deliberately far longer than the
-    /// ring's: the ring is a thing Victor looks at and 30 s of it would be a lie,
+    /// ring's: the ring is a thing the original author looks at and 30 s of it would be a lie,
     /// where a capture window is a thing nobody sees and costs one armed flag.
     private static let captureTimeout: TimeInterval = 30
     /// How long the fallback chord is given, once it has been posted.
@@ -701,7 +701,7 @@ final class WisprFlowSource: DictationSource {
     /// ⌘⌃C asks Wispr for *the last text it produced* — not *the text from the
     /// sentence that just ended*. If this sentence produced nothing, the chord
     /// hands back the **previous** one, and the relay would deliver a paragraph
-    /// Victor spoke five minutes ago into an agent as though he had just said it.
+    /// the original author spoke five minutes ago into an agent as though he had just said it.
     /// A dictation that goes missing is a sentence he repeats; a dictation that
     /// silently becomes an older one is a sentence he cannot trust.
     ///
@@ -743,7 +743,7 @@ final class WisprFlowSource: DictationSource {
     /// go, and the relay measured **never listening (8.1 s)** on the gesture
     /// after it. So the capture is retired at once and only this much of it
     /// survives: the swallow, **keyed by the rowid it was armed for**, so Wispr's
-    /// late ⌘V for the sentence Victor threw away still lands nowhere.
+    /// late ⌘V for the sentence the original author threw away still lands nowhere.
     private var retiredDiscardRow: Int64?
     private var retiredDiscardUntil: CFAbsoluteTime = 0
     private var retiredDiscardTerminalAt: CFAbsoluteTime = 0
@@ -753,7 +753,7 @@ final class WisprFlowSource: DictationSource {
     /// this is counted from a row that is already being transcribed, and the
     /// claim is let go earlier than this on every ordinary run (the row goes
     /// terminal and `pasteGrace` passes). It exists so a row Wispr abandons
-    /// cannot keep the swallow armed over Victor's next sentence for ever.
+    /// cannot keep the swallow armed over the original author's next sentence for ever.
     private static let retiredDiscardCeiling: TimeInterval = 5
 
     /// **Wispr's own row for this dictation** (`WisprHistory`, 2026-09-12) —
@@ -811,7 +811,7 @@ final class WisprFlowSource: DictationSource {
     private var rowSeen: (rowid: Int64, status: String, at: Date)?
 
     /// **The row is the delivery, not the fallback** — off by default, and the
-    /// shape the wrap is heading for (Victor, 2026-09-13, evening).
+    /// shape the wrap is heading for (the original author, 2026-09-13, evening).
     ///
     /// The wrap as built is *swallow Wispr's ⌘V and insert the words ourselves*,
     /// and it failed twice on 09-13 for the same reason both times: it depends on
@@ -819,7 +819,7 @@ final class WisprFlowSource: DictationSource {
     /// may or may not have armed. The candidate that replaces it does not depend
     /// on a keystroke at all — **take Wispr's Accessibility grant away**, so it
     /// can neither write through AX nor post a synthetic ⌘V, and read the words
-    /// out of its `History` row. The sink was the other candidate and Victor
+    /// out of its `History` row. The sink was the other candidate and the original author
     /// ruled it out the same evening: holding the key window through every
     /// dictation is not something to do to a man who may be typing.
     ///
@@ -906,7 +906,7 @@ final class WisprFlowSource: DictationSource {
         }
     }
 
-    /// **Watch Wispr's microphone whichever engine is wired up** (Victor,
+    /// **Watch Wispr's microphone whichever engine is wired up** (the original author,
     /// 2026-09-21: *"ori de câte ori Wispr Flow interceptează vocea, trebuie să
     /// fie o animație pe ecran … că pornesc cu apăsat taste, că pornesc din
     /// gesturi de mouse"*).
@@ -993,7 +993,7 @@ final class WisprFlowSource: DictationSource {
             return "Wispr Flow is already listening — one engine at a time"
         }
         // **A stand-down is not a verdict.** If the window that would not close
-        // is closed now — Victor clicked the menu row, Wispr was restarted — the
+        // is closed now — the original author clicked the menu row, Wispr was restarted — the
         // precondition holds again and there is no reason to go on using the
         // emergency path.
         if scratchpadBroken, HotkeyTap.scratchpadIsConfigured, !WisprScratchpad.windowIsOpen() {
@@ -1002,7 +1002,7 @@ final class WisprFlowSource: DictationSource {
         }
         let mode = wrapMode
         // **The ring first, always.** Whatever the mode has to do to get Wispr
-        // ready, Victor pressed a button and the beacon answers the button.
+        // ready, the original author pressed a button and the beacon answers the button.
         gestureSeen("the relay asked for a dictation (\(mode.rawValue))", confident: true, relay: true)
         switch mode {
         case .scratchpad:
@@ -1045,7 +1045,7 @@ final class WisprFlowSource: DictationSource {
     /// is one window-server call, and the chord goes down in the same turn.
     private func holdScratchpad() {
         // **The window appears at the start of the hold, not at the end**
-        // (2026-09-13, corrected by Victor and by the loop's first
+        // (2026-09-13, corrected by the original author and by the loop's first
         // `scratchpad-hold`). It is a floating panel and it sits on top of his
         // work for the whole sentence, which is the thing he objected to — so it
         // is watched from the chord, parked the moment it is seen, and closed
@@ -1187,7 +1187,7 @@ final class WisprFlowSource: DictationSource {
     // MARK: - The front of the screen, and who took it
 
     /// **Wispr's application comes to the front when the wrap closes its note
-    /// window, and the front is his.** Victor, 2026-09-14: *"in timpul dictarii
+    /// window, and the front is his.** the original author, 2026-09-14: *"in timpul dictarii
     /// la caret … am pierdut de 3 ori focusul pe aplicatia pe care eram. fix
     /// cand wisprflow pus sa transcrie"*.
     ///
@@ -1441,7 +1441,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// **Check that Wispr took the stop chord, and do not leave it listening if
-    /// it did not** (2026-10-01, Victor: *"s-a blocat adineauri wisprflow: a
+    /// it did not** (2026-10-01, the original author: *"s-a blocat adineauri wisprflow: a
     /// rămas în ascultare"* — `WisprState.stopWasLost`). `stopTakesWithin` after
     /// the chord: the row still NULL and Wispr's microphone open → the toggle is
     /// posted once more (a second chord over a Wispr that did take the first
@@ -1478,7 +1478,7 @@ final class WisprFlowSource: DictationSource {
         // **The ✕ during the wait counts too.** Between the microphone closing
         // and the words arriving there are seconds in which the sentence is
         // still this app's to throw away — and it is exactly the stretch in
-        // which Victor realises he does not want it.
+        // which the original author realises he does not want it.
         if !isRecording, !speculative, capturing {
             // **A cancel during the settle must not disarm the swallow.**
             //
@@ -1491,7 +1491,7 @@ final class WisprFlowSource: DictationSource {
             // keep. **Never disarm while Wispr may still paste.**
             //
             // So the capture stays armed and the sentence is *discarded on
-            // arrival*: Victor is told it is cancelled now, Wispr is told to
+            // arrival*: the original author is told it is cancelled now, Wispr is told to
             // dismiss, and whatever still comes — a ⌘V, a row going terminal, a
             // note — is swallowed and dropped rather than let through. The
             // Scratchpad closes with the capture, which is to say after Wispr is
@@ -1535,7 +1535,7 @@ final class WisprFlowSource: DictationSource {
         }
         // **The cancel closes it here too.** Same change as `stop()`, same
         // reason: waiting for a CoreAudio edge that may never come left the ring
-        // up over a dictation Victor had already thrown away.
+        // up over a dictation the original author had already thrown away.
         closeListening("the relay's own cancel")
         state.reset("cancelled")
     }
@@ -1618,10 +1618,10 @@ final class WisprFlowSource: DictationSource {
     /// **And it drives the machine**, because since 2026-09-13 this app's own
     /// posts are stamped out of its tap (`backButtonStamp` on the hands-free
     /// branch of `HotkeyTap`) — otherwise every chord this route posts would come
-    /// back through the tap as though Victor had pressed it. The toggle's two
+    /// back through the tap as though the original author had pressed it. The toggle's two
     /// presses are the dictation's two ends, so the second call stops.
     ///
-    /// - Parameter byHand: post it **as though Victor had pressed it** — `relay:
+    /// - Parameter byHand: post it **as though the original author had pressed it** — `relay:
     ///   false`, so the dictation is Wispr's from the chord: ring only, nothing
     ///   swallowed, nothing delivered, `intercepting` and `relayStarted` both
     ///   false. Without it the route keeps its old behaviour, which is the
@@ -1676,7 +1676,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// **The raw toggle's stop (🔽 →, F5, the back click) asks W6 first**
-    /// (2026-10-02, Victor: *"nu se închide dictarea în Wispr, e deschis"*). At
+    /// (2026-10-02, the original author: *"nu se închide dictarea în Wispr, e deschis"*). At
     /// 11:07:00 F5 opened a plain sentence and Wispr never took the start chord —
     /// no row, no microphone for 7 s. The tap posted the stop straight onto the
     /// wire, past `stop()`'s W6, and that chord *started* Wispr: row 18220,
@@ -1689,7 +1689,7 @@ final class WisprFlowSource: DictationSource {
                       + "the relay's own recording is the sentence, the local model now")
             ownTakeOnly = "Wispr Flow never took the start chord"
             ownTakeSince = CFAbsoluteTimeGetCurrent()
-            closeListening("Victor's own 🔽 → (the stop) — Wispr never took the start, no chord posted")
+            closeListening("your own 🔽 → (the stop) — Wispr never took the start, no chord posted")
             return
         }
         HotkeyTap.postWisprHandsFree()
@@ -1808,7 +1808,7 @@ final class WisprFlowSource: DictationSource {
     /// **Wispr's own start gesture, seen on the wire — the dictation starts
     /// here, not when CoreAudio catches up.**
     ///
-    /// Measured on Victor's desk 2026-09-12: 5–6 seconds between the chord and
+    /// Measured on the original author's desk 2026-09-12: 5–6 seconds between the chord and
     /// `wispr flow opened the microphone` on a cold Wispr, against 324–674 ms
     /// warm. For those seconds the relay used to have a ring and nothing else —
     /// no chip, no context shot, no music pause — and then everything arrived at
@@ -1820,13 +1820,13 @@ final class WisprFlowSource: DictationSource {
     ///   **fn ⌃ Space is** — it is a chord nothing else on this Mac claims, and
     ///   `postWisprHandsFree` is this app posting exactly it. **Push-to-talk is
     ///   not**: it is two modifiers held (right ⌘ + right ⌥) and nothing else, so
-    ///   it fires on a chord Victor may have pressed for something entirely
+    ///   it fires on a chord the original author may have pressed for something entirely
     ///   different. A false `didBegin` costs a screenshot and a ⌘C probe posted
     ///   into whatever he is working in, which is far too much to spend on a
     ///   guess — so an unconfident gesture raises the beacon and nothing else,
     ///   and its microphone edge does the opening a moment later.
     /// - Parameter relay: whether **this app** asked for the dictation. A
-    ///   dictation Victor starts himself is Wispr's: ring only, never
+    ///   dictation the original author starts himself is Wispr's: ring only, never
     ///   intercepted, never routed.
     /// - Parameter mode: **how the chord was posted**, which is what `stop()`
     ///   will have to undo. Nil means *the mode in force* — every gesture except
@@ -1839,7 +1839,7 @@ final class WisprFlowSource: DictationSource {
         // **The chord is a toggle and the second press is the stop** (2026-09-13).
         // Only for a confident gesture: `fn ⌃ Space` is unambiguous and this
         // app's own posts no longer come back through the tap, so a hands-free
-        // chord seen here while a dictation is open is Victor ending it from his
+        // chord seen here while a dictation is open is the original author ending it from his
         // keyboard — which the relay used to learn only from a CoreAudio edge
         // that may be six seconds late or absent.
         if confident, isRecording || speculative {
@@ -1850,7 +1850,7 @@ final class WisprFlowSource: DictationSource {
                 Log.info("⚡ \(why) — Wispr's own chord (standalone, Q9); the relay's sentence goes on")
                 return
             }
-            closeListening("Victor's own \(why)")
+            closeListening("your own \(why)")
             return
         }
         guard !isRecording, !speculative else { return }
@@ -1917,7 +1917,7 @@ final class WisprFlowSource: DictationSource {
         walkieOwned = relay || walkiePosted
         startedMode = relay ? (mode ?? wrapMode) : .off
         // **Every Wispr sentence is the relay's to deliver** (2026-09-22). Until
-        // today a dictation Victor started with Wispr's own chord was watched
+        // today a dictation the original author started with Wispr's own chord was watched
         // and left to Wispr to paste; with the firewall dropping that paste at
         // the tap there is nobody else to put the words anywhere. `relayStarted`
         // still says whose gesture it was — `AppDelegate` sends his own chord's
@@ -1927,7 +1927,7 @@ final class WisprFlowSource: DictationSource {
         openedAt = Date().timeIntervalSince1970
         state.startChord(why)
         if !relay {
-            Log.info("⚡ \(why) — Victor's own dictation; the ring is all the relay does with it")
+            Log.info("⚡ \(why) — your own dictation; the ring is all the relay does with it")
         }
         // **A capture still standing whose row is not terminal is a sentence
         // still in flight**, and this new one does not get to disarm it — that
@@ -2032,7 +2032,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// **The microphone is shut as far as this app is concerned** — by the
-    /// relay's own stop gesture, by the poll, by the notification, or by Victor's
+    /// relay's own stop gesture, by the poll, by the notification, or by the original author's
     /// own chord. Whoever said so, this is the one place the sentence stops being
     /// heard and starts being waited for.
     /// **Did Wispr take the relay's start chord? Asked at 1.5 s, said once**
@@ -2046,7 +2046,7 @@ final class WisprFlowSource: DictationSource {
     private static let chordAnswerProbe: TimeInterval = 1.5
 
     /// **A Wispr whose microphone has not opened by `micOpenGrace` is out of
-    /// this sentence** (2026-10-08, Victor: *"dictation hangs with «opening
+    /// this sentence** (2026-10-08, the original author: *"dictation hangs with «opening
     /// wispr flow». why? + that should autofall back to local model not hang"*).
     /// At 14:33:54 Wispr (up 29 h) made its row and never opened its
     /// microphone; at 14:34:34 it did not answer the chord at all. The chip
@@ -2153,7 +2153,7 @@ final class WisprFlowSource: DictationSource {
         state.stopChord(why)
         // **Belt on the hold.** Every ordinary path releases the chord before it
         // gets here; this is for the ones that do not exist yet and for the one
-        // that already does — Victor's own hands-free chord, read as a stop for
+        // that already does — the original author's own hands-free chord, read as a stop for
         // a dictation the relay opened by holding a different key.
         if HotkeyTap.scratchpadIsHeld { HotkeyTap.postWisprScratchpad(down: false) }
         // …and after the release, because the release is the one chord that must
@@ -2293,14 +2293,14 @@ final class WisprFlowSource: DictationSource {
             // a poll that never saw this dictation's microphone open is
             // reporting the end of somebody else's.
             guard state.pollMs != nil else { return }
-            // Victor ended the dictation from Wispr's own window, or Wispr ended
+            // the original author ended the dictation from Wispr's own window, or Wispr ended
             // it itself. At most one tick late, against a notification measured
             // at up to six seconds.
             closeListening("the 100 ms poll saw the microphone close")
         }
     }
 
-    /// **Victor pressed Wispr's own dismiss (⌃Escape).** The sentence is over
+    /// **the original author pressed Wispr's own dismiss (⌃Escape).** The sentence is over
     /// on Wispr's side and nothing will be pasted, so nothing here may go on
     /// waiting for it: a capture standing is closed and the ring goes down now,
     /// not at `settleTimeout`. While the microphone is still open the closing
@@ -2314,7 +2314,7 @@ final class WisprFlowSource: DictationSource {
         if isRecording || speculative {
             Log.info("🗑️ ⌃Escape — Wispr Flow's dismiss, pressed by hand")
             cancelling = true
-            closeListening("Victor's own ⌃Escape")
+            closeListening("your own ⌃Escape")
             state.reset("dismissed by hand")
             return
         }
@@ -2326,7 +2326,7 @@ final class WisprFlowSource: DictationSource {
 
     /// **The CoreAudio notification — a second witness now, not the witness.**
     ///
-    /// It still opens a dictation nothing else knew about (Victor's own chord, on
+    /// It still opens a dictation nothing else knew about (the original author's own chord, on
     /// a build whose tap missed it), because a microphone that is open is a
     /// dictation whatever asked for it. What it no longer does is *end* one on
     /// its own authority while the relay's own stop, the 100 ms poll and Wispr's
@@ -2368,7 +2368,7 @@ final class WisprFlowSource: DictationSource {
             // **The edge confirms; it never re-opens.** A guess that is standing
             // is *this* dictation — the ring, the chip and the context shot are
             // already up — and firing `didBegin` again would take them all down
-            // and put them back, which is precisely the flicker Victor reported
+            // and put them back, which is precisely the flicker the original author reported
             // on 2026-09-12.
             if speculative {
                 confirmSpeculative(by: "the mic edge")
@@ -2377,7 +2377,7 @@ final class WisprFlowSource: DictationSource {
             guard !isRecording else { return }
             isRecording = true
             openedAt = Date().timeIntervalSince1970
-            // No chord was seen for this one — Victor's own, on a build whose
+            // No chord was seen for this one — the original author's own, on a build whose
             // tap missed it — so the edge is the only clock there is.
             if gestureAt == 0 || state.chordAt == 0 { gestureAt = CFAbsoluteTimeGetCurrent() }
             // Nobody's gesture but his: `relayStarted` would otherwise be the
@@ -2422,7 +2422,7 @@ final class WisprFlowSource: DictationSource {
     /// **Is this open edge the last sentence's, arriving late?**
     ///
     /// Two credentials, and it needs both — the second is what keeps a dictation
-    /// Victor really did start by hand from being ignored:
+    /// the original author really did start by hand from being ignored:
     ///
     /// 1. **The relay stopped the last dictation itself and nothing has been
     ///    asked for since** (`lastStopAt >= gestureAt`). A microphone that opens
@@ -2436,7 +2436,7 @@ final class WisprFlowSource: DictationSource {
     /// nothing has ever been later, so beyond twice that an open edge is a new
     /// dictation whatever the rows say. The cost of being wrong in that
     /// direction is a missing ring over a dictation the relay would not have
-    /// touched anyway (*a dictation Victor starts himself is Wispr's*); the cost
+    /// touched anyway (*a dictation the original author starts himself is Wispr's*); the cost
     /// of being wrong the other way is the phantom cycle this exists to remove.
     private func lateOpenEdge() -> String? {
         let now = CFAbsoluteTimeGetCurrent()
@@ -2485,7 +2485,7 @@ final class WisprFlowSource: DictationSource {
     /// new sentence of his.
     private var feedEndedAt: CFAbsoluteTime = 0
     private var feedTick = 0
-    private let feedQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.feed-watch")
+    private let feedQueue = DispatchQueue(label: "local.walkie-talkie.feed-watch")
     private var feedTimer: DispatchSourceTimer?
     /// Main-only: when a stop first found the bridge still holding.
     private var stopHeldSince: CFAbsoluteTime = 0
@@ -2632,7 +2632,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// - Parameter keep: whether the WAV is wanted. A cancelled sentence's audio
-    ///   is Victor's voice with nothing to label it, and the corpus files pairs.
+    ///   is the original author's voice with nothing to label it, and the corpus files pairs.
     private func stopMeter(keep: Bool) {
         meterQueue.async { [weak self] in
             guard let self else { return }
@@ -2699,7 +2699,7 @@ final class WisprFlowSource: DictationSource {
         capturing = true
         // A new sentence: nothing of the last one's length may be filed against it.
         spokenFor = 0
-        // **A dictation Victor started is watched and never taken.** The row
+        // **A dictation the original author started is watched and never taken.** The row
         // poll still runs — the chip and the ring want to know when Wispr is
         // done — but nothing is swallowed, nothing is read off the pasteboard
         // and nothing is delivered.
@@ -2740,7 +2740,7 @@ final class WisprFlowSource: DictationSource {
         // the delivery; false the moment the row took over and the window
         // started being closed on sight. Measured: with the window shut at the
         // release, Wispr's paste arrives ~450 ms later with nowhere of its own
-        // to go, and it lands in **Victor's document** — every sentence appeared
+        // to go, and it lands in **the original author's document** — every sentence appeared
         // twice, once lowercased from Wispr and once properly from the relay.
         //
         // With the row as the delivery there is nothing the paste is needed for,
@@ -2839,14 +2839,14 @@ final class WisprFlowSource: DictationSource {
     /// away the *first* sentence's swallow window — so Wispr's ⌘V, a second
     /// later, went into whatever Terminal happened to be in front. The click is
     /// now a stop (`AppDelegate.onPasteToggle`); this is the guard behind it, for
-    /// the dictation Victor starts from his own keyboard while the last one is
+    /// the dictation the original author starts from his own keyboard while the last one is
     /// still being transcribed.
     private func retireCaptureIfSettled() {
         guard capturing else { return }
         // **A cancelled capture is not a sentence in flight, and a new gesture
         // supersedes it at once** (2026-09-14, the regression the
         // `discardOnArrival` fix left behind). The words of the old sentence
-        // were thrown away by Victor; what is still owed is only that Wispr's
+        // were thrown away by the original author; what is still owed is only that Wispr's
         // late ⌘V lands nowhere, and that survives the retirement on its own.
         if discardOnArrival { return retireDiscardedCapture() }
         if let row = historyRow, !WisprState.isTerminal(status(of: row)) {
@@ -2863,7 +2863,7 @@ final class WisprFlowSource: DictationSource {
     /// because `endCapture` is the one place that lets all of them go, and the
     /// new dictation then arms its own inside the same call. What outlives it is
     /// the one promise the cancel made: Wispr may still press ⌘V for the
-    /// sentence Victor threw away, and that key belongs to nobody.
+    /// sentence the original author threw away, and that key belongs to nobody.
     private func retireDiscardedCapture() {
         retiredDiscardRow = historyRow
         retiredDiscardPid = pidAtAdoption
@@ -2875,7 +2875,7 @@ final class WisprFlowSource: DictationSource {
         endCapture(quiet: true)
         // **Armed again, because `endCapture` disarmed it and the dictation that
         // follows may not want one.** A capture the relay is not intercepting —
-        // Victor's own chord, a moment after his cancel — arms no swallow at
+        // the original author's own chord, a moment after his cancel — arms no swallow at
         // all, and the old row's ⌘V would then land in his document, which is
         // the whole failure the cancel path exists to prevent.
         if retiredDiscardRow != nil { hotkeys.armInjectionCapture(swallow: true) }
@@ -3149,7 +3149,7 @@ final class WisprFlowSource: DictationSource {
             // ring and the chip find out it is finished, and `.silent("")` is
             // *nothing worth a banner* rather than a failure.
             guard intercepting else {
-                Log.info(String(format: "wispr history: %@ — Victor's own dictation, delivered by Wispr (%.0f ms)",
+                Log.info(String(format: "wispr history: %@ — your own dictation, delivered by Wispr (%.0f ms)",
                                 e.status, took))
                 endCapture(quiet: true)
                 didEnd?(.silent(""))
@@ -3473,7 +3473,7 @@ final class WisprFlowSource: DictationSource {
     }
     private static let ghostWindow: Double = 25
 
-    /// **Q19 (2026-09-28, Victor's Q7 = A): a dropped ⌘V may be his own
+    /// **Q19 (2026-09-28, the original author's Q7 = A): a dropped ⌘V may be his own
     /// sentence.** Q9 leaves his right ⌥⇧ sentences to Wispr, but while the
     /// relay's row is in flight the firewall cannot tell whose ⌘V it is. If the
     /// newest row is *newer than the relay's*, terminal with words, and fresh,
@@ -3906,7 +3906,7 @@ final class WisprFlowSource: DictationSource {
     /// Scratchpad window's keyboard grab: that window takes the key when it
     /// opens, and a paste made while it has it goes **into the note** — measured
     /// on 2026-09-13, 70 characters of the relay's own delivery appended to
-    /// Wispr's notepad while the document Victor was looking at stayed empty. At
+    /// Wispr's notepad while the document the original author was looking at stayed empty. At
     /// `formatted` the window is normally not open yet (it opens ~2 s later with
     /// the note), so the ordinary path pastes straight away; if it *is* open —
     /// left over, or Wispr being quick — it is closed first and the words follow.
@@ -4021,7 +4021,7 @@ final class WisprFlowSource: DictationSource {
         // opens when the note is written — so a `pasteText` fired the moment the
         // note appears goes **into the note**, which is exactly what happened:
         // the relay's own 70 characters were appended to the Scratchpad and the
-        // TextEdit document Victor was looking at stayed empty. The words are
+        // TextEdit document the original author was looking at stayed empty. The words are
         // already read; the window goes first and the caret gets them after.
         stopHistoryPoll()
         scratchpadWindowHandled = true
@@ -4068,7 +4068,7 @@ final class WisprFlowSource: DictationSource {
     }
 
     /// **The sink caught it** — the emergency path, and the only one in which
-    /// this app holds Victor's keyboard for a moment.
+    /// this app holds the original author's keyboard for a moment.
     private func sinkArrived(text: String, route: String) {
         guard capturing, startedMode == .sink else { return }
         WisprSink.shared.restoreFocus()
@@ -4153,7 +4153,7 @@ final class WisprFlowSource: DictationSource {
         // start, and a banner about it would be the relay complaining that
         // another app's tool worked.
         guard intercepting else {
-            Log.info("wispr: Victor's own dictation is over and the relay took nothing from it")
+            Log.info("wispr: your own dictation is over and the relay took nothing from it")
             endCapture(quiet: true)
             didEnd?(.silent(""))
             return
@@ -4170,7 +4170,7 @@ final class WisprFlowSource: DictationSource {
         }
         // **The pasteboard is an answer only when the relay asked it one**
         // (2026-09-22). `changeCount` moving is not evidence of anything: this
-        // is a thirty-second window in which Victor copies things, and with
+        // is a thirty-second window in which the original author copies things, and with
         // `copyFallbackEnabled` off — which is the default, and has been since
         // the day it was written — no ⌘⌃C was ever posted, so nothing on that
         // board has any claim to be the sentence. It was read all the same, and
@@ -4204,7 +4204,7 @@ final class WisprFlowSource: DictationSource {
             endCapture(quiet: true)
             return
         }
-        // **Q2 (2026-09-28, Victor: A): while Wispr's row is still being worked
+        // **Q2 (2026-09-28, the original author: A): while Wispr's row is still being worked
         // on, the relay waits past 30 s.** Wispr's own fallback ASR finishes
         // at 24–36 s and its `error` lands at ~33 s; giving up at 30 s dropped
         // those sentences (W12). **Batch 3 (2026-09-28): no longer blind** —
@@ -4256,7 +4256,7 @@ final class WisprFlowSource: DictationSource {
         }
         // The one gate that says *these words are the relay's to route*. Every
         // caller is already behind it; it is here because the cost of one of
-        // them ever not being is a sentence Victor spoke into another app
+        // them ever not being is a sentence the original author spoke into another app
         // arriving in an agent's terminal.
         guard intercepting else { return }
         // **The markers this take carried, and what the recogniser heard**
@@ -4328,7 +4328,7 @@ final class WisprFlowSource: DictationSource {
         // **Unless a cancelled row still has a claim on it** — the swallow is
         // the one thing that outlives a retired capture, and disarming it here
         // for even the turn it takes to arm the next one is a window in which
-        // Wispr's ⌘V for the sentence Victor cancelled reaches his document.
+        // Wispr's ⌘V for the sentence the original author cancelled reaches his document.
         if retiredDiscardRow == nil { hotkeys.disarmInjectionCapture() }
         clipboardWatch?.invalidate()
         clipboardWatch = nil

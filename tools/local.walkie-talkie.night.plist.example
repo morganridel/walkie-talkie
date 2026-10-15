@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  EXAMPLE ONLY — not installed. Optional, Claude-specific nightly development harness;
+  it is not required by the app. Replace @REPO@, @HOME@ and @TART_HOME@ before use.
+  Review the schedule and external-service behavior before installing locally.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.walkie-talkie.night</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>@REPO@/tools/wt-night.sh</string>
+    <string>start</string>
+  </array>
+  <key>WorkingDirectory</key><string>@REPO@</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>@HOME@/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>WT_REPO</key><string>@REPO@</string>
+    <key>TART_HOME</key><string>@TART_HOME@</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>2</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>AbandonProcessGroup</key><true/>
+  <key>StandardOutPath</key><string>@HOME@/.walkie-talkie/night/launchagent.log</string>
+  <key>StandardErrorPath</key><string>@HOME@/.walkie-talkie/night/launchagent.log</string>
+</dict>
+</plist>

@@ -4,7 +4,7 @@ import AppKit
 ///
 /// **It is drawn on the screen and never into the picture.** It used to be
 /// burned into the saved JPEG, on the argument that the file name carried the
-/// reading for the agent while Victor — who opens these shots himself — cannot
+/// reading for the agent while the original author — who opens these shots himself — cannot
 /// resolve a coordinate pair by eye. What that missed is that a mark painted
 /// into a frame *covers the thing it is pointing at*, which is exactly the thing
 /// being asked about, and that an agent reading the image has no way to know the
@@ -13,7 +13,7 @@ import AppKit
 /// the sentence is still being spoken and a mis-aimed shot can still be
 /// retaken), and the position still travels in the file name.
 ///
-/// **The look is Victor Addons'**, deliberately: `EmojiAnimator.makeSniperReticle`
+/// **The look is the original author Addons'**, deliberately: `EmojiAnimator.makeSniperReticle`
 /// is already what that desktop draws to say "here", and it is drawn on screen
 /// right after every ⌃P capture. A second, differently-shaped mark for the same
 /// idea would be one to learn for nothing. Hence a ring, four arms with an empty

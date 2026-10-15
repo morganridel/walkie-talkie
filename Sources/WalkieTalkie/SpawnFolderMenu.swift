@@ -7,7 +7,7 @@ import AppKit
 /// `AppDelegate.spawnDirectory` for why that was fixed rather than inferred. The
 /// cost of a fixed answer is that the first sentence of every new session is
 /// spent saying which repo it is about, out loud, to an agent that then has to
-/// `cd` into it. Victor's ask, 2026-09-04: *"vreau să-mi arăt un modal în care
+/// `cd` into it. the original author's ask, 2026-09-04: *"vreau să-mi arăt un modal în care
 /// să pot să aleg în ce folder pornesc dictarea"*.
 ///
 /// So: the instant a spawn dictation opens, a small menu appears **below and to
@@ -33,7 +33,7 @@ import AppKit
 ///
 /// # Two halves, and a line between them (2026-09-08)
 ///
-/// The list was six names hardcoded here — the projects Victor happened to be
+/// The list was six names hardcoded here — the projects the original author happened to be
 /// working on the afternoon it was written. He asked for the other half:
 /// *"determin care sunt proiectele în care am lucrat … să le adaugi sub o linie
 /// separatoare … pe lângă cele fixate de sus"*. So:
@@ -82,7 +82,7 @@ import AppKit
 /// — *"a submenu opens that lets me bind this prompt to that terminal"*. It
 /// replaces the morning's third half (*Or send to an open terminal*, five
 /// recently bound terminals under the folders): the same idea, moved to where
-/// Victor asked for it, filled from the machine rather than from the bind log,
+/// the original author asked for it, filled from the machine rather than from the bind log,
 /// and no longer growing the menu under his hand when it arrives.
 ///
 /// # Sessions under their folders (2026-10-07)
@@ -95,7 +95,7 @@ import AppKit
 ///   ✨ walkie-talkie              ★     │   [T] owners grid paging   │
 /// ```
 ///
-/// Victor: *"to have the active session grouped under [the projects] … only
+/// the original author: *"to have the active session grouped under [the projects] … only
 /// if you've never sent Kamikaze to that session yet … Clicking the parent,
 /// not just hovering, but clicking should start a new one, even if it has
 /// children"*, and *"an emoji with the three yellow stars just in front of [each]
@@ -115,7 +115,7 @@ import AppKit
 ///   ✨ walkie-talkie                 ★
 /// ```
 ///
-/// Victor: *"there are submenus right now which take time and look awkward when
+/// the original author: *"there are submenus right now which take time and look awkward when
 /// they paint … display the terminal which is already working in that project
 /// below the entry for that project having the yellow stars on a line below them
 /// and a bit indented to the right. So there are no more sub menus … leave
@@ -167,7 +167,7 @@ enum SpawnFolderMenu {
     }
 
     /// **Three and a half seconds solid, then a second of fade — unless the
-    /// hand is on it.** Victor's numbers for the clock, and Victor's exception
+    /// hand is on it.** the original author's numbers for the clock, and the original author's exception
     /// for the hover (2026-09-04): *"the modal to pick the folder should not
     /// fade out while I hover it"*. The fade exists to say the menu was
     /// optional; a pointer resting on a row is the answer being made, and a
@@ -215,7 +215,7 @@ enum SpawnFolderMenu {
     /// It says what the rows are for. Every one of them is a bare folder name,
     /// which is unmistakable once you know what the menu is and says nothing at
     /// all the first three times it appears.
-    private static let header = "Start Claude in…"
+    private static let header = "Start Codex in…"
 
     /// A terminal title is the agent's own sentence and runs as long as it
     /// likes; past this the row truncates rather than widening the menu across
@@ -300,7 +300,7 @@ enum SpawnFolderMenu {
     /// for the first frame of the animation, and the hand crossing from the
     /// menu into its submenu exits one and enters the other inside that frame —
     /// the un-fade read 1, did nothing, and the fade hid the menu under the hand
-    /// (Victor, 2026-10-07).
+    /// (the original author, 2026-10-07).
     private static var fading = false
     /// **Where the pointer is, read every 0.1 s once the solid period is over**
     /// — the authority on fading, with the tracking areas only a faster hint.
@@ -356,7 +356,7 @@ enum SpawnFolderMenu {
         // and the effect is created *after* the menu (the menu opens at the
         // press, the context shot fires at the release), so ordering could not
         // save it either: the tap ripple played over the top of the menu.
-        // Victor, 2026-09-06. One above the maximum is the only level that wins
+        // the original author, 2026-09-06. One above the maximum is the only level that wins
         // by construction rather than by luck, and `kCGMaximumWindowLevel` is
         // `INT32_MAX - 16`, so there is room above it.
         p.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) + 1)
@@ -801,7 +801,7 @@ enum SpawnFolderMenu {
     // MARK: - The star
 
     /// **A star toggles a pin and leaves the menu up.** It is a change to what
-    /// the menu *is*, not an answer to what it asks — Victor's ask spells that
+    /// the menu *is*, not an answer to what it asks — the original author's ask spells that
     /// out (*"dacă debifezi steluța, fără să se închidă dialogul"*), and it is
     /// the only reading that works: the reason to pin a project is so that it is
     /// there the next time, and a star that dismissed the menu would make him
@@ -883,7 +883,7 @@ enum SpawnFolderMenu {
         }
     }
 
-    /// **Down and to the right of the pointer** — Victor's ask, 2026-09-06,
+    /// **Down and to the right of the pointer** — the original author's ask, 2026-09-06,
     /// replacing the down-and-*left* he asked for on 09-04. That one was picked
     /// as the quadrant the chip is never in, since the chip hangs below-right
     /// (`RelayWindow.anchorGap`) and a menu buried under a chip following the

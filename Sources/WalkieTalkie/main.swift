@@ -23,7 +23,7 @@ while let arg = args.next() {
         and your screenshots to a waiting agent.
 
           --home <dir>   outbox directory (default ~/.walkie-talkie). Screenshots
-                         always go to ~/Library/Caches/ro.victorrentea.wispr-relay,
+                         always go to ~/Library/Caches/local.walkie-talkie,
                          under a folder per relay session, so the system can
                          reclaim them.
           --label <s>    what the title calls this session (default: folder@branch
@@ -140,7 +140,7 @@ if let spec = ProcessInfo.processInfo.environment["WT_HALO_DEMO"] {
 if ProcessInfo.processInfo.environment["RELAY_SHOOT"] != nil { Offstage.install() }
 
 let app = NSApplication.shared
-// **`.regular`, so it is in the Dock with a running dot under it** (Victor,
+// **`.regular`, so it is in the Dock with a running dot under it** (the original author,
 // 2026-09-07). It was `.accessory` for two months on the argument that an
 // overlay is not an app you switch to — true, and beside the point the day the
 // app deadlocks: an `.accessory` app has no Dock tile, so there is no ⌥-click →

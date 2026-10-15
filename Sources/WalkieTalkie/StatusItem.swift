@@ -16,7 +16,7 @@ import AppKit
 ///
 /// **Since 2026-08-30 it is also the only place the gestures are written down.**
 /// The chip beside the cursor used to carry a legend — `ReBind`, `dictate`, the
-/// shutter, `⌘⇧🖱️` — and Victor had it taken off: it rides over his actual work
+/// shutter, `⌘⇧🖱️` — and the original author had it taken off: it rides over his actual work
 /// all day, and a legend is read once and paid for forever. So every action this
 /// app has now has a row here, **always visible**, naming the mouse or key that
 /// performs it. A row greys out when it cannot act *right now*; it never
@@ -54,7 +54,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **Whether the cloud engine could transcribe a sentence this instant** —
     /// which, for a recogniser with nothing to load, is only ever *is there an
     /// API key*. Asked when the menu opens, like the two above and for their
-    /// reason: the key is a file Victor can create while the app is running, and
+    /// reason: the key is a file the original author can create while the app is running, and
     /// a row that answered from launch would go on saying *no API key* after he
     /// had put one there.
     var elevenReady: (() -> Bool)?
@@ -130,7 +130,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     ///
     /// Asked and not told, like the footprint and the recording flag above — but
     /// for a stronger reason than either: building these costs an AppleScript
-    /// round trip across every Terminal.app window, and Victor's condition on the
+    /// round trip across every Terminal.app window, and the original author's condition on the
     /// whole feature was that the *menu bar* stay instant (*"se poate calcula
     /// conținutul acelui meniu doar când apăs pe el să-l expandezi"*). Clicking
     /// the row is the moment that honours it; `menuWillOpen` on the menu that
@@ -139,6 +139,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     /// Picked from a row of *Rebind to* — point the relay back at that tty.
     var onRebind: ((String) -> Void)?
+    var onBindCodexChat: (() -> Void)?
 
     /// **`ttysNNN` → the title that tab is showing now**, for the panel's second
     /// half: a session found in a transcript is only bindable if the tab it ran
@@ -173,7 +174,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// while reaching for the thing it does, which makes it the one place a
     /// gesture can be learned without being taught.
     ///
-    /// ⌘⌃B is not written on this row at all any more (Victor, 2026-09-06): it
+    /// ⌘⌃B is not written on this row at all any more (the original author, 2026-09-06): it
     /// is the one gesture with a mouse route on the very same row, and a key
     /// equivalent for it existed only to be read — see `gestureRows`, where the
     /// single shortcut column now lives.
@@ -185,7 +186,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     ///
     /// **And since 2026-09-22 the menu draws one glyph, not that sentence.**
     /// Right-aligning the chords *into* AppKit's own shortcut column — flush with
-    /// the `>` of the submenu rows — was Victor's ask three times over, and it is
+    /// the `>` of the submenu rows — was the original author's ask three times over, and it is
     /// possible only there, where a row gets one key glyph and no more. So `◀️ + 🔼`
     /// became `◐`, the emoji legend moved to the About page onto a drawing of his
     /// mouse, and the menu kept the alignment. See `applyGestureColumn` for the
@@ -195,7 +196,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **Rebind to** — every destination the relay has spoken to, most recent
     /// first, with how long ago it let go of each.
     ///
-    /// **Why a list of the past rather than a search of the present.** Victor
+    /// **Why a list of the past rather than a search of the present.** the original author
     /// runs fifteen to twenty Claude Code sessions a day and loses track of which
     /// window did what; the first design here was a Spotlight-style box that
     /// described a session out loud and had a model pick it. This replaced it
@@ -208,7 +209,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// cost nothing to open — but AppKit reserves the disclosure-arrow gutter on
     /// **every row of the menu** the moment one item has a submenu, and this menu
     /// spends its right-hand side on the gesture column. One arrow moved all of
-    /// it (Victor, 2026-09-10: *"a fugit toată coloana de meniuri din cauza >"*).
+    /// it (the original author, 2026-09-10: *"a fugit toată coloana de meniuri din cauza >"*).
     /// That gutter is measured in `applyGestureColumn` now — 31 pt, 47 with a key
     /// equivalent in the menu — and the chords have moved *into* it, so an arrow
     /// costs the column nothing any more. The row stays a pop-up on its own
@@ -239,9 +240,9 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// see the comment at the row's construction.
     /// Opens the microphone from the menu — see `onStartDictation`. The wheel is
     /// the gesture written on the row; ⌘⌃D, which does the same thing from the
-    /// keyboard, went off the menu with ⌘⌃B (Victor, 2026-09-06).
+    /// keyboard, went off the menu with ⌘⌃B (the original author, 2026-09-06).
     ///
-    /// **The four ways into a sentence, named by where it goes** (Victor,
+    /// **The four ways into a sentence, named by where it goes** (the original author,
     /// 2026-09-29): 🔼 click = *Prompt at caret*, 🔼 → = *Prompt to bound*,
     /// 🔼 ↑ = *Prompt to new*, 🔽 → = *Dictate (no Enter)*. The two without a
     /// menu action of their own are legends, like `shot`.
@@ -282,11 +283,11 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// the app runs was a steep price for a way in that needs the keyboard
     /// anyway — and ➡️ + 🛞 held a second went on 2026-09-06, because a chord
     /// that had to be told apart from itself made **Disconnect** wait for the
-    /// finger to come up and put a session Victor had not asked for one timer
+    /// finger to come up and put a session the original author had not asked for one timer
     /// away from every hurried tap.
     ///
     /// **The title says "start dictation" for the same reason the row sits
-    /// under `Start Dictation`** (Victor, 2026-09-06): what it does is open the
+    /// under `Start Dictation`** (the original author, 2026-09-06): what it does is open the
     /// microphone, exactly like the row above it — the only difference is where
     /// the sentence lands, and a new session is the one destination that does
     /// not exist yet when the words start.
@@ -327,7 +328,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// shifting under him is a worse readout than the tick was a good one, so
     /// the state is drawn where the other rows draw their identity — and since
     /// 2026-09-07 that drawing is a **`checkmark`**, the same mark `Wrap Wispr
-    /// Flow` carries (Victor: *"autosend să aibă bifă în față, nu ⏩ când e
+    /// Flow` carries (the original author: *"autosend să aibă bifă în față, nu ⏩ când e
     /// activ"*).
     ///
     /// It was `⏩` for an afternoon, on the argument that the icon column is
@@ -339,7 +340,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// switches look like two unrelated rows when they are the same kind of
     /// thing. A tick is read without being read.
     ///
-    /// **And nothing at all when it is off** (Victor, 2026-09-07 — *"by default
+    /// **And nothing at all when it is off** (the original author, 2026-09-07 — *"by default
     /// să nu aibă nimic în față"*). It was `⏸️` for the off half, which is the
     /// same mistake the ✕ would have been one row up: a picture in the column
     /// claims the row is *doing* something, and off is precisely the state in
@@ -351,7 +352,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// Mirrors what the `autosend` row means, since the row itself no longer
     /// carries a `state` to read it back from.
     ///
-    /// **It survives a restart** (Victor, 2026-09-07). It deliberately did not,
+    /// **It survives a restart** (the original author, 2026-09-07). It deliberately did not,
     /// for two weeks, and the argument was a real one: the panel is what catches
     /// a transcript the model got fluently wrong, and a tick that came back on
     /// its own would quietly take that away weeks later, in a session where he
@@ -375,7 +376,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **Which recogniser is listening — a choice, not a tick** (2026-09-14).
     ///
     /// The row this replaces was `Replace WisprFlow`: one checkbox that read, to
-    /// the hand on the mouse, as *Wispr Flow — yes or no*. Victor asked for the
+    /// the hand on the mouse, as *Wispr Flow — yes or no*. the original author asked for the
     /// distinction a boolean cannot draw — *"nu mai trebuie să fie un checkbox
     /// «Wispr» sau nu, ci un submeniu din care să aleg modelul de utilizat …
     /// așa se vede și numele modelului, dacă mă întreabă cineva ce folosesc"*.
@@ -390,13 +391,13 @@ final class StatusItem: NSObject, NSMenuDelegate {
     ///        ✓ ElevenLabs scribe_v1 — $0.40/h ☁️
     /// ```
     ///
-    /// **Wispr Flow is not one of them since 2026-09-22** — Victor:
+    /// **Wispr Flow is not one of them since 2026-09-22** — the original author:
     /// *"scoate wisprflow ca sursă de dictare din lista de Engine — n-am reușit
     /// niciodată să-l integrăm ca lumea în fluxul nostru să-i preluăm ce text
     /// injectează."* See `applyEngineRow` for why, and for what Wispr keeps.
     ///
     /// **It is an ordinary submenu, with the arrow** — *"tre submeniu obișnuit
-    /// cu >, nu un modal"* (Victor, 2026-09-14, having looked at the other one).
+    /// cu >, nu un modal"* (the original author, 2026-09-14, having looked at the other one).
     ///
     /// It was a dispatched `popUp` for one build, on `Rebind to…`'s reasoning:
     /// one disclosure arrow makes AppKit reserve the gutter on *every* row and
@@ -412,7 +413,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **The caret-paste mode went with the row it replaced.** It is still the
     /// forward button's meaning and still `AppDelegate.replaceWispr`, read from
     /// the same preference key — what it has not got any more is a place in this
-    /// menu to be ticked, which is Victor's call of 2026-09-14.
+    /// menu to be ticked, which is the original author's call of 2026-09-14.
     private let engineItem = NSMenuItem(title: "Engine", action: nil, keyEquivalent: "")
 
     /// **The two rows under the arrow**, rebuilt by `applyEngineRow` rather than
@@ -429,7 +430,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// engine that is not listening.
     private var engineId = "eleven"
 
-    /// Victor picked one. `AppDelegate` swaps the source and calls `setEngine`
+    /// the original author picked one. `AppDelegate` swaps the source and calls `setEngine`
     /// back with whatever is actually running afterwards.
     var onPickEngine: ((String) -> Void)?
 
@@ -440,7 +441,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     // MARK: - Microphone (2026-09-19)
 
     /// **`Microphone: 🎙️ Elgato Wave XLR`, with the four devices under the
-    /// arrow** — Victor's ask of 2026-09-19, the half of it that is not the
+    /// arrow** — the original author's ask of 2026-09-19, the half of it that is not the
     /// chip: *"and source should be selectable via menu too. those unavailable
     /// disabled"*.
     ///
@@ -473,7 +474,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     var micAvailable: (() -> Set<String>)?
     var micCurrentLabel: (() -> String)?
 
-    /// Victor picked one. `AppDelegate` stores it and calls `setMic` back.
+    /// the original author picked one. `AppDelegate` stores it and calls `setMic` back.
     var onPickMic: ((String) -> Void)?
 
     func setMic(_ id: String) {
@@ -482,7 +483,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     }
 
     /// The row's title alone — what `DjiBattery`'s answer repaints. The DJI's
-    /// transmitter battery rides after its name, as in Victor Addons' menu
+    /// transmitter battery rides after its name, as in the original author Addons' menu
     /// (2026-10-07): `Mic: 🎤 DJI 80 %`.
     private func applyMicTitle() {
         var title = "Mic: \(micCurrentLabel?() ?? "—")"
@@ -576,7 +577,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// problem: a tick names one of the two wirings and leaves the other one
     /// unnamed, so *off* was a state with no word for it — the row could not say
     /// that the alternative is the wheel carrying the dictation, only that Logi
-    /// is not doing it. Victor asked for the shape the engine row already has
+    /// is not doing it. the original author asked for the shape the engine row already has
     /// (*"cu submeniu din care aleg cele 2 variante (ca la Engine)"*), and the
     /// two rows under the arrow are where each wiring gets its name.
     ///
@@ -586,7 +587,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// Chrome and VS Code. Unticked: the pre-2026-09-09 wiring, where the wheel
     /// carries the dictation and the left and right buttons are chord modifiers.
     ///
-    /// **Both sets are live code.** Victor asked for the old one kept rather than
+    /// **Both sets are live code.** the original author asked for the old one kept rather than
     /// deleted (*"tine-le pt moment comentate pe cele vechi, sau cu feat togle"*),
     /// and the case it is kept for is a real one: the Logi gestures live in an
     /// Options+ profile, and a Mac without that profile — a fresh install, a
@@ -619,32 +620,32 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// icon rather than `NSMenuItem.state`, for the column's sake.
     ///
     /// **The first row is today's ring and the default**; the rest are in the
-    /// order Victor ranked them. The preference is `HaloStyle`'s own
+    /// order the original author ranked them. The preference is `HaloStyle`'s own
     /// (`UserDefaults`, `haloStyle`), written by `CaretHalo.setStyle` — this
     /// row reads it back on every open, so the tick is what is running.
-    /// **One list** (Victor, 2026-09-20: *"implement in Walkie Talkie the
+    /// **One list** (the original author, 2026-09-20: *"implement in Walkie Talkie the
     /// effects you have … As a new menu, call it Halo fx"* — his spelling,
     /// lowercase `fx` — and then *"there must be ONE menu, not 2: and the
     /// MilkDrop ones should have a lightning bolt in the name"*). The film
     /// first and apart, the page's hand-written effects, a line, the presets
     /// with their ⚡ (`HaloStyle.menuTitle`). The row reads out the pick.
-    /// **`fx` in a mathematical script** (2026-09-22) — Victor: *"mi-ar plăcea
+    /// **`fx` in a mathematical script** (2026-09-22) — the original author: *"mi-ar plăcea
     /// un font matematic mai elegant pt fx"*, picked off six rendered options:
     /// bold script 𝓯 (U+1D4EF) and bold fraktur 𝔁 (U+1D501). Unicode rather than
     /// an attributed title, because `title` is rewritten from `applyHaloRow` and
     /// a font run would have to be rebuilt with it every time.
-    /// **Just `𝓯𝔁` since 2026-09-28** — Victor: *"instead of Halo FX, let's say
+    /// **Just `𝓯𝔁` since 2026-09-28** — the original author: *"instead of Halo FX, let's say
     /// FX. No ellipses, no other words, just the FX stylish font"*. The
     /// `sparkles` icon beside it says what kind of effect.
     static let haloFx = "𝓯𝔁"
     private let haloItem = NSMenuItem(title: StatusItem.haloFx, action: nil, keyEquivalent: "")
     private let haloSubmenu = NSMenu()
 
-    /// Victor picked one — for one destination, or, from the top-level list,
+    /// the original author picked one — for one destination, or, from the top-level list,
     /// for all three at once (`nil`). `AppDelegate` hands it to the halo.
     var onPickHalo: ((HaloStyle, HaloDestination?) -> Void)?
 
-    /// **Five rows, every one of them a submenu** (Victor, 2026-09-21 evening:
+    /// **Five rows, every one of them a submenu** (the original author, 2026-09-21 evening:
     /// *"să aibă doar cinci subcopii, care copiii să fie, la rândul lor,
     /// submeniuri … despre ce efect, în ce moment, și apoi motorul"*): one per
     /// destination — the *moment* a dictation happens — and `Fx engine` last.
@@ -663,7 +664,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     private func applyHaloRow() {
         let picks = HaloDestination.allCases.map { HaloStyle.current(for: $0) }
         // **`Halo 𝓯𝔁 when…`, and the rows finish the sentence** (2026-09-22,
-        // Victor) — `At caret: Tunnel`, `Bounded: Tendrils`. No readout on the
+        // the original author) — `At caret: Tunnel`, `Bounded: Tendrils`. No readout on the
         // parent any more: the four are four answers, and the one shared answer
         // it used to print has not been the case since each destination got its own.
         // **Since 2026-09-28 the row is `𝓯𝔁` alone** — no `Halo`, no `when…`
@@ -680,7 +681,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
             row.submenu = list
             haloSubmenu.addItem(row)
         }
-        // **`Fx engine`, last row of the same submenu** (Victor, 2026-09-21:
+        // **`Fx engine`, last row of the same submenu** (the original author, 2026-09-21:
         // *"pune fx engine sub halo effects (în submeniu)"*) — one level down
         // from the styles, not a sibling row in the main menu.
         haloSubmenu.addItem(.separator())
@@ -744,7 +745,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     }
 
     /// The readout's word for the same engine — the detail in the parentheses
-    /// belongs to the list, where the two stand side by side (Victor,
+    /// belongs to the list, where the two stand side by side (the original author,
     /// 2026-09-22: *"doar «projectM», că deja știu cine e"*).
     private static func haloEngineShortTitle(_ e: HaloEngine) -> String {
         switch e {
@@ -816,7 +817,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     // ── Wrap Wispr Flow: gone from the menu (2026-09-14) ────────────────────
     //
     // **"elimina *Wrap Wispr Flow* din meniu. e redundant vs submeniul introdus
-    // de curand"** (Victor). The tick asked *does the relay take Wispr's paste
+    // de curand"** (the original author). The tick asked *does the relay take Wispr's paste
     // and deliver the words itself*, and with `Engine` under an arrow the two
     // rows read as one question asked twice: picking **Wispr Flow** as the
     // engine is picking the wrap, because the wrap is how this app talks to
@@ -832,7 +833,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     // ── Close Wispr Scratchpad: gone from the menu (2026-09-14) ─────────────
     //
-    // **"Close wisprflow scratchpad menu < sterge!"** (Victor). It was a row he
+    // **"Close wisprflow scratchpad menu < sterge!"** (the original author). It was a row he
     // clicked because the relay had not been given leave to close another app's
     // window on its own — and by now it closes it on its own anyway, at the end
     // of every wrapped dictation (`closeScratchpadAfterwards`) and through the
@@ -859,7 +860,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// nothing but the file on disk, and a hop through the delegate would exist
     /// only to be consistent with rows that had a reason.
     ///
-    /// **`Prompt History`, with the page one row inside it** (Victor,
+    /// **`Prompt History`, with the page one row inside it** (the original author,
     /// 2026-09-17). The row used to be `Prompt Log` and its only act was to open
     /// the HTML page — a click that leaves the menu, opens a browser and lands
     /// on a file, for the question that is usually *what did I just say?*. Under
@@ -878,7 +879,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     /// **The build stamp, one row above Quit**, reading `Version: <build>` — the
     /// same plain readout all three menu bar apps end with (2026-09-13), which is
-    /// why it stopped being the old `Victor's Walkie Talkie (<build>)` About row.
+    /// why it stopped being the old `the original author's Walkie Talkie (<build>)` About row.
     ///
     /// **It opens the About page again since 2026-09-22**, and the title stayed
     /// plain: the row is still the version readout, it has simply stopped being
@@ -898,7 +899,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     private var isBound = false
 
     /// The same 🤖, on every other screen. `NSStatusItem` only ever appears in the
-    /// menu bar of the display with the focus, and that is the one display Victor
+    /// menu bar of the display with the focus, and that is the one display the original author
     /// is *not* looking at whenever this matters.
     private let mirror = MenuBarMirror()
 
@@ -912,7 +913,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // The robot was inherited from the overlay's chip, and it said what the
         // app *did* rather than what it is — fine while the app was started per
         // session by another app's shortcut, and wrong now that this one runs
-        // from login and is the thing Victor looks for in the bar. The two
+        // from login and is the thing the original author looks for in the bar. The two
         // pictures are the same drawing: at rest the device alone, and bound the
         // full icon, ring and all. So "is it pointed at a terminal?" is answered
         // by the ring appearing round something already in that spot, which is a
@@ -941,6 +942,9 @@ final class StatusItem: NSObject, NSMenuDelegate {
         bind.action = #selector(bindClicked)
         bind.target = self
         menu.addItem(bind)
+        let codexChat = NSMenuItem(title: "Bind Codex chat…", action: #selector(bindCodexChatClicked), keyEquivalent: "")
+        codexChat.target = self
+        menu.addItem(codexChat)
 
         // **Directly under Connect, because it is the same question answered the
         // other way.** It stops the words going to *that terminal* and hands them
@@ -982,7 +986,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // could not begin. **Enabled with nothing bound too, since 2026-09-11**:
         // it was `isBound`, because unbound the relay was inert and
         // `startLocalRecording` would have refused anyway — and it no longer
-        // does. A sentence spoken now is held for the terminal Victor is about to
+        // does. A sentence spoken now is held for the terminal the original author is about to
         // point at (`AppDelegate.holdsForBind`), so the one row that begins a
         // dictation must not be the one thing still saying it cannot.
         startDictation.image = Self.symbolIcon("mic")
@@ -1022,7 +1026,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         localNowItem.isEnabled = false
 
         // **Directly under `Start Dictation`, because it is the same verb**
-        // (Victor, 2026-09-06). It was up with the destination rows, beside Bind
+        // (the original author, 2026-09-06). It was up with the destination rows, beside Bind
         // and Disconnect, on the argument that a new session is a destination —
         // but the row does not *make* one, it opens the microphone, and the
         // window appears when the sentence is over. Read as a pair with the row
@@ -1033,7 +1037,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // Enabled whether or not anything is bound — unlike every other row in
         // the block — because that is the whole point of the gesture: it carries
         // its own destination.
-        // **`mic.badge.plus`, not 🆕** (Victor, 2026-09-21: *"să fie toate
+        // **`mic.badge.plus`, not 🆕** (the original author, 2026-09-21: *"să fie toate
         // monocrome"*). It was the last colour in the column beside ✨, and the
         // badge says the same thing the emoji did while reading as a pair with
         // `mic` above it and `mic.slash` below: the same verb, into one that is
@@ -1053,7 +1057,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         pasteLast.isEnabled = false
         menu.addItem(pasteLast)
 
-        // **Prompt History under Paste last prompt** (2026-09-22, Victor): the
+        // **Prompt History under Paste last prompt** (2026-09-22, the original author): the
         // same question one row further back — *the last one* and *the ones
         // before it* — so they sit together rather than at the foot of the menu.
         messageLog.image = Self.symbolIcon("scroll")
@@ -1066,7 +1070,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         menu.addItem(messageLog)
 
         shot.image = Self.symbolIcon("camera")
-        // **A legend, not a command — permanently disabled** (Victor, 2026-09-04),
+        // **A legend, not a command — permanently disabled** (the original author, 2026-09-04),
         // the same rendering `pickLegend` uses for "this is something you do, not
         // something you pick". The shutter itself lives on the back button while
         // dictating; F3, its keyboard route, was never pressed and is gone.
@@ -1078,7 +1082,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         pickLegend.image = Self.symbolIcon("hand.raised")
         pickLegend.isEnabled = false
         // **A line between where the words go and what happens while they are
-        // being said.** Victor's ask, and the regrouping is the half that makes
+        // being said.** the original author's ask, and the regrouping is the half that makes
         // the line mean anything: the three rows above it are about a
         // *destination* — point at one, let it go, or paste the last sentence
         // somewhere by hand — and every row below it is a gesture made with a
@@ -1115,7 +1119,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // **A line between the verbs that end a dictation and the two legends.**
         // Take Screenshot and Pick Element are both disabled rows now — gestures
         // written down, not commands — so they sit apart from the three rows
-        // above that actually do something when clicked (Victor, 2026-09-04).
+        // above that actually do something when clicked (the original author, 2026-09-04).
         menu.addItem(.separator())
         menu.addItem(shot)
         menu.addItem(areaShot)
@@ -1130,7 +1134,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // the row under it — the Scratchpad — is a qualification of the answer.
         // The wrap used to be the other one; it went in the same change that
         // gave this row its arrow, as the same question asked twice.
-        // **Microphone first, then the engine, Halo fx last** (Victor,
+        // **Microphone first, then the engine, Halo fx last** (the original author,
         // 2026-09-20): what is listening, what is transcribing it, and the
         // pickers about what is drawn after them.
         micItem.image = Self.symbolIcon("mic")
@@ -1193,7 +1197,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         menu.addItem(version)
 
         // ⌘Q as a key equivalent (2026-09-13), for the same reason it sits on the
-        // other two apps' Quit rows: Victor asked for the three menus to end the
+        // other two apps' Quit rows: the original author asked for the three menus to end the
         // same way. It fires only while the menu is open — a status-item app
         // never becomes key — and the main menu `main.swift` installs already
         // carries the real ⌘Q for the Dock-tile case.
@@ -1203,7 +1207,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         menu.addItem(exit)
 
         // **One column for every shortcut, mouse or key.**
-        // Victor asked twice for the mouse chords to be right-aligned; the first
+        // the original author asked twice for the mouse chords to be right-aligned; the first
         // answer was that `NSMenuItem` does not offer it, which is true only of
         // the shortcut column itself. A right tab stop in an attributed title is
         // the same right edge drawn by hand. It sat *beside* AppKit's own ⌘⌃
@@ -1230,7 +1234,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // buttons are stacked, `🔼` is the forward one and `🔽` the back one. A
         // gesture made by holding a side button and moving the mouse writes the
         // button first and the direction after it as a text arrow (`🔼 →`).
-        // Victor picked the filled triangles over `⬆️`/`⬇️` for exactly that
+        // the original author picked the filled triangles over `⬆️`/`⬇️` for exactly that
         // reason: against a thin `↑` the difference has to be visible at a
         // glance, and a boxed arrow next to a bare one is not.
         //
@@ -1351,7 +1355,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **The movement is a key equivalent; the button is drawn beside it**
     /// (2026-09-22).
     ///
-    /// Victor asked, for the third time, why the chords do not line up with the
+    /// the original author asked, for the third time, why the chords do not line up with the
     /// `>` of the submenu rows. Measured, on a menu built for the question: from
     /// a title they cannot. AppKit reserves that gutter — **31 pt for a submenu
     /// arrow, 47 when some row also carries a key equivalent** — *after* every
@@ -1433,7 +1437,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// and dims it on its own, which is one more thing the move into that column
     /// bought back. A row with no button glyph keeps a plain title and never pays
     /// this at all.
-    /// **The gesture in words, on hover** (2026-09-22) — Victor: *"menu entry
+    /// **The gesture in words, on hover** (2026-09-22) — the original author: *"menu entry
     /// pot avea tooltip: explică gestul în tooltip scurt"*. The column draws one
     /// glyph per row, which is a reminder for someone who already knows the
     /// vocabulary; this is the sentence for someone who does not. Keyed on the
@@ -1500,7 +1504,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// `Engine: 💻 v3-turbo 1.5 GB` while the local model is the one listening;
     /// `Engine: ☁️ Wispr Flow` while the other one is.
     ///
-    /// **The row is short and the submenu is long** (Victor, 2026-09-14): the
+    /// **The row is short and the submenu is long** (the original author, 2026-09-14): the
     /// top-level row is read out of the corner of the eye while the menu bar is
     /// open over his work, and `mlx-community/whisper-large-v3-turbo — 2.6 GB
     /// RAM` there stretched the whole menu to the width of a model id nobody
@@ -1517,7 +1521,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // the Mac: a list he scans while the menu is open over his work should
         // not put a billed, networked engine where his eye lands first.
         //
-        // **Wispr Flow left this list on 2026-09-22** — Victor: *"scoate
+        // **Wispr Flow left this list on 2026-09-22** — the original author: *"scoate
         // wisprflow ca sursă de dictare din lista de Engine — n-am reușit
         // niciodată să-l integrăm ca lumea în fluxul nostru să-i preluăm ce
         // text injectează."* It is not a ranking, it is a capability: the
@@ -1533,7 +1537,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // the relay reads the `History` row, so the words it hands over are as
         // sure as the other two engines'.
         //
-        // **Since 2026-09-25 the order is Victor's, and the names are short** —
+        // **Since 2026-09-25 the order is the original author's, and the names are short** —
         // *"☁️ ElevenLabs + Live, ☁️ ElevenLabs, 💻 Local … move the details of
         // what models into the tooltips"*. The row is the choice; the model id,
         // the price and the RAM are what he hovers for. The order of trust
@@ -1545,7 +1549,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // is never missing from the list.
         //
         // **`WT_WISPR_ENGINE=1` puts it back, last, where it was** (2026-09-28,
-        // pending the lab verdict) — Victor: *"once you're convinced, restore
+        // pending the lab verdict) — the original author: *"once you're convinced, restore
         // Wispr Flow as a transcription engine"*. The VM runs decide; the
         // restore is then a one-line flip of `wisprEngineDefault`.
         let ids = Self.engineRowIds(wisprSwitch: Self.wisprEngineSwitch, current: engineId)
@@ -1559,14 +1563,14 @@ final class StatusItem: NSObject, NSMenuDelegate {
             // `NSMenuItem.state`, which would reserve a second column.
             row.image = id == engineId ? Self.symbolIcon("checkmark") : Self.blankIcon
             // **One row per local model, siblings of the cloud engines** (2026-10-03,
-            // Victor: one radio group, one tick, short titles) — `Local 💻` is not a
+            // the original author: one radio group, one tick, short titles) — `Local 💻` is not a
             // row of its own any more; picking one of these is the engine *and* the
             // weights in one click.
             if id == "whisper" { addLocalModelRows(); continue }
             engineSubmenu.addItem(row)
         }
         // **⏱ Prepare local transcript (p95)** (2026-09-28 as *Auto fallback to
-        // local*, Victor: *"Auto fallback to local model should be a checkbox in
+        // local*, the original author: *"Auto fallback to local model should be a checkbox in
         // the Engine submenu"*; renamed 2026-09-29 when it stopped inserting) — a switch
         // about the engines, so under them, between two lines; the tick drawn as
         // every other switch here draws it.
@@ -1598,7 +1602,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
             + "a window still decoding when you stop is killed."
         engineSubmenu.addItem(liveRow)
         // **🧾 What the account has left, under a line of its own** (2026-09-28,
-        // moved here from Victor Addons the same morning — *"quota lui 11labs
+        // moved here from the original author Addons the same morning — *"quota lui 11labs
         // are sens doar in walkie"*). Below the rows he picks from, because it
         // is a readout, not a choice. Since 2026-09-28 it is the only money in
         // the list — the `$x.xx` the ElevenLabs rows carried went (*"îmi ajunge
@@ -1619,7 +1623,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// 05:10** — the lab's wave 5 said YES on all seven criteria (build 5661ca4:
     /// relay delivery 96.8 %, 0 cross-destination pastes, 0 doubled, his own
     /// sentences 19/19; `evals/plan/vm/wispr/report-wave5-2026-09-29.md`), and
-    /// Victor's order was *"once you're convinced, restore Wispr Flow as a
+    /// the original author's order was *"once you're convinced, restore Wispr Flow as a
     /// transcription engine"*. `WT_WISPR_ENGINE=0` hides it again.
     static let wisprEngineDefault = true
 
@@ -1652,7 +1656,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     }
 
     /// **The local engine, one row per model** (2026-10-03, flattened the same
-    /// day). Victor: every engine/model a sibling in one list, one tick, short
+    /// day). the original author: every engine/model a sibling in one list, one tick, short
     /// titles — `v3-victor 💻`, `v3-turbo 💻`, `v3-turbo-victor 💻`; the date, the cost, the WER, the data and the method are on the
     /// tooltip, read from the folder's `model-card.json` (`WhisperModels.Option`),
     /// never written twice. The tick needs both: the local engine live **and**
@@ -1671,21 +1675,21 @@ final class StatusItem: NSObject, NSMenuDelegate {
         }
     }
 
-    /// `💻 <model name>` — `💻 v3-turbo`, `💻 v3-turbo-victor` (2026-10-03, Victor:
+    /// `💻 <model name>` — `💻 v3-turbo`, `💻 v3-turbo-victor` (2026-10-03, the original author:
     /// the model's name, no `Local`; **the laptop first since 2026-10-09**, see
     /// `cloud`/`local`), with the ⏳ while the picked model loads.
     static func localRowTitle(_ option: WhisperModels.Option, loading: Bool) -> String {
         "\(local) \(option.title)" + (loading ? " ⏳" : "")
     }
 
-    /// **Every engine name starts with where it runs** (2026-10-09, Victor: *"be
+    /// **Every engine name starts with where it runs** (2026-10-09, the original author: *"be
     /// sure to start with the laptop emoji everywhere … so it's clear from the
     /// first character if this is a local"*) — the menu, the launch and green
     /// tabs, the prompt panel's `Engine:` row. Reverses 2026-09-30's *after the
     /// name*.
     static let cloud = "☁️", local = "💻"
 
-    /// Victor picked a local model (a repo id or a folder). `AppDelegate` stores
+    /// the original author picked a local model (a repo id or a folder). `AppDelegate` stores
     /// it and replaces the helper at the next idle moment.
     var onPickWhisperModel: ((String) -> Void)?
 
@@ -1784,7 +1788,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     /// **`Full Log`, a line, then the last sentences he dictated.**
     ///
-    /// The order is Victor's (2026-09-17): the page above the line, the snippets
+    /// The order is the original author's (2026-09-17): the page above the line, the snippets
     /// below it. The line is what makes the two halves readable as two things —
     /// one row that leaves the app, and a list that is the app's own memory of
     /// what was said. Newest first, the same way the page is ordered and for the
@@ -1868,7 +1872,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// `LocalWhisper.footprintBytes` for why not RSS.
     ///
     /// **The model id in full, org prefix included** — `mlx-community/whisper-
-    /// large-v3-turbo`, which is how Victor names it (*"trece numele modelului:
+    /// large-v3-turbo`, which is how the original author names it (*"trece numele modelului:
     /// mlx…"*, 2026-09-14). The prefix was stripped for one build on the
     /// argument that it says where the weights were downloaded from rather than
     /// what is doing the listening; that is true and beside the point — it is
@@ -1884,12 +1888,12 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // right now* belongs in the list he picks from.
         let keyless = elevenReady?() == true ? "" : " ⚠️"
         switch id {
-        // **No `$x.xx` after the name since 2026-09-28** — Victor: *"în
+        // **No `$x.xx` after the name since 2026-09-28** — the original author: *"în
         // submeniul ElevenLabs, scoate $ de după nume. Îmi ajunge quota
         // consumată."* The 🧾 row at the foot of the list says what the
         // account has used; `ElevenLabsCost` still counts, for
         // `/test/state.elevenCost` only.
-        // **`💸x3` on the Live row** (2026-09-28, Victor: *"mention 💸x3 on … +
+        // **`💸x3` on the Live row** (2026-09-28, the original author: *"mention 💸x3 on … +
         // Live in model choice"*): measured on the account, a dictated second
         // with captions bills three times — the live stream, the corrections
         // and the final upload, 1.06 credits/s against 0.29 batch-only
@@ -1949,10 +1953,10 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// right after the engine's name in the top-level row's title — `ElevenLabs ☁️
     /// + Live`, `Local 💻 (1.5 GB)` (after the name since 2026-09-30, as in the list).
     func engineBannerTitle(_ id: String) -> String {
-        // **`Wispr`, not `Wispr Flow`, on the tab** (2026-10-06, Victor: *"numește
+        // **`Wispr`, not `Wispr Flow`, on the tab** (2026-10-06, the original author: *"numește
         // Wispr în loc de „Wispr Flow" în overlay-ul care se ridică pe jumătate"*).
         if id == "wispr" { return "\(Self.cloud) Wispr" }
-        // **No RAM on the tab** (2026-10-14, Victor: *"I don't want to see the
+        // **No RAM on the tab** (2026-10-14, the original author: *"I don't want to see the
         // gigabytes"*) — the footprint stays in the menu's Engine row.
         if id == "eleven" || id == "eleven-live" { return engineShortTitle(id) }
         return "\(Self.local) " + WhisperModels.displayName(WhisperModels.selected)
@@ -1968,7 +1972,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         if id == "wispr" { return "\(Self.cloud) Wispr Flow" }
         // **The picked model's name, the 💻 against it, then the RAM** —
         // `v3-turbo💻 1.5 GB`, `v3-turbo-victor💻 1.5 GB`, `v3-victor💻 2.9 GB`:
-        // the same name as everywhere else since 2026-10-07 (`Turbo LoRA Victor`
+        // the same name as everywhere else since 2026-10-07 (`Turbo LoRA the original author`
         // 2026-10-05, `V3t…` 2026-10-04, *"fara ( ) in jurul GB"*).
         let name = "\(Self.local) " + WhisperModels.displayName(WhisperModels.selected)
         if engineLoading { return name + " loading…" }
@@ -2026,7 +2030,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // have a recogniser to reach. ⏸️ used to share this slot; there is no
         // pause any more.
         let badge = engineLoading ? "⏳" : ""
-        // **Always the device in its ring** (2026-09-28, Victor: *"change the menu
+        // **Always the device in its ring** (2026-09-28, the original author: *"change the menu
         // icon so the icon is always the walkie-talkie with a yellow circle around
         // it"*). The bare device meant *unbound* from 2026-08-28 to today; the
         // chip's `📍 Unbound` row and the menu's Bind row say that now.
@@ -2048,7 +2052,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// When this binary was put in place, for the Version row.
     ///
     /// **Taken from the executable's own mtime, not from a constant stamped into
-    /// the source.** Victor Addons seds a `BUILD_TIME` literal into its Swift file
+    /// the source.** the original author Addons seds a `BUILD_TIME` literal into its Swift file
     /// on every build, which works but dirties a tracked file on each run and
     /// lands in commits as noise. The file date says the same thing for free and
     /// cannot go stale: `build-app.sh` copies the binary into the bundle with a
@@ -2065,12 +2069,12 @@ final class StatusItem: NSObject, NSMenuDelegate {
         return f.string(from: date ?? Date())
     }()
 
-    /// Google Maps' own marker red, because that is the picture Victor named when
+    /// Google Maps' own marker red, because that is the picture the original author named when
     /// he asked for the pin — and a red pin among a column of monochrome symbols
     /// is also the one row the eye finds without reading.
     private static let pinRed = NSColor(red: 0.92, green: 0.26, blue: 0.21, alpha: 1)
 
-    /// **The icon column: SF Symbols, one source, no colour** (Victor,
+    /// **The icon column: SF Symbols, one source, no colour** (the original author,
     /// 2026-09-21: *"să fie toate monocrome"*).
     ///
     /// Emoji were what was asked for first and they came with their own colour,
@@ -2108,7 +2112,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// An emoji drawn into the same box the symbols land in, so the two sources
     /// share one column rather than one row's glyph sitting a few points off the
     /// next one's.
-    /// **A broken chain for Disconnect** (Victor: *"for bind/unbind put a
+    /// **A broken chain for Disconnect** (the original author: *"for bind/unbind put a
     /// chain / broken chain"*). macOS 15 has `link` but no `link.slash`, so
     /// the slash is drawn: the symbol, then a bar across it in the same
     /// template ink, a knocked-out gap either side so the break reads.
@@ -2133,7 +2137,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     /// **A name with a bolt after it**, for the presets: the symbol as a text
     /// attachment, so it takes the row's colour like every other icon and
-    /// follows the name with no separator (Victor: *"just a lightning bolt
+    /// follows the name with no separator (the original author: *"just a lightning bolt
     /// after their name, no separator bar"*).
     private static func boltedTitle(_ name: String) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
@@ -2217,6 +2221,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     @objc private func recoverDictationClicked() { onRecoverDictation?() }
     @objc private func startDictationClicked() { onStartDictation?() }
     @objc private func bindClicked() { onBind?() }
+    @objc private func bindCodexChatClicked() { onBindCodexChat?() }
 
     /// **The list, shown where the pointer already is.**
     ///
@@ -2278,7 +2283,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // 🧾 cached for 5 min; a stale one refreshes in the background and the
         // row repaints while the menu is still open.
         ElevenLabsQuota.shared.refreshIfStale()
-        // 🎤 the DJI's battery, asked of Victor Addons; the row repaints in the open menu.
+        // 🎤 the DJI's battery, asked of the original author Addons; the row repaints in the open menu.
         DjiBattery.refresh { [weak self] _ in self?.applyMicTitle() }
         applyEngineRow()
         // Devices come and go while the app runs, and the only moment this list
@@ -2295,7 +2300,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         applyGestureColumn()
     }
 
-    /// **The bare `petclinic@main` since 2026-10-03** (Victor: *"prima linie, nu
+    /// **The bare `petclinic@main` since 2026-10-03** (the original author: *"prima linie, nu
     /// mai zice bound to, direct"*) — the app icon beside it says it is a
     /// destination. Until then it read `Bound to: petclinic@main`, for this reason:
     ///
@@ -2308,7 +2313,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// words say which of the two it is.
     ///
     /// Only the bound form takes the prefix. **Unbound the row says `Unbound`,
-    /// behind the same map pin the chip wears** (Victor, 2026-09-14) — it used
+    /// behind the same map pin the chip wears** (the original author, 2026-09-14) — it used
     /// to be `🤖 ` plus `SessionLabel.value`, and since the relay became a login
     /// item that label is `/`: a robot and a slash, naming the directory
     /// `launchd` happened to start the app in. It read as a destination, which

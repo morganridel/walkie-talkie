@@ -2,7 +2,7 @@ import AppKit
 
 /// **Clicking the Dock tile restarts the relay instead of bringing it forward.**
 ///
-/// Victor, 2026-09-14: *"When I open the walkie-talkie again from the sidebar in
+/// the original author, 2026-09-14: *"When I open the walkie-talkie again from the sidebar in
 /// macOS, it should restart it rather than refocus on it. Instead of quitting and
 /// restarting, I should just click on the icon on the left that would restart the
 /// application."*
@@ -42,7 +42,7 @@ enum Relaunch {
     ///
     /// Time-boxed like `SingleInstance.beingReplaced`, and for its reason: a
     /// handoff left behind by a relaunch that never happened must not reach
-    /// across a day and point tomorrow's relay at a terminal window Victor closed
+    /// across a day and point tomorrow's relay at a terminal window the original author closed
     /// last night. Removed on read whether it is used or not.
     static func takePendingBinding() -> String? {
         let path = handoffURL.path
@@ -68,7 +68,7 @@ enum Relaunch {
     /// process dies are not all restarts it knows about: `relay-restart.sh` kills
     /// it from outside, `build-app.sh` replaces it, and a crash tells nobody.
     ///
-    /// The cost is one small write on a gesture Victor makes by hand a few times
+    /// The cost is one small write on a gesture the original author makes by hand a few times
     /// an hour, and what it buys is the sentence he is *in the middle of* keeping
     /// its stop across the restart. Without it the button silently goes back to
     /// being Return in the middle of a dictation, which is the one failure that
@@ -86,7 +86,7 @@ enum Relaunch {
     /// How long the arm was up before the restart, or nil if there is nothing to
     /// put back. Taken exactly once, and time-boxed like `takePendingBinding` for
     /// its reason — a marker left behind by a crash must not reach across the
-    /// afternoon and hand tomorrow's back button to a dictation Victor started
+    /// afternoon and hand tomorrow's back button to a dictation the original author started
     /// with his keyboard. Three minutes is longer than the longest sentence
     /// measured (81 s) and far shorter than a working day.
     ///

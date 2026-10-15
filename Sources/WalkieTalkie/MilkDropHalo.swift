@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 
 /// **The MilkDrop presets, run by the real engine in a transparent web view**
-/// (2026-09-20, `swift-port-02`). Victor: *"migrate the MilkDrop ones to Swift
+/// (2026-09-20, `swift-port-02`). the original author: *"migrate the MilkDrop ones to Swift
 /// as well"* — and since reimplementing a shader-and-equation preset is not
 /// possible, the standard he set is *identical to the original*: butterchurn
 /// itself, hosted here, the way `voice-halo` hosts it.
@@ -51,7 +51,7 @@ final class MilkDropHalo: NSView, HaloWebHost {
     /// The preset is loaded once per host, not on every `start`: the engine's
     /// feedback buffer is its picture, and reloading threw it away each dictation.
     private var configured = false
-    /// **The warm-up is hidden** (Victor, 2026-09-20 late: *"initially it looks
+    /// **The warm-up is hidden** (the original author, 2026-09-20 late: *"initially it looks
     /// like a set of white circles … get rid of the beginning part"*). A
     /// feedback preset's first frames are the bare waveform on an empty
     /// buffer; the engine runs with the view at alpha 0 for `warmup` seconds

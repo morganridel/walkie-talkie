@@ -14,7 +14,7 @@ import Foundation
 /// It used to wait for one of the two gestures that mean a dictation is coming —
 /// binding a terminal, or the wheel held on a model that is not up — to avoid
 /// keeping 1.5 GB resident for a relay nobody had spoken to. That trade was the
-/// wrong way round: the relay is a login item that is up before Victor is, so
+/// wrong way round: the relay is a login item that is up before the original author is, so
 /// the ten seconds are free at launch and were being charged, every single time,
 /// to the first sentence of the day. Those gestures still call `start`, which is
 /// idempotent, so a launch load that failed is retried rather than fatal.
@@ -81,7 +81,7 @@ final class LocalWhisper {
         }
     }
 
-    /// Below this, the transcript is not delivered as if it were what Victor
+    /// Below this, the transcript is not delivered as if it were what the original author
     /// said. See `Result.avgLogprob` for where the number comes from.
     static let confidenceFloor = -0.6
 
@@ -99,7 +99,7 @@ final class LocalWhisper {
     /// replaced by one repeated syllable — are caught by this, all twelve; the
     /// 26 it misses are worst-case +0.44 WER and median +0.14, i.e. a wrong word
     /// or two. And it fires on **none** of the 802 clips whose transcript was
-    /// fine: zero false alarms, which is what lets it be shown to Victor at all.
+    /// fine: zero false alarms, which is what lets it be shown to the original author at all.
     ///
     /// **`avg_logprob` cannot do this job.** It caught 2 of the 14 loops in the
     /// same run, and the reason is structural rather than a matter of where the
@@ -129,9 +129,9 @@ final class LocalWhisper {
     /// Read back rather than hardcoded: the id lives in `whisper_helper.py` and is
     /// overridable through `RELAY_WHISPER_MODEL`, so a copy on this side would be
     /// a second answer to a question that already has one — and the row it feeds
-    /// exists precisely so Victor can see *which* model is about to be believed.
+    /// exists precisely so the original author can see *which* model is about to be believed.
     private(set) var modelName: String?
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.whisper")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.whisper")
     /// **Under `pidLock`, and false the moment the process dies** (2026-09-26,
     /// TL7). It was a plain `queue`-confined flag that only a failed request
     /// could take down, so `/engine` said `ready` about a SIGKILLed helper until
@@ -240,7 +240,7 @@ final class LocalWhisper {
     /// `/usr/bin/python3`, which has no `mlx_whisper` and cannot get one: it is
     /// the Command Line Tools' interpreter and its site-packages is not a place
     /// `pip install` may write. The identical binary started from a terminal saw
-    /// Victor's python.org 3.12 on PATH and worked, which is why this looked like
+    /// the original author's python.org 3.12 on PATH and worked, which is why this looked like
     /// a broken model rather than a broken lookup — the failure was
     /// `cannot import mlx_whisper`, and the module was installed the whole time.
     ///
@@ -255,6 +255,11 @@ final class LocalWhisper {
             return override
         }
         var candidates: [String] = []
+        // Quiet Journal already owns a working MLX environment on this Mac.
+        // Prefer it when present so Walkie-Talkie shares the installed runtime
+        // without installing packages or touching the journal service.
+        let journalPython = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Quiet Journal/.venv/bin/python").path
+        candidates.append(journalPython)
         // A `swift build` run from a terminal already has the right one on PATH;
         // looking there first keeps a developer run on the same interpreter the
         // shell would have picked.
@@ -289,11 +294,19 @@ final class LocalWhisper {
         var path = (env["PATH"] ?? "").split(separator: ":").map(String.init)
         for dir in dirs where !path.contains(dir) { path.append(dir) }
         env["PATH"] = path.joined(separator: ":")
-        // **The weights Victor picked in the Engine list** (2026-10-03) — the
+        // **The weights the original author picked in the Engine list** (2026-10-03) — the
         // helper's `MODEL` is this variable, so the pick travels the same road
         // a launch-time override always did. Read at each spawn: a switch is a
         // new helper (`AppDelegate.applyWhisperModelWhenIdle`).
         env["RELAY_WHISPER_MODEL"] = WhisperModels.selected
+        // Quiet Journal's MLX model cache is separate from its journal data.
+        // Hugging Face reads this cache, allowing the existing public weights
+        // to be reused; RELAY_WHISPER_CACHE can point elsewhere when desired.
+        let journalModelCache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Quiet Journal/data/models").path
+        let cache = env["RELAY_WHISPER_CACHE"] ?? env["HF_HOME"] ?? journalModelCache
+        if FileManager.default.fileExists(atPath: cache) {
+            env["HF_HOME"] = cache
+        }
         return env
     }
 

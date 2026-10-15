@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 
 /// **The `voice-halo` page itself, hosted in a transparent web view**
-/// (2026-09-20). Victor's standard for every halo but the film: *identical to
+/// (2026-09-20). the original author's standard for every halo but the film: *identical to
 /// the page*. `HaloEffects.swift` re-drew nine of them in CoreGraphics and came
 /// out small, coarse and — for the water — missing most of the scene; the
 /// MilkDrop presets, run by the real engine in a `WKWebView`, came out right.

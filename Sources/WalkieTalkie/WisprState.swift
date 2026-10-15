@@ -101,7 +101,7 @@ enum DictationPhase: Equatable {
 ///
 /// The poll and the notification are deliberately kept as two inputs rather than
 /// collapsed into the faster one: the lag between them is a number the next
-/// feature needs (Victor's replay buffer has to know when Wispr is *ready*), and
+/// feature needs (the original author's replay buffer has to know when Wispr is *ready*), and
 /// a number nobody measures is a number that drifts. `lags` is that measurement
 /// and it is in `GET /test/state`.
 ///
@@ -219,7 +219,7 @@ final class WisprState {
     /// after the chord: Wispr is still listening. The one NULL row `deadRow`
     /// keeps waiting on (its microphone is open), and nothing else would ever
     /// end it. Measured on 17:31:00 that day: a clean chord (*"the wire was
-    /// bare"*), row 18156 listening on for 435 s until Victor dismissed it by
+    /// bare"*), row 18156 listening on for 435 s until the original author dismissed it by
     /// hand, every dictate gesture refused meanwhile (*"Wispr Flow's microphone
     /// is already open"*) and the restart gate shut. 9 of 536 relay stops in the
     /// log are like it; the other 527 left NULL in ≤ 453 ms (p50 172, p90 221).
@@ -298,7 +298,7 @@ final class WisprState {
     // MARK: - Inputs
 
     /// **The start chord went out** — this app posted `fn ⌃ Space`, or the tap
-    /// saw Victor post it. The clock starts here and everything else is measured
+    /// saw the original author post it. The clock starts here and everything else is measured
     /// against it.
     func startChord(_ why: String) {
         chordAt = now()

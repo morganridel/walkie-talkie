@@ -2,7 +2,7 @@ import AppKit
 import ObjectiveC
 
 /// **Under `RELAY_SHOOT` no window of this process ever reaches a screen**
-/// (2026-10-08, Victor: *"când faci pozele la acele tooltipuri … și la panelul
+/// (2026-10-08, the original author: *"când faci pozele la acele tooltipuri … și la panelul
 /// din stânga sus, mereu mă frânez din a dicta … să nu mai văd alea … îmi apare
 /// și în jurul mouse-ului, mă distrage"*).
 ///

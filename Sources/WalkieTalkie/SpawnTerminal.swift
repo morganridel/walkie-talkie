@@ -8,7 +8,7 @@ import Foundation
 /// It exists because every other destination in this app has to be *pointed at*:
 /// ⌘⌃B, the mouse-5 double click and the left-plus-wheel chord all say "that
 /// terminal, the one already on screen". The one thing they cannot express is
-/// the most common way a session actually begins — Victor has a thought, and
+/// the most common way a session actually begins — the original author has a thought, and
 /// there is no window for it yet. Making him open a terminal, `cd` somewhere,
 /// type `claude`, wait for it to come up and *then* start talking is four steps
 /// in front of the sentence he already has in his head.
@@ -21,7 +21,7 @@ import Foundation
 /// read". The words are in the process's `argv` before it has drawn anything.
 ///
 /// **Two files on disk, and that is deliberate too.** The prompt is a
-/// transcript of Victor speaking freely — quotes, apostrophes, semicolons,
+/// transcript of the original author speaking freely — quotes, apostrophes, semicolons,
 /// backticks, `$` — and it would otherwise have to survive a trip through
 /// AppleScript's string literals *and* a shell command line, which is two
 /// escapings stacked and the exact place a dictation turns into a command. So
@@ -49,7 +49,7 @@ enum SpawnTerminal {
     ///
     /// `near` is the pointer, in Cocoa screen coordinates — see
     /// `board(preferring:)` for what it buys. The caller latches it at the
-    /// microphone's close, because that is the moment Victor means by *the
+    /// microphone's close, because that is the moment the original author means by *the
     /// screen I am on*; by the time this runs, seconds later, his hand has
     /// moved on.
     ///
@@ -64,7 +64,7 @@ enum SpawnTerminal {
             return .failed("could not stage the new session — \(error.localizedDescription)")
         }
         return open(script(prompt: promptFile.path, directory: directory),
-                    stamp: stamp, directory: directory, near: near, what: "new Claude Code")
+                    stamp: stamp, directory: directory, near: near, what: "new Codex session")
     }
 
     /// **A session that already exists, opened again in a window of its own** —
@@ -125,7 +125,7 @@ enum SpawnTerminal {
         // whole request: a second session beside the one he is in, not a line
         // typed into it. The tab it returns is how the relay finds the tty
         // without going back and guessing which window is in front — and by the
-        // time an answer came back from that guess, Victor's hand may well have
+        // time an answer came back from that guess, the original author's hand may well have
         // moved on.
         //
         // **It also reports every window Terminal has**, in one round trip, since
@@ -135,7 +135,7 @@ enum SpawnTerminal {
         // the screen's, so it names the window just created whether or not this
         // app was activated.
         //
-        // **And it does not activate Terminal** (Victor, 2026-09-08: *"când
+        // **And it does not activate Terminal** (the original author, 2026-09-08: *"când
         // pornești un terminal nou… toate terminalele sar în față, inclusiv cele
         // de pe retina… nu ar trebui să apară nimic nou în față pe retina"*).
         // `activate` is an **application**-level raise: it lifts every window
@@ -198,7 +198,7 @@ enum SpawnTerminal {
         // server undoes a moment later.
         //
         // In every branch since 2026-09-08, not only when there was nowhere to
-        // tile: a spawn is by definition the window Victor did not ask to look at
+        // tile: a spawn is by definition the window the original author did not ask to look at
         // — he is mid-sentence, looking somewhere else — so the app he *was* in
         // keeps the keyboard whatever else happened.
         //
@@ -225,7 +225,7 @@ enum SpawnTerminal {
     }
 
     /// **The displays a spawned window is allowed to land on, left to right.**
-    /// Added 2026-09-04 on Victor's ask: *"the terminal should be placed outside
+    /// Added 2026-09-04 on the original author's ask: *"the terminal should be placed outside
     /// of the Retina screen if there is any other screen connected"*, and then
     /// *"tile them somehow so that they don't overlap with others… use all the
     /// monitors you have around"*.
@@ -242,7 +242,7 @@ enum SpawnTerminal {
     /// the window still exists and `adoptSpawnedWindow` still binds it, since
     /// delivery is `do script … in <tab>` and never needs a window in front.
     ///
-    /// **The lateral displays only, since 2026-09-09** — Victor's ask: *"start
+    /// **The lateral displays only, since 2026-09-09** — the original author's ask: *"start
     /// the terminals on the lateral screens, not on the screen above"*. At home
     /// he has three identical Dells around the built-in one: two beside it and
     /// **one stacked directly above** it, and the third was getting a third of
@@ -261,7 +261,7 @@ enum SpawnTerminal {
     /// test for any overlap at all.
     ///
     /// **The screen the pointer is on leads the list, since 2026-09-16** —
-    /// Victor's ask: *"această fereastră să apară pe ecranul pe care am mouse-ul
+    /// the original author's ask: *"această fereastră să apară pe ecranul pe care am mouse-ul
     /// la momentul când închid dictarea… dacă sunt pe retina, îl pui pe un ecran
     /// extern, lateral"*. `slot(for:on:avoiding:)` reads left to right and takes
     /// the first empty cell it finds, so *first in this list* is *where the
@@ -325,8 +325,8 @@ enum SpawnTerminal {
     /// **Where this window goes so that it covers as little as possible of what
     /// is already open.**
     ///
-    /// **Each display is cut into Victor Addons' four quadrants** (2026-10-04,
-    /// Victor: *"să le așezi în modul de tile pe care îl pune default Mac OS
+    /// **Each display is cut into the original author Addons' four quadrants** (2026-10-04,
+    /// the original author: *"să le așezi în modul de tile pe care îl pune default Mac OS
     /// addons. Nu rulat tile efectiv, dar … în colțuri"*) — the same rectangles
     /// as its `TerminalTileLayout.quadrants`: halves of the visible frame, 2 pt
     /// in from the outer edges, none between them, and the window takes the
@@ -371,7 +371,7 @@ enum SpawnTerminal {
         return best?.box ?? window
     }
 
-    /// Victor Addons' `TerminalTileLayout.margin` — kept equal by hand, the
+    /// the original author Addons' `TerminalTileLayout.margin` — kept equal by hand, the
     /// two apps share no code for it.
     private static let quadrantMargin = 2
 
@@ -395,19 +395,21 @@ enum SpawnTerminal {
     /// a script incrementally, and deleting it out from under `exec` is a class
     /// of flake not worth the few hundred bytes it saves.
     private static func script(prompt: String, directory: String) -> String {
-        """
+        let words = (try? String(contentsOfFile: prompt, encoding: .utf8)) ?? ""
+        let images = CodexBridge.attachmentPaths(in: words).map { " --image " + quote($0) }.joined()
+        return """
         #!/bin/zsh
         # Written by Walkie Talkie — shift + wheel, a dictation with no destination yet.
         PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
         cd \(quote(directory)) 2>/dev/null || cd "$HOME"
         prompt="$(cat \(quote(prompt)))"
         rm -f \(quote(prompt))
-        if ! command -v claude >/dev/null; then
-          echo "walkie: claude is not on the PATH — the dictation is in the outbox"
+        if [[ ! -x \(quote(CodexBridge.binaryPath ?? "")) ]]; then
+          echo "walkie: Codex executable is unavailable — the dictation is in the outbox"
           echo "$prompt"
           exec /bin/zsh -l
         fi
-        exec claude "$prompt"
+        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --cd \(quote(directory))\(images) -- "$prompt"
         """
     }
 
@@ -421,11 +423,11 @@ enum SpawnTerminal {
         # Written by Walkie Talkie — a session picked out of the Rebind to… search.
         PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
         cd \(quote(directory)) 2>/dev/null || cd "$HOME"
-        if ! command -v claude >/dev/null; then
-          echo "walkie: claude is not on the PATH — could not resume \(session)"
+        if [[ ! -x \(quote(CodexBridge.binaryPath ?? "")) ]]; then
+          echo "walkie: Codex executable is unavailable — could not resume \(session)"
           exec /bin/zsh -l
         fi
-        exec claude --resume \(quote(session))
+        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --cd \(quote(directory)) --resume \(quote(session))
         """
     }
 

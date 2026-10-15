@@ -1,17 +1,20 @@
 // swift-tools-version: 5.9
 import PackageDescription
+import Foundation
+
+let usesLocalXCTest = ProcessInfo.processInfo.environment["WALKIE_CORELIBS_XCTEST"] == "1"
+let localToolchainDirectory = ProcessInfo.processInfo.environment["WALKIE_SWIFT_TOOLCHAIN_DIR"] ?? "\(NSHomeDirectory())/Library/Caches/WalkieTalkie/Swift6.2.3"
+var packageDependencies: [Package.Dependency] = []
+var testDependencies: [Target.Dependency] = ["WalkieTalkie", "ObjCTry", "WalkieMacKit"]
+if usesLocalXCTest {
+    packageDependencies.append(.package(path: "\(localToolchainDirectory)/swift-corelibs-xctest"))
+    testDependencies.append(.product(name: "XCTest", package: "swift-corelibs-xctest"))
+}
 
 let package = Package(
     name: "WalkieTalkie",
     platforms: [.macOS(.v13)],
-    dependencies: [
-        // The region selector, shared with Victor Addons. A path dependency on
-        // purpose: both apps are built on this Mac, from local, and the point of
-        // sharing the crop was to be able to edit it and rebuild in one step —
-        // no push, no version bump, no resolve. A fresh clone needs
-        // `victor-mac-kit` checked out beside this folder.
-        .package(path: "../victor-mac-kit"),
-    ],
+    dependencies: packageDependencies,
     targets: [
         // **projectM 4.1.7, statically linked** (the `projectm` branch, 2026-09-21):
         // the engine behind the native MilkDrop halo (`ProjectMHalo`). The
@@ -40,16 +43,20 @@ let package = Package(
             name: "ObjCTry",
             path: "Sources/ObjCTry"
         ),
+        .target(
+            name: "WalkieMacKit",
+            path: "Sources/WalkieMacKit"
+        ),
         .executableTarget(
             name: "WalkieTalkie",
-            dependencies: [.product(name: "VictorMacKit", package: "victor-mac-kit"), "CProjectM", "ObjCTry"]
+            dependencies: ["WalkieMacKit", "CProjectM", "ObjCTry"]
         ),
         // `swift test` — the pure parts only (2026-09-23: the transcription
         // estimate and the rewind's timeline). Everything that needs the running
         // relay is still a `/test/…` route.
         .testTarget(
             name: "WalkieTalkieTests",
-            dependencies: ["WalkieTalkie", "ObjCTry"]
+            dependencies: testDependencies
         ),
     ]
 )

@@ -12,7 +12,7 @@ import AppKit
 ///   hover          reveal the ✕ (ends the session) — panel only, never the chip
 ///
 /// Because it never takes keyboard focus, `canBecomeKey` stays false: the overlay
-/// must never steal the caret from whatever Victor is actually working in.
+/// must never steal the caret from whatever the original author is actually working in.
 final class RelayWindow: NSObject, NSWindowDelegate, NSTextFieldDelegate {
 
     private let panel: RelayPanel
@@ -84,7 +84,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// guess.
     ///
     /// **And what matters is the speech, not the clock** — the correction that
-    /// made this measure what it claims to. Victor: *"uneori eu pur și simplu
+    /// made this measure what it claims to. the original author: *"uneori eu pur și simplu
     /// tac; dacă tac pe microfon și nu vine semnal, nu știu cât de valoroasă e
     /// întârzierea asta"*. The corpus agrees emphatically: the median dictation
     /// is only **38% voiced** (p10 14%), so six seconds of wall clock is 2.3
@@ -95,7 +95,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// sharper cliff than the wall-clock one:
     ///
     /// ```
-    ///   voiced   decoded into a language Victor does not speak
+    ///   voiced   decoded into a language the original author does not speak
     ///   0–1s      42%
     ///   1–2s      15%
     ///   2–3s       1%
@@ -154,7 +154,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **How long he has been talking**, in whole minutes and in brackets after
     /// everything else on the row — `(2m)`.
     ///
-    /// Victor's ask, 2026-09-09: *"să pui după toată povestea o paranteză rotundă
+    /// the original author's ask, 2026-09-09: *"să pui după toată povestea o paranteză rotundă
     /// în care treci numărul de minute"*. It is the one fact about a dictation
     /// that the rest of the row cannot carry: `Listening...` fills in the first
     /// three voiced seconds and then never changes again, so from that moment on
@@ -180,7 +180,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private var elapsedTimer: Timer?
 
     /// **The last two minutes of a dictation, drawn on the row that is about to
-    /// be cut off** — Victor's ask, 2026-09-20: *"Uneori se întâmplă să rămână
+    /// be cut off** — the original author's ask, 2026-09-20: *"Uneori se întâmplă să rămână
     /// pornit microfonul în dictare. Vreau să implementăm un hard stop la zece
     /// minute, iar de la opt minute să înceapă progresiv pe subtextul dictate
     /// listening … un fel de background pe subtext … cărămiziu, ceva care să se
@@ -223,7 +223,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// that draws it must not re-measure anything.
     private var listenContentRight: CGFloat = 0
     /// **Eight minutes: the wash starts.** Far enough out that no dictation
-    /// Victor has ever made reaches it by talking, so the wash appearing is
+    /// the original author has ever made reaches it by talking, so the wash appearing is
     /// already the answer to *is this still a sentence?*
     private static let overrunWarnAt: TimeInterval = 8 * 60
     /// **Nine: it is full, and starts blinking.** A minute to fill is slow
@@ -272,7 +272,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private static let filmDotGap: CGFloat = 6
     /// **`☠️ Kamikaze`** (2026-09-23) — the sentence in flight is marked (🔼 ↓)
     /// and the agent will close its terminal when done. A row under the others,
-    /// like everything else this sentence carries. Victor: *"ca să detectez
+    /// like everything else this sentence carries. the original author: *"ca să detectez
     /// faptul că dictarea merge kamikaze"*; a face drawn in the corner went the
     /// same day as too detailed for a glyph read in passing.
     private let kamikazeRow = NSView()
@@ -286,7 +286,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **An ordinary row, built exactly like `kamikazeRow`** (`installEmojiRow`,
     /// `layoutGlyphRow`, the same halo branch). It was a window of its own that
     /// morning — a white keycap outline round `⌘⇧P` in a 15 pt medium face —
-    /// and Victor read it as a foreign object: *"it has a border around it, with
+    /// and the original author read it as a foreign object: *"it has a border around it, with
     /// a different font, which is wrong. I just want you to display yet another
     /// row in the mouse tooltip … just like any text in the tooltip."*
     /// `evals/test_paste_row.py` keeps it that way.
@@ -294,7 +294,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private let pasteGlyph = NSImageView()
     /// **`💻 Local now  ⌘⌃X`** (2026-09-28) — while a sentence records and while
     /// its words are on their way from the cloud, the key that has this Mac
-    /// transcribe it instead (Victor: *"a key combination displayed in the
+    /// transcribe it instead (the original author: *"a key combination displayed in the
     /// tooltip"*). `(loading)` while the local weights are down: the key still
     /// works, the WAV waits for them. Gone once the words land. Built like
     /// `pasteRow`, which it deliberately reads like.
@@ -304,7 +304,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private let pasteInfo = NSTextField(labelWithString: "\(PasteHint.label)  \(PasteHint.keys)")
     /// **`📨 N waiting — bind to send`** (2026-09-26) — sentences spoken with
     /// nothing bound, held in memory for the next bind (`AppDelegate.awaitingBind`).
-    /// Victor, Q1: *"mi-ar trebui un cue vizual să știu că trebuie să las mesajul
+    /// the original author, Q1: *"mi-ar trebui un cue vizual să știu că trebuie să las mesajul
     /// din memorie"*. Up for as long as one is held, **on the idle chip too** — the
     /// one row that may put a chip beside the pointer with nothing bound (*The
     /// pointer is clean when nothing is bound* names it as the exception). Built
@@ -347,7 +347,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// It used to ride on the title after a `·`, which put two different kinds of
     /// answer on one line — *what the agent is doing* and *where it is doing it* —
     /// and made the chip as wide as the two of them together, beside the cursor,
-    /// over Victor's work. Split, each row is short and the eye picks the one it
+    /// over the original author's work. Split, each row is short and the eye picks the one it
     /// came for.
 
     var onEndSession: (() -> Void)?
@@ -382,14 +382,14 @@ private let heardLabel = NSTextField(labelWithString: "")
     private var followMonitorLocal: Any?
     private var labelTimer: Timer?
     /// Shots this dictation is carrying — the automatic context capture included,
-    /// since from where Victor sits it is simply the first picture taken.
+    /// since from where the original author sits it is simply the first picture taken.
     private var shotCount = 0
     /// Elements ⌘-picked in Chrome, waiting on a sentence.
     private var pickCount = 0
     private var pickNewest: String?
     /// **The row has given the newest selector its seconds and collapsed to
     /// `×N`** — the reading the selection row above it already had, arriving
-    /// here on 2026-09-09 on Victor's ask: *"the Chrome icon should also be
+    /// here on 2026-09-09 on the original author's ask: *"the Chrome icon should also be
     /// followed only by the ×2 … I don't want to see the div thing here"*.
     ///
     /// The two questions are the same pair, one row apart. At the instant a pick
@@ -421,7 +421,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// a ✂️ area, the 800 px frame otherwise). A frame whose token is in the words
     /// is drawn there and leaves the strip; the rest stay in the strip.
     private var promptInlineShots: [Int: String] = [:]
-    /// **The screen recordings riding with the held prompt** (2026-10-08, Victor:
+    /// **The screen recordings riding with the held prompt** (2026-10-08, the original author:
     /// *"when I send the movie, it doesn't show up into the preview panel … show
     /// it … at the end, just like a picture, but with a red dot visible and a
     /// length displayed on top of it"*): each one's poster frame and its length,
@@ -430,7 +430,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// Shown above the words rather than folded into them — see `layoutContent`.
     private var promptSelection: String?
     /// **Which microphone heard it and which engine wrote it** (2026-10-06,
-    /// Victor: *"In the presenting window, the [panel] left top, be sure to
+    /// the original author: *"In the presenting window, the [panel] left top, be sure to
     /// clearly mention the engine that was used and the microphone that was
     /// used"*) — on every prompt panel. `AppDelegate` hands the line in, built
     /// from what this sentence actually went through (`via`, the device the
@@ -445,7 +445,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private var transcribeWatchdog: Timer?
     private var promptTimer: Timer?
     /// When the held prompt is due to be released. Drives the Cancel countdown,
-    /// so the button says how long Victor still has rather than making him guess.
+    /// so the button says how long the original author still has rather than making him guess.
     private var promptDeadline: Date?
     private var countdownTimer: Timer?
     /// Transient status occupying the subtitle row; nil = no flash in progress.
@@ -462,7 +462,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// rounding`, the title Claude Code keeps rewriting as it works — and the
     /// line the chip prefers over the folder when it has one (2026-09-12).
     ///
-    /// Victor: *"numele folderului e un pic vag … aș vrea să văd pe rândul doi
+    /// the original author: *"numele folderului e un pic vag … aș vrea să văd pe rândul doi
     /// unde apare sesiunea țintă numele terminalului către care se duce"*. Two
     /// sessions in one repo share `folder@branch` to the letter; the title is
     /// the only thing on the machine that tells them apart, and it already
@@ -498,7 +498,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// the first pick — is off, and the menu bar is the only place they are
     /// written down now.
     ///
-    /// Victor's call, and the same argument that took the `bind` row off the
+    /// the original author's call, and the same argument that took the `bind` row off the
     /// unbound chip a build earlier: *"mă încurcă, mă enervează"*. The chip rides
     /// over his actual work all day, and a legend is read once and then paid for
     /// forever. He is learning the gestures one at a time from the menu, which is
@@ -535,7 +535,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// The title used to be the system face and everything under it monospaced,
     /// which made the chip read as two things stacked rather than one card. They
     /// are one face now, and it is the **system** face: unifying them on the
-    /// monospaced one was tried first and Victor rejected it on sight — this
+    /// monospaced one was tried first and the original author rejected it on sight — this
     /// panel is prose (`Listening…`, a dictated sentence, `started in
     /// petclinic`), and a terminal face makes prose look like output. The one
     /// row with a real claim to monospace is the ⌘-pick selector, and a
@@ -548,7 +548,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// the letters grow into a row that clips them.
     ///
     /// **And one weight, since 2026-09-01: every word on the chip is
-    /// `hintFont`.** Victor's rule, in his words — *"toate textele care apar în
+    /// `hintFont`.** the original author's rule, in his words — *"toate textele care apar în
     /// tooltipul de lângă maus trebuie să aibă aceeași mărime de font și font
     /// face"*. The three that were not: the title at semibold, the selection row
     /// at 14, and `preparing` / `transcribing…` at a semibold 20 they had been
@@ -602,7 +602,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **The chip quotes the highlight, the way the panel does.** The row led
     /// with `↪` — an arrow, which says *this came from somewhere* and not *these
     /// are somebody else's words*. It is the same fact the panel sets as a
-    /// quotation one state later, and Victor asked for the two to look like each
+    /// quotation one state later, and the original author asked for the two to look like each
     /// other; a reader who has seen one then recognises the other without being
     /// told they are the same thing.
     ///
@@ -614,7 +614,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **And since 2026-09-02 it is the glyph literally**, in the icon column the
     /// pulse, the camera and Chrome's icon already share, rather than a run
     /// inside the text label with a `-6` baseline offset. Two things were wrong
-    /// with the inline form and Victor named both: the offset lengthened the
+    /// with the inline form and the original author named both: the offset lengthened the
     /// line box, which is why the row had to stand 28 tall where its neighbours
     /// are 22 — *"rândurile trebuie să aibă distanță egală între ele în
     /// tooltip"*, and unequal heights are what made the gap above it read as
@@ -683,7 +683,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **And no count.** It went live as the shot's only receipt; the red
     /// vignette and the cursor mark now land at the moment of the gesture, which
     /// is a better answer to "did that take" than a number he has to look down
-    /// at. Victor asked for it gone; `shotCount` still exists and still drives
+    /// at. the original author asked for it gone; `shotCount` still exists and still drives
     /// the outbox's `📸`.
     private static func shotHintText(font: NSFont) -> NSAttributedString {
         // **His mouse, with the side button red** — `Glyphs.mouse`. This row used
@@ -742,7 +742,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// appearance the drawing is about to happen in.
     /// - Parameter lit: whether the bar has reached this character. The logos
     ///   follow `ink`; the 💻, a colour emoji that ignores ink, is drawn faded
-    ///   until lit (2026-10-07, Victor: *"the laptop icon is bright, not faded
+    ///   until lit (2026-10-07, the original author: *"the laptop icon is bright, not faded
     ///   like Wispr Flow … it should have a faded form and then it turns bright
     ///   when it's time by the progress bar"*).
     private static func wordGlyph(_ ch: Character, ink: NSColor, lit: Bool = true) -> NSImage {
@@ -850,7 +850,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         if editingPrompt { return [] }
         guard sentPrompt == nil else { return [] }
         // **The two waits, at the size every other icon on the chip is.** They
-        // are the only states in which Victor is *waiting on this app*, and for
+        // are the only states in which the original author is *waiting on this app*, and for
         // two days that bought the hourglass 30pt — nearly twice icon size —
         // because at icon size in `secondaryLabelColor`, on a bare chip over a
         // dark terminal, it was a grey smudge beside the pointer.
@@ -872,7 +872,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         guard !listening else { return [] }
         // **Nothing at all while unbound.** It carried `🛞 bind` for one build,
         // on the reading that the state should have a visible way out. It does
-        // not earn the pixels: the pointer is where Victor works, an unbound
+        // not earn the pixels: the pointer is where the original author works, an unbound
         // relay is inert, and a label riding along beside the cursor for hours to
         // advertise a gesture he already knows is exactly the noise the empty
         // pointer was won back from. He said so within the hour, in the plainest
@@ -893,7 +893,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **No arrow between them.** It was there to say *then*, and at 30pt the two
     /// drawings say it on their own: left-to-right already reads as an order, and
     /// the arrow was a third object competing with the two that carry the
-    /// meaning. Victor's call, looking at it.
+    /// meaning. the original author's call, looking at it.
     ///
     /// The mouse is repeated for the second press rather than the wheel appearing
     /// on its own: it is a button *on the same mouse*, and a bare wheel beside a
@@ -913,7 +913,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// are the same message: what he attached does not stop being attached while
     /// he waits for the words.
     ///
-    /// Victor's phrasing for it: *"display in the tooltip, during dictation on
+    /// the original author's phrasing for it: *"display in the tooltip, during dictation on
     /// whatever state"*.
     private var gathering: Bool { listening || transcribing }
 
@@ -921,7 +921,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     ///
     /// The count was the shot's only receipt and went when the red vignette and
     /// the cursor mark took that job over at the moment of the gesture; the row
-    /// then had nothing of its own to say and went with it. Victor asked for the
+    /// then had nothing of its own to say and went with it. the original author asked for the
     /// number back on 2026-09-09, and for a different reason than the one that
     /// removed it: *"an emoji of the camera and the number representing how many
     /// pictures have been taken for this dictation … an overview of how many
@@ -955,20 +955,20 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **The verb is said, not left to the dot.** The row used to be the model's
     /// name alone, on the reading that a pulsing red dot already means recording.
     /// It does to whoever built it; to a room seeing the overlay for the first
-    /// time — and to Victor at a glance, mid-sentence — a bare name beside a
+    /// time — and to the original author at a glance, mid-sentence — a bare name beside a
     /// light is a status *badge*, not an event. `Listening with …` is the same
     /// two facts in the order they are asked in: is it listening, and who is
     /// listening.
     ///
     /// **`Listening`, not `Recording`.** Recording is what a device does to a
     /// file; listening is what the other end of a conversation does, and this
-    /// row is on screen precisely while Victor is talking *to* something.
+    /// row is on screen precisely while the original author is talking *to* something.
     ///
     /// **The model's name is not here — it is in the menu.** The row used to read
     /// `Listening with mlx-community/whisper-large-v3-turbo`, on the reading that
     /// the id is what a comparison between recognisers is written down against.
     /// It is; but a comparison is written down at leisure, and this row is read
-    /// mid-sentence, beside the cursor, while Victor is talking. Which model is
+    /// mid-sentence, beside the cursor, while the original author is talking. Which model is
     /// loaded does not change from one sentence to the next — it is a *setting*,
     /// and a setting that is restated in the corner of the screen all day is
     /// paying rent at every moment in order to be read twice a month. The whole
@@ -984,14 +984,14 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// (`applyEngineText`) and it fills a character at a time, so the tail has to
     /// *be* three characters — an ellipsis is one glyph and would light in one
     /// step, taking a quarter of the bar with it. Identical on screen, and the
-    /// three dots are the last three steps, which is the part Victor reads to
+    /// three dots are the last three steps, which is the part the original author reads to
     /// know it is done.
     private var listeningWord: String {
         opening ? "Opening Wispr Flow..." : "\(asking ? "Asking" : prompting ? "Prompting" : "Dictating")\(micMark)\(Glyphs.dotsGap)..."
     }
 
     /// **`Opening Wispr Flow...` until Wispr's microphone is really open** (Q20,
-    /// 2026-09-28, Victor's Q8 = A). A cold Wispr is deaf for 0.3–6 s after the
+    /// 2026-09-28, the original author's Q8 = A). A cold Wispr is deaf for 0.3–6 s after the
     /// chord while the chip used to say `Listening` (W11): the first words went
     /// nowhere and nothing said so. `AppDelegate` raises it at a Wispr
     /// sentence's begin and drops it on `WisprFlowSource.micOpened`.
@@ -1003,7 +1003,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     }
 
     /// **`Prompting...` for a sentence to an agent, `Dictating...` for a clean
-    /// one** (2026-09-25 as `Listening`; 2026-10-04, Victor: *"când nu e
+    /// one** (2026-09-25 as `Listening`; 2026-10-04, the original author: *"când nu e
     /// prompting, ar trebui să fie dictating, nu listening"*). The menu's names for
     /// the four (`HaloDestination.title`), said on the chip. Nine letters
     /// either way, so the warmth bar keeps its step count. `AppDelegate`
@@ -1012,7 +1012,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         didSet { if prompting != oldValue { applyEngineText() } }
     }
 
-    /// **A ⚡ quick question is `Asking`** (2026-10-09, Victor: *"let's call it
+    /// **A ⚡ quick question is `Asking`** (2026-10-09, the original author: *"let's call it
     /// quick question … asking"*) — on this row and on the corner hints, whose
     /// 🔽 stop no longer promises a Return it does not press.
     var asking = false {
@@ -1025,7 +1025,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// glyph is ElevenLabs' pause-in-a-ring, Wispr Flow's five bars or the
     /// Apple mark of the model that runs here.
     ///
-    /// Victor asked for it once there were three engines to tell apart: the
+    /// the original author asked for it once there were three engines to tell apart: the
     /// menu's `Engine` row answers *what is configured*, and it is two clicks
     /// away and behind whatever is frontmost. This answers *what is listening
     /// to me right now*, in the one place he is already looking while he talks —
@@ -1045,7 +1045,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// Empty renders `Listening...` / `Transcribing...` exactly as before, which
     /// is what every state photographed before these marks existed shows.
     ///
-    /// **They are two marks on two rows since 2026-09-22 evening** — Victor:
+    /// **They are two marks on two rows since 2026-09-22 evening** — the original author:
     /// *"când fac listening să scrie «listening to» și apoi emoji-ul
     /// device-ului ascultat. Respectiv, când fac transcribing, să zici
     /// «transcribing via» și să pui simbolul tool-ului care face transcrierea
@@ -1083,7 +1083,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         if listening { layoutContent() }
     }
 
-    /// **The microphone breathes where the walkie did** (2026-10-04, Victor:
+    /// **The microphone breathes where the walkie did** (2026-10-04, the original author:
     /// *"în loc de simbolul de Walkie Talkie care clipește lent când dictez, pune
     /// simbolul microfonului folosit pentru dictare"*) — the bare emoji, no ring.
     /// The device left `micMark` for it — one place, in front of the word. An
@@ -1093,7 +1093,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             ?? Self.walkieLiveGlyph ?? Self.pulseGlyph
     }
 
-    /// **A tag that says `HQ`, where a gold star used to sit** — Victor's ask,
+    /// **A tag that says `HQ`, where a gold star used to sit** — the original author's ask,
     /// 2026-09-09: *"la steluța care apare după listening, desenez un tag micuț
     /// care scrie HQ, de la High Quality … un tag micuț, pe albastru"*.
     ///
@@ -1157,7 +1157,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// that reports the dictation.**
     ///
     /// The spawn chord opens a session in `~/workspace` and the chip said so in a
-    /// title row of its own — Terminal's icon, ✨, and the folder. Victor's read,
+    /// title row of its own — Terminal's icon, ✨, and the folder. the original author's read,
     /// 2026-09-02: the folder is *always* `~/workspace` (that is the whole point
     /// of the gesture — nothing is inferred), the icon names an app he is not
     /// looking at yet, and the row therefore spent a line beside his cursor
@@ -1192,7 +1192,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// destination is a thing he chose from five and the only place he could
     /// check it was the ✨'s own label, three seconds after the menu had gone.
     ///
-    /// Victor: *"dacă aleg în acel select folder în care se pornește sesiunea
+    /// the original author: *"dacă aleg în acel select folder în care se pornește sesiunea
     /// nouă, numele folderului trebuie să fie arătat cu iconul de terminal în
     /// față, ca și cum aș fi fost deja bind-uit la un alt astfel de terminal …
     /// să știu dacă am setat ce trebuie"*. So a picked folder comes back with
@@ -1203,7 +1203,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     ///
     /// **Since 2026-10-07 the ✨ *is* that row's icon** (`sparkleGlyph`, in
     /// Terminal's place) and so rides in front of `Listening...` only while the
-    /// row is dropped — Victor: *"in front of the folder in which the new session
+    /// row is dropped — the original author: *"in front of the folder in which the new session
     /// is open … not before the prompting text"*.
     private var spawnCollapsed: Bool {
         spawnMarked && spawnIcon == nil
@@ -1214,7 +1214,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     ///
     /// **The invitation moved into the page (2026-10-07).** Until the first pick
     /// this row was Chrome's icon and `⌘⇧`, shown while dictating with Chrome in
-    /// front; Victor had it drawn by the extension instead — a badge at the
+    /// front; the original author had it drawn by the extension instead — a badge at the
     /// bottom centre of the page (`inspect.js`, `showBadge`), which hides when
     /// the pointer reaches it. It is also the proof that the extension is alive,
     /// which a row drawn by this app could never be, and it is one row fewer
@@ -1232,7 +1232,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // message does.
         guard pickCount > 0 else { return nil }
         // **The count, then the drag mark, then — for four seconds — the newest
-        // selector.** `⤢` is Victor's *"diagonal 2-sided arrow … next to the
+        // selector.** `⤢` is the original author's *"diagonal 2-sided arrow … next to the
         // number, to tell whether there is any move element"*: a drag is the one
         // thing a pick carries that a count cannot describe, and it is drawn as
         // the arrow every UI on this machine already uses for *this thing moves*.
@@ -1317,7 +1317,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // a separate process, with no hiding at all, does not contain it.
         // …which also makes the overlay impossible to *look at* while working on
         // it: no screenshot can contain it, so nobody debugging its appearance
-        // can see what Victor sees. RELAY_CAPTURABLE=1 asks for it back, and is
+        // can see what the original author sees. RELAY_CAPTURABLE=1 asks for it back, and is
         // off in every normal run.
         //
         // Measured 2026-07-31 on macOS 15: it no longer works. `.readOnly` gets a
@@ -1513,7 +1513,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         heardLabel.font = .systemFont(ofSize: 14, weight: .medium)
         heardLabel.textColor = .labelColor
         heardLabel.lineBreakMode = .byTruncatingTail
-        // Two rows, Mic over Engine (2026-10-06, Victor: *"should be one below
+        // Two rows, Mic over Engine (2026-10-06, the original author: *"should be one below
         // the other, not on the same line"*).
         heardLabel.maximumNumberOfLines = 2
         heardLabel.cell?.truncatesLastVisibleLine = true
@@ -1579,7 +1579,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// the only thing worth saying is *that the relay is armed* — a microphone,
     /// with the destination and its own icon kept back until a dictation asks for
     /// them (`collapsed`) — and the only place worth saying it is wherever
-    /// Victor is already looking, which is wherever his cursor is. Parked in a corner it was either unseen
+    /// the original author is already looking, which is wherever his cursor is. Parked in a corner it was either unseen
     /// or pointless; here it is a label on the work in front of him.
     ///
     /// A prompt or a warning still turns it into the panel, in its corner. **A
@@ -1593,7 +1593,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **A flash is anchored too, since 2026-08-26.** It used to throw the panel
     /// into the top-left corner — `⏳ loading the local model`, `🎙️ ready`, every
     /// warning — which put the overlay's words in two different places depending
-    /// on which kind of word it was. Victor read the corner as a *second*,
+    /// on which kind of word it was. the original author read the corner as a *second*,
     /// unrelated thing on screen ("e confuzant"), and he is right: the eye that
     /// has learned to find this app beside the pointer has no reason to go
     /// looking in a corner for the rest of it. The prompt is the one thing left
@@ -1636,7 +1636,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// still being paid for at every single stop-and-start of the pointer, for a
     /// target that no longer exists.
     ///
-    /// And it was paid *visibly*. Victor, 2026-09-07: *"nu e lipit de mouse, ci
+    /// And it was paid *visibly*. the original author, 2026-09-07: *"nu e lipit de mouse, ci
     /// ceva care se trage lângă mouse … a trecut în cursor de resize și după aia
     /// are vreo jumătate de secundă lag până când reprinde mouse-ul"*. That is
     /// the leash exactly: pausing over a window edge long enough for the cursor
@@ -1746,7 +1746,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         guard !draggingSelf else { return }
         guard let screen = Self.screenUnderMouse() else { return }
 
-        // In the panel states only the *screen* follows: Victor works on whichever
+        // In the panel states only the *screen* follows: the original author works on whichever
         // screen he points at, and a panel stranded on the other monitor is a
         // panel he cannot see. Where it sits on that screen is left alone, so a
         // overlay he dragged out of the way stays out of the way.
@@ -1779,7 +1779,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // The held dialog stays where it was read — see `layoutContent`.
         if spawnPanelHeld || spawnPanelFading { return }
         guard let screen = Self.screenUnderMouse() ?? NSScreen.main else { return }
-        // **The catalogue is shot off-screen** (2026-09-18). Victor: *"când faci
+        // **The catalogue is shot off-screen** (2026-09-18). the original author: *"când faci
         // pozele de tooltip + dialog, trebuie neapărat să le randezi pe ecran?
         // îmi distragi atenția când o faci."*
         //
@@ -1823,7 +1823,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             // The bound terminal's title rides this tick rather than one of its
             // own: both are the same question — "is the name on the chip still
             // true?" — asked of two different sources, and an agent renaming its
-            // window is exactly as slow-moving as Victor switching branches.
+            // window is exactly as slow-moving as the original author switching branches.
             // It is asked unconditionally, ahead of the early return: a title
             // that changed while the branch did not is the common case.
             self.onRefreshBound?()
@@ -1915,7 +1915,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // whose width the font cannot answer for. Measured on the real chip:
         // `Listening(🎙️/E)...` asked for **158** through `rowWidth` and needed
         // **161.5** drawn, so the label came up 3.5pt short — and a short label
-        // does not clip 3.5 points off the end, it drops the whole tail: Victor
+        // does not clip 3.5 points off the end, it drops the whole tail: the original author
         // saw `Listening(🎙️/` with the engine and the dots simply gone.
         var engineWidth: CGFloat = 0
         if engineText != nil {
@@ -1976,7 +1976,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         var selectionWidth: CGFloat = 0
         if let selection = selection {
             // **The last quote stays, and the number counts what came before it**
-            // (2026-09-14, Victor: *"ultimul citat selectat, textul selectat
+            // (2026-09-14, the original author: *"ultimul citat selectat, textul selectat
             // trebuie întotdeauna arătat … în fața lui va apărea ori unu plus,
             // ori doi plus, în sensul de a arăta câte citate au fost în trecut,
             // plus citatul ultimul selectat, care trebuie să rămână mereu
@@ -1989,7 +1989,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             // gone there was no way to see *which* highlight the relay had, only
             // how many, and a count is no use when the question is whether it
             // caught the right one. `1+` is one earlier quote and this one.
-            // **`×2 + `**, in the tally's own notation (2026-09-14, Victor:
+            // **`×2 + `**, in the tally's own notation (2026-09-14, the original author:
             // *"înainte de numărul de citate deja capturate … aș mai vrea să am
             // semnul X … apoi spațiu, plus și spațiu și textul"*). The `×N` is
             // what every other row in the icon column says for a count, so the
@@ -2023,7 +2023,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // read *fast*, because the Cancel clock is running.
         //
         // A selection does not. Widening the moment dictation starts throws a
-        // half-screen panel across whatever Victor is looking at for the entire
+        // half-screen panel across whatever the original author is looking at for the entire
         // time he talks — to show him text he highlighted himself a second ago.
         // It rides along truncated in the narrow overlay instead, which is all the
         // receipt it needs, and the overlay grows only at the end, when there is
@@ -2074,7 +2074,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         var rows: [(view: NSView, height: CGFloat)] = []
 
         // **The state of the dictation comes first, above the destination**
-        // (Victor, 2026-09-07: *"aș vrea ca listening cu bila roșie să
+        // (the original author, 2026-09-07: *"aș vrea ca listening cu bila roșie să
         // înlocuiască microfonul — să fie primul rând, iar terminalul conectat
         // să fie al doilea"*).
         //
@@ -2124,7 +2124,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // **Nor under a flash.** Collapsed, this row is a lone 🎙️ with no words
         // beside it — the chip *being* a microphone is the whole sentence, and it
         // is a fine one at rest. Over a message it is not: `dictation cancelled`
-        // came out as a microphone with a caption, and Victor read the glyph as
+        // came out as a microphone with a caption, and the original author read the glyph as
         // part of the message rather than as the state behind it — *"să nu se
         // arate și microfonul acela mic, ci doar dictation cancelled"*. `🎙️ sent
         // + 2 📸` was worse, two microphones stacked, one of them punctuation.
@@ -2231,7 +2231,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         }
 
         // **The quotation, and then Chrome under it.** They were the other way
-        // round until 2026-09-09, when Victor put the browser at the bottom for
+        // round until 2026-09-09, when the original author put the browser at the bottom for
         // good: *"citatul să apară mereu deasupra Chrome-ului … Chrome trebuie
         // să fie mereu ultima din listă"*.
         //
@@ -2339,7 +2339,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             shotsRow.isHidden = true
         }
 
-        // **No "Active window" row** (2026-10-07, Victor: *"hide the active window
+        // **No "Active window" row** (2026-10-07, the original author: *"hide the active window
         // that was selected as irrelevant"*). It sat under the strip naming the
         // window he was in; he never needed it to decide Send or Cancel.
 
@@ -2390,14 +2390,14 @@ private let heardLabel = NSTextField(labelWithString: "")
 
         // **The quotation gets air under it — on the panel, and only there.**
         // Every row is two pixels from the next, which is right for a stack of
-        // one-line facts and wrong for the seam between what Victor
+        // one-line facts and wrong for the seam between what the original author
         // *highlighted* and what he *said*: glued at the same gap the two read
         // as one block, and the quotation stops looking quoted.
         //
         // It was `rowGap + 8` and that was not enough to be seen — the mark's
         // `-7` baseline offset lengthens the quote row's line box downward, so
         // most of those points were spent inside the row rather than under it,
-        // and Victor read the panel as having no seam at all. 16 is measured
+        // and the original author read the panel as having no seam at all. 16 is measured
         // against the render, not chosen.
         //
         // **The chip has no such seam**, deliberately: its rows are a flat stack
@@ -2422,7 +2422,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         let frame = NSRect(x: corner?.x ?? panel.frame.minX, y: oldTop - height,
                            width: width, height: height)
         laidOutFrame = frame
-        // **A prompt sneaks in from the left edge** (2026-10-08, Victor: *"make
+        // **A prompt sneaks in from the left edge** (2026-10-08, the original author: *"make
         // the panel that shows the prompt sneak in from the left edge to
         // appear"*) — superseding the swell out of the cursor below: the panel
         // takes its full size just past the screen's left edge, in one frame,
@@ -2454,7 +2454,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             y -= gapBelow(row.view)
         }
 
-        // Bottom-right, where Victor asked for it — and where a destructive
+        // Bottom-right, where the original author asked for it — and where a destructive
         // button belongs, far from the drag area his cursor arrives through.
         if !cancelButton.isHidden {
             cancelButton.frame.origin.x = width - pad - cancelButton.frame.width
@@ -2523,7 +2523,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **The same as every other row on the chip**, since the quotation mark
     /// moved into the glyph column and stopped lengthening the label's line box.
     /// It stood at 28 while the mark was a run of text inside the row, and those
-    /// six points were the "big space" Victor read as intentional.
+    /// six points were the "big space" the original author read as intentional.
     private let selectionRowHeight: CGFloat = 22
     /// Between the dot and the text. Wide enough that the pulsing dot reads as its
     /// own indicator rather than as punctuation in front of the count.
@@ -2538,7 +2538,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// advance and starts a bearing in from the left, an app icon fills its box
     /// corner to corner, and the map pin is 0.7 as wide as it is tall. Four
     /// glyphs of four different sizes, none of them starting at the same x,
-    /// which is exactly what Victor saw: "iconurile nu sunt left-aliniate si au
+    /// which is exactly what the original author saw: "iconurile nu sunt left-aliniate si au
     /// dimensiuni diferite".
     ///
     /// So the box is fixed and every glyph is fitted *into* it — images scaled
@@ -2586,7 +2586,7 @@ private let heardLabel = NSTextField(labelWithString: "")
 
     /// **The device itself, where the two emoji used to stand** (2026-09-18).
     ///
-    /// Victor's ask: the chip beside the pointer carries the walkie talkie — the
+    /// the original author's ask: the chip beside the pointer carries the walkie talkie — the
     /// app's own object — rather than 🎙️ at rest and a 🔴 while he talks. The
     /// files are the ones the Dock icon and the menu bar are already built from,
     /// so the three places this app draws itself now draw the same thing.
@@ -2609,7 +2609,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private static let walkieLiveGlyph = loadWalkie("walkie-bound")
 
     /// **A fifth bigger than everything else in the column** (2026-09-18,
-    /// Victor: *"iconița fă-o 20% mai mare"*).
+    /// the original author: *"iconița fă-o 20% mai mare"*).
     ///
     /// It breaks `iconInk`'s rule that every bitmap in this column matches the
     /// emoji beside it, and it breaks it on purpose: the others are *subjects* —
@@ -2621,7 +2621,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private static let walkieInk: CGFloat = (iconInk * 1.2).rounded()
 
     /// **Wispr Flow is the one listening, and this app is not running that
-    /// sentence** (2026-09-18, Victor: *"dacă pornesc Wispr Flow ca dictare să
+    /// sentence** (2026-09-18, the original author: *"dacă pornesc Wispr Flow ca dictare să
     /// se îngălbenească […] de lângă mouse"*).
     ///
     /// Since the engines became mutually exclusive there is a third thing the
@@ -2645,7 +2645,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private static let walkieDeviceShare: CGFloat = 0.60
 
     /// The device's own emoji at the column's size, one per device — there are
-    /// five. **Bare, no disc** (2026-10-04, Victor, an hour after the disc:
+    /// five. **Bare, no disc** (2026-10-04, the original author, an hour after the disc:
     /// *"nu trebuie înconjurat cu cerc portocaliu, ci doar … emoji-ul normal"*);
     /// the breathing is what says the microphone is open.
     private static var deviceGlyphs: [String: NSImage] = [:]
@@ -2723,7 +2723,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// size.** Everywhere else a glyph is a label for a row that says its own
     /// thing in words; here the picture *is* the sentence — which button, on
     /// which mouse, in which order — and at 16pt that sentence was a smudge with
-    /// a red pixel in it. Victor asked for it in the plainest terms: *2 mouseuri
+    /// a red pixel in it. the original author asked for it in the plainest terms: *2 mouseuri
     /// mari unul după altul*.
     ///
     /// Still narrower than the icon column (30 × 0.568 ≈ 17 against a box of 20),
@@ -2823,7 +2823,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             return NSImage(named: NSImage.networkName) ?? NSImage()
         }
         let icon = NSWorkspace.shared.icon(forFile: app.path)
-        // **A fifth off, on Victor's ask.** The system hands these out at 32,
+        // **A fifth off, on the original author's ask.** The system hands these out at 32,
         // which is half again the 20pt box every other glyph on the chip is
         // fitted into — an app icon fills its box corner to corner where an
         // emoji sits a bearing in from the edge, so at the same nominal size it
@@ -2843,12 +2843,12 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// Wispr), and one rasterisation is the point.
     static let pinGlyph = Glyphs.mapPin(height: 18)
     /// **A picked spawn folder's icon: the ✨ itself, where Terminal's icon was**
-    /// (2026-10-07, Victor: *"the new [✨] should be there instead of that console
+    /// (2026-10-07, the original author: *"the new [✨] should be there instead of that console
     /// icon"*). The ✨ says *a session that does not exist yet* on the row that
     /// names its folder, and no longer rides in front of `Listening...` as well.
     static let sparkleGlyph = Glyphs.emoji("✨", ink: 18)
     /// **The ⚡ quick question wears the film's ❓, not a ⚡, in front of
-    /// `Asking...`** (2026-10-12, Victor: *"în loc de fulger din fața Asking …
+    /// `Asking...`** (2026-10-12, the original author: *"în loc de fulger din fața Asking …
     /// un semnul întrebării … galben în stilul celui care apare ca efect"*). A
     /// crop of `question-mark.mov`, gold with its first crackle of bolts
     /// (`tools/build-question-icon.py`) — an emoji ❓ is red and says nothing
@@ -2966,7 +2966,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// anyway, since the unstamped context shot is in the strip. On the picture
     /// there is nothing to match: it is the frame saying when it was taken.
     /// The frames left for the strip: every one whose token is not in the words.
-    /// Matched by **shot number**, not path (2026-10-07, Victor: *"if you inserted
+    /// Matched by **shot number**, not path (2026-10-07, the original author: *"if you inserted
     /// an image in the text in the panel, do not show it again at the end"*): the
     /// strip holds the frame, the words draw its cut-out or its 800 px copy, so
     /// the paths never agreed and every inlined picture came back in the strip.
@@ -2996,12 +2996,12 @@ private let heardLabel = NSTextField(labelWithString: "")
 
     /// Never taller than this, so a full-screen frame does not push the buttons off.
     private static let inlineShotMaxHeight: CGFloat = 220
-    /// Never wider than this share of the panel (2026-10-07, Victor: *"make the
+    /// Never wider than this share of the panel (2026-10-07, the original author: *"make the
     /// width of any inserted picture never exceed thirty percent of that panel"*).
     private static let inlineShotMaxWidthShare: CGFloat = 0.30
 
     /// **The words as the agent will read them, with what they point at drawn
-    /// in place** (2026-10-07, Victor: *"if a picture is inserted in text, make
+    /// in place** (2026-10-07, the original author: *"if a picture is inserted in text, make
     /// sure that there is a paragraph of text which then ends and the picture
     /// … interrupts the paragraph … left aligned and then more text … And the
     /// same for selections and for drags. Make them visible in the panel so that
@@ -3108,7 +3108,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             } else if let badge = Self.stampBadge(shot.stamp) {
                 // Bottom-left, a hair in from the corner — the corner the eye
                 // arrives at reading the strip left to right, and the one edge of
-                // a screenshot of Victor's desktop that is reliably empty.
+                // a screenshot of the original author's desktop that is reliably empty.
                 badge.frame.origin = NSPoint(x: Self.stampInset,
                                              y: Self.stampInset)
                 view.addSubview(badge)
@@ -3223,7 +3223,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // which reads as something opening rather than as a state changing.
         //
         // **And since 2026-09-02 that is true of every flash**, not only the one
-        // that asked for it: `anchored` is now the whole test. Victor's rule —
+        // that asked for it: `anchored` is now the whole test. the original author's rule —
         // *"toate tooltip-urile din jurul mouse-ului… niciunul nu mai trebuie să
         // aibă border în jur"* — and the argument that won it for the cancel
         // notice never had anything to do with *which* message it was. Anything
@@ -3327,7 +3327,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             // this one kept `secondaryLabelColor` — a half-transparent dark grey
             // with no halo, i.e. invisible on the dark terminals and editors the
             // chip spends its life over. So a highlight *was* being carried and
-            // *was* on the row, and Victor could not see it: it looked exactly
+            // *was* on the row, and the original author could not see it: it looked exactly
             // like a shutter that had failed to read the selection.
             selectionLabel.shadow = Self.halo()
             selectionLabel.textColor = .white
@@ -3337,7 +3337,7 @@ private let heardLabel = NSTextField(labelWithString: "")
             // reason.** `preparing`, `transcribing…` and the mouse hints all
             // live here, and they kept `secondaryLabelColor` on a chip that
             // spends its life over dark terminals — half-transparent dark grey
-            // with no halo, i.e. exactly the "I cannot see it" Victor reported.
+            // with no halo, i.e. exactly the "I cannot see it" the original author reported.
             for hint in hintRows {
                 hint.label.wantsLayer = true
                 hint.label.shadow = Self.halo()
@@ -3387,7 +3387,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **`Listening...` is the progress bar** — the word fills a character at a
     /// time, left to right, dim to lit, and it is full when the last dot lights.
     ///
-    /// It was one continuous fade of the whole row for an afternoon, and Victor
+    /// It was one continuous fade of the whole row for an afternoon, and the original author
     /// threw it out on the only test that matters: *"nu e suficient de vizibilă…
     /// așa fade, nu înțeleg când e aprins complet"*. He is right, and the reason
     /// is that a fade has **no landmark in it**. Brightness is judged against
@@ -3443,7 +3443,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // lights.
         //
         // It was one continuous fade of the whole row for an afternoon, and
-        // Victor threw it out on the only test that matters: *"nu e suficient
+        // the original author threw it out on the only test that matters: *"nu e suficient
         // de vizibilă… așa fade, nu înțeleg când e aprins complet"*. He is
         // right, and the reason is that a fade has **no landmark in it**.
         // Brightness is judged against what is beside it, and this row spends
@@ -3491,12 +3491,12 @@ private let heardLabel = NSTextField(labelWithString: "")
             // readable through the whole ramp, which is the one thing on this row
             // that is a fact rather than a forecast.
             //
-            // **The recogniser's logo fills with the bar** (2026-10-01, Victor:
+            // **The recogniser's logo fills with the bar** (2026-10-01, the original author:
             // *"iconița Wispr-ului să fie și ea gri și apoi să se aprindă"*). It
             // is a line drawing in the row's own ink (`Glyphs.engine`), so it has
             // the letters' unlit state for free — the same opaque `dim`, no alpha.
             // The 💻 is a colour emoji with no ink to take, so it does dim by
-            // alpha (2026-10-07, Victor asked for it to fill like Wispr's).
+            // alpha (2026-10-07, the original author asked for it to fill like Wispr's).
             //
             // **The `→` before the recogniser is a letter, not a picture**
             // (2026-09-24): it is typography, part of the sentence, and fills
@@ -3557,7 +3557,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **An `HQ` tag pops out at the end of `Listening...` the moment it fills,
     /// and the minutes sit after it.**
     ///
-    /// Victor's ask, 2026-09-08: *"când vorbesc suficient timp ca să ai content
+    /// the original author's ask, 2026-09-08: *"când vorbesc suficient timp ca să ai content
     /// pentru o transcripție corectă, când se umple complet listening-ul, să
     /// apară o steluță la final, cu un mic efect de explozie mică … care
     /// compensează că am vorbit suficient de mult"* — and 2026-09-09, replacing
@@ -3892,7 +3892,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // he has no use for yet. Which terminal it is survives in the menu bar,
         // where it can be asked for rather than pushed.
         //
-        // **Nothing is lost by finding out late.** Victor's own argument: the
+        // **Nothing is lost by finding out late.** the original author's own argument: the
         // destination can be changed *mid-sentence* — ⌘⌃B on another terminal
         // while the microphone is open re-points the words, and `showBound` even
         // takes a pending spawn back when it happens. So the name arriving with
@@ -3934,7 +3934,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     ///
     /// **The agent's own title follows the label, after a `·`.** `folder@branch`
     /// says which repo the words are going to, and with two sessions open on the
-    /// same branch — which is the normal way Victor works — that is not an
+    /// same branch — which is the normal way the original author works — that is not an
     /// answer at all. The title an agent writes for itself is the one thing that
     /// tells them apart, and it is the half that keeps moving while it works, so
     /// a chip carrying it also says the session is alive. Truncated hard,
@@ -3984,7 +3984,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     // depends on it: this line's whole job is to say which session he is talking to.
 
     /// Fully opaque whenever it has something to say. The idle chip sits at 0.80:
-    /// it now rides along near the cursor, over Victor's actual work, so it has
+    /// it now rides along near the cursor, over the original author's actual work, so it has
     /// to read as an overlay rather than as part of the page — but not so faint
     /// that the icon it carries is hard to make out, and not so faint that the
     /// name, on the one occasion it appears, is hard to read.
@@ -3996,7 +3996,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// icon the moment he starts dictating. Unbound
     /// it was `🤖 ` plus whatever folder the app happened to be launched from,
     /// and since Walkie Talkie became a login item that folder is `/`: a robot
-    /// and a slash, riding beside the pointer all day, naming nothing. Victor
+    /// and a slash, riding beside the pointer all day, naming nothing. the original author
     /// read it as what it was — clutter on top of his work — and asked for a
     /// clean pointer whenever nothing is bound.
     ///
@@ -4045,7 +4045,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // nothing, which is the one thing he cannot afford to guess about. He is
         // speaking, not pointing, so the pointer's absence says nothing about
         // whether this is still worth showing.
-        // **And except while a flash is up** (2026-09-20, late; Victor: *"show
+        // **And except while a flash is up** (2026-09-20, late; the original author: *"show
         // the label next to the mouse when changing the effect, even if the
         // mouse isn't visible"*): F9 is pressed while typing, so the pointer is
         // hidden and this rule had faded the chip to nothing exactly when the
@@ -4166,7 +4166,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **A highlight the shutter just caught is not announced in words** — the
     /// row carrying his own words back *is* the receipt, and it appears where
     /// there was nothing a moment ago. It said `selecting` in front of them
-    /// until 2026-09-09; Victor had the verb removed, and the row is the same
+    /// until 2026-09-09; the original author had the verb removed, and the row is the same
     /// row either way, so nothing here now distinguishes a highlight the
     /// shutter read from one the opening probe found.
     ///
@@ -4198,7 +4198,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         layoutContent()
     }
 
-    /// Long enough to read a phrase beside a moving cursor — Victor's number,
+    /// Long enough to read a phrase beside a moving cursor — the original author's number,
     /// *"nu știu, 5-3 secunde"* — and short enough to be gone before the next
     /// highlight of the same sentence lands on top of it.
     private static let selectionHold: TimeInterval = 4
@@ -4252,7 +4252,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **How much longer — said in ink, not in digits** (2026-09-08).
     ///
     /// The row carried the estimate as a number, `Transcribing... 4s`, counting
-    /// down. Victor had it out the same day the bar went in: *"să scoți timpul
+    /// down. the original author had it out the same day the bar went in: *"să scoți timpul
     /// efectiv în secunde arătat de după, e doar stresant. Lasă să se sugereze
     /// progressbar-ul prin culoarea textului"*.
     ///
@@ -4301,7 +4301,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         return CGFloat(min(1, max(0, 1 - left / transcribeSpan)))
     }
 
-    /// **The wait is a progress bar too** — Victor's ask, 2026-09-08: *"la fel
+    /// **The wait is a progress bar too** — the original author's ask, 2026-09-08: *"la fel
     /// vrea să colorezi transcribing, să-l colorezi de la întunecat la mai
     /// aprins, ca pe post de progress bar"*.
     ///
@@ -4353,7 +4353,7 @@ private let heardLabel = NSTextField(labelWithString: "")
                                                        .foregroundColor: i < steps ? lit : dim]))
         }
         // (The `  🤔⏱️` note past 150 % of the estimate went on 2026-10-06 —
-        // Victor: *"remove the thinking face"*; the ⌘⌃X row counts down to
+        // the original author: *"remove the thinking face"*; the ⌘⌃X row counts down to
         // the local fallback instead, `AutoLocal.rowText`.)
         transcribeLit = steps
         return out
@@ -4456,7 +4456,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private(set) var wisprHearing = false
 
     /// **Out of sight while he frames a crop** (2026-09-23) — the halo's
-    /// `veiled`, for the chip. Victor: *"și tooltipul să dispară pe durata
+    /// `veiled`, for the chip. the original author: *"și tooltipul să dispară pe durata
     /// dragului"*. The content is hidden and nothing else changes, so every
     /// state that moves meanwhile is already drawn when the drag ends; a few
     /// seconds of an empty, click-through-sized window under a full-screen
@@ -4563,7 +4563,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         refreshOpacity()
     }
 
-    /// **The row fades when its time is up** (2026-09-25, Victor: *"when the
+    /// **The row fades when its time is up** (2026-09-25, the original author: *"when the
     /// time expires for the paste again in the tooltip … it should fade for
     /// another half a second"*). Only the row: the chip is bare, so the row
     /// fading is what he sees go, and any other row on it stays put.
@@ -4629,7 +4629,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     private var filmTick: Timer?
 
     /// **Every recording this sentence carries, on one row** (2026-09-18) —
-    /// since 2026-09-29 `🎞️ ×2(∑5s/25×📸) + 1s/5×📸 🔴`, Victor's own format:
+    /// since 2026-09-29 `🎞️ ×2(∑5s/25×📸) + 1s/5×📸 🔴`, the original author's own format:
     /// the finished clips summed (how many, total seconds, total frames), then
     /// the live one, and a pulsing red dot only while the screen is recording.
     ///
@@ -4731,7 +4731,7 @@ private let heardLabel = NSTextField(labelWithString: "")
 
 
     /// 🎞️ at the size of the rest of the icon column (📹 until 2026-10-04,
-    /// Victor: *"in loc de 📹, pune 🎞️ prin tooltip"*).
+    /// the original author: *"in loc de 📹, pune 🎞️ prin tooltip"*).
     private static let filmGlyphImage = Glyphs.emoji("🎞️", ink: iconInk)
 
     // MARK: - The live caption (2026-09-25; a subtitle band since 2026-09-26)
@@ -4854,7 +4854,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         layoutContent()
     }
 
-    /// Show the prompt on its way to the agent, whole, so Victor can see exactly
+    /// Show the prompt on its way to the agent, whole, so the original author can see exactly
     /// what the model heard — a mis-transcription is much cheaper to catch here than
     /// three tool calls later.
     ///
@@ -4862,7 +4862,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// with a Cancel button, and only then does it reach the outbox. That is what
     /// makes the button mean something — a prompt already written cannot be
     /// recalled, since the agent polls the queue every couple of seconds and may
-    /// have started acting on it before Victor's hand reaches the mouse.
+    /// have started acting on it before the original author's hand reaches the mouse.
     ///
     /// Returns false if there was nothing worth showing, in which case the caller
     /// still owns the message and must release it itself.
@@ -4938,7 +4938,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // many.
         self.selection = nil
         // **It unfolds out of the cursor, not out of the corner.** Parking at the
-        // top-left first and then growing there put the panel somewhere Victor was
+        // top-left first and then growing there put the panel somewhere the original author was
         // not looking, with nothing linking it to the gesture that produced it —
         // the words arrived in a corner of the screen as if some other app had
         // opened a window. Leaving it where the chip already is — under his hand,
@@ -4974,7 +4974,7 @@ private let heardLabel = NSTextField(labelWithString: "")
 
     // MARK: - Autosend: the pointer on the panel stops the clock
 
-    /// **The pointer on the panel holds it** (Victor, 2026-09-23: *"dacă pun
+    /// **The pointer on the panel holds it** (the original author, 2026-09-23: *"dacă pun
     /// mouse-ul pe acel panel de stânga sus, [să] rămână [și] să se oprească din
     /// trimitere până când iau mouse-ul de pe el, în modul de auto send"*).
     ///
@@ -5065,7 +5065,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         layoutContent()
     }
 
-    /// **The words on their own** — what Victor actually said, without the
+    /// **The words on their own** — what the original author actually said, without the
     /// `📸 ×2 0:38` and `↪` lines the preview adds under them. It is the half of
     /// the panel he is allowed to edit, and the half that ends up in the outbox;
     /// the rest is the app describing what it is carrying, which there is no
@@ -5246,7 +5246,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         // words were sent to. A cancel leaves nothing behind to fly.
         promptFarewell = send ? panel.frame : nil
         // **Held for every send that has a flight to make, not only a spawn**
-        // (Victor, 2026-09-07: *"când pleacă mesajul din dialog către terminal
+        // (the original author, 2026-09-07: *"când pleacă mesajul din dialog către terminal
         // existent, la fel … abia atunci începe să facă fade dialogul"*). The
         // spawn learned this first because it *had* to — the window it flies to
         // does not exist yet — but the argument was never about spawning: an
@@ -5280,7 +5280,7 @@ private let heardLabel = NSTextField(labelWithString: "")
         promptHeard = nil
         if holdForSpawn {
             spawnPanelHeld = true
-            // **Inactive while held** (2026-10-04, Victor: *"să rămână dialogul
+            // **Inactive while held** (2026-10-04, the original author: *"să rămână dialogul
             // acela sus inactiv, adică să nu pot să dau hover pe el sau click pe
             // el"*): it is there to be read, and a hover would bring the ✕ and a
             // relayout back onto a prompt that has already gone.
@@ -5309,7 +5309,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// **Every flash is bare** — see `refreshChrome`. It replaces a row on the
     /// chip rather than summoning a window around it, which is the difference
     /// between *a word changed* and *something opened and closed beside my hand*.
-    /// It had a `bare:` parameter and one caller passing `true`; Victor's rule of
+    /// It had a `bare:` parameter and one caller passing `true`; the original author's rule of
     /// 2026-09-02 made that the only behaviour there is.
     func flash(_ message: String, duration: TimeInterval = 2.0) {
         flashMessage = message
@@ -5329,7 +5329,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// row simply gone in the next frame); then a half-second alpha dissolve,
     /// which fixed the abruptness and left an asymmetry — the message *arrived*
     /// in one frame and *left* over half a second; then the oblique wipe, which
-    /// made both ends the same event at the same speed and is what Victor
+    /// made both ends the same event at the same speed and is what the original author
     /// finally rejected on 2026-09-18: *"there is a weird animation, like some
     /// sort of a cropping of the text … remove that animation and make it not
     /// flicker any kind of"*. See the journal, *The chip swaps in one frame*.
@@ -5375,7 +5375,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// until 2026-09-07, when the flight became an outline — see `sendFlight`.
     var promptFarewell: CGRect?
 
-    /// **A spawn's dialog stays on screen until its terminal exists** (Victor,
+    /// **A spawn's dialog stays on screen until its terminal exists** (the original author,
     /// 2026-09-07: *"dialogul dispare … înainte ca terminalul pornit să apară …
     /// așteaptă ca terminalul să pornească și abia apoi începe animarea"*).
     ///
@@ -5405,7 +5405,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// Dissolve the held dialog and collapse back to the chip.
     ///
     /// **The fade starts as the outline leaves, and runs while it travels**
-    /// (Victor, 2026-09-07: *"imediat când chenarul din jurul dialogului pleacă
+    /// (the original author, 2026-09-07: *"imediat când chenarul din jurul dialogului pleacă
     /// către terminalul nou pornit, atunci să înceapă și fade-out-ul pe jumătate
     /// de secundă, în timp ce chenarul călătorește"*). The two are one gesture:
     /// the rectangle that leaves the dialog is what the dialog *becomes*, so the
@@ -5439,7 +5439,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     }
 
     /// **The pointer on the held dialog keeps it, even after the prompt has gone**
-    /// (2026-10-05, Victor: *"dacă țin mouse-ul pe căsuța aceea care are textul,
+    /// (2026-10-05, the original author: *"dacă țin mouse-ul pe căsuța aceea care are textul,
     /// chiar dacă textul a plecat deja în terminal … chiar dacă nu pot da click să
     /// editez textul, când duc mouse-ul acolo trebuie să rămână pe ecran, să pot
     /// să citesc mai atent"*). The release waits while the pointer is inside the
@@ -5497,7 +5497,7 @@ private let heardLabel = NSTextField(labelWithString: "")
     /// What comes out is the content, not the composite: the blur behind a panel
     /// is drawn by the window server and is simply absent here, so panel shots
     /// land on transparency. The chip has no blur at all, so it comes out exactly
-    /// as Victor sees it — over whatever you composite it onto.
+    /// as the original author sees it — over whatever you composite it onto.
     func snapshot(to path: String) {
         // **Always 2×, never the display's own scale.** `bitmapImageRepForCachingDisplay`
         // answers at the backing scale of whatever screen the window happens to be
@@ -5665,7 +5665,7 @@ final class PromptField: NSTextField {
 final class RelayPanel: NSPanel {
     /// True only while the transcript is being edited. The overlay has no text
     /// entry the rest of the time and must never take the caret away from the app
-    /// Victor is working in — but the one moment it does have text entry, it has
+    /// the original author is working in — but the one moment it does have text entry, it has
     /// to have the keyboard as well. `.nonactivatingPanel` in the style mask is
     /// what makes that affordable: the panel becomes key without the app
     /// activating, so the terminal stays frontmost and gets the keyboard straight
@@ -5814,7 +5814,7 @@ final class PillButton: NSView {
 /// `CALayer.backgroundColor` is a fixed `CGColor` and would be the same brick
 /// over a dark terminal and a white page.
 ///
-/// **Brick, not yellow.** Victor asked for *"galben … sau ceva, o culoare
+/// **Brick, not yellow.** the original author asked for *"galben … sau ceva, o culoare
 /// vizibilă, cărămiziu"*, i.e. for the property rather than the hue: the chip
 /// spends its life over a terminal, an editor and a photograph, and yellow is
 /// the one signal colour that vanishes on half of them. Red blended a third of

@@ -2,7 +2,7 @@ import Foundation
 
 /// **Which weights the local model loads — a choice in the Engine list** (2026-10-03).
 ///
-/// Victor, after the LoRA trained on his own dictations came back from the GPU:
+/// the original author, after the LoRA trained on his own dictations came back from the GPU:
 /// both models visible in the menu, the original still the default, and he
 /// switches himself. The original is the published `mlx-community/whisper-large-v3-turbo`;
 /// every other option is a folder under `~/.walkie-talkie/models/` holding MLX
@@ -86,10 +86,10 @@ enum WhisperModels {
         /// the top-level `Engine:` row, the menu bar's launch tab, About and the
         /// prompt panel's `Local Whisper …` line: `Local`, `Local LoRA`,
         /// `Local LoRA Large` since 2026-10-14 (`name(_:)`); `v3-turbo`, `v3-victor`,
-        /// `v3-turbo-victor` from 2026-10-07, Victor: *"I want to unify them all …
-        /// V3 Turbo Victor. No LoRA, it just takes space … small caps with kebab
+        /// `v3-turbo-victor` from 2026-10-07, the original author: *"I want to unify them all …
+        /// V3 Turbo the original author. No LoRA, it just takes space … small caps with kebab
         /// case … everywhere the same name"*). Until then the row said `Large
-        /// V3-turbo Victor LoRA`, the top-level row `Turbo LoRA Victor` and the
+        /// V3-turbo the original author LoRA`, the top-level row `Turbo LoRA the original author` and the
         /// panel `whisper-turbo-victor` — three names for one set of weights.
         /// Derived from the card's `name` (else the folder or repo id), so the
         /// card's old `label` / `short` no longer say anything.
@@ -135,8 +135,8 @@ enum WhisperModels {
 
     /// Every installed folder that has MLX weights, plus the original. **Large
     /// V3 before turbo, and within each the published weights before the LoRA**
-    /// (2026-10-04, Victor's order: *Large V3 Victor · Large V3-turbo · Large
-    /// V3-turbo Victor LoRA*), then by name. Read from disk on every call — the
+    /// (2026-10-04, the original author's order: *Large V3 the original author · Large V3-turbo · Large
+    /// V3-turbo the original author LoRA*), then by name. Read from disk on every call — the
     /// list is built when the menu opens, and a folder copied in while the app
     /// runs shows up there.
     static func options(in dir: URL = modelsDir) -> [Option] {
@@ -187,8 +187,8 @@ enum WhisperModels {
     }
 
     /// `whisper-large-v3-turbo` → `Local`, `whisper-turbo-victor` → `Local LoRA`,
-    /// `whisper-large-victor` → `Local LoRA Large` (2026-10-14, Victor: *"it says
-    /// something like V3 Large Victor, which is not nice to read. Instead, just
+    /// `whisper-large-victor` → `Local LoRA Large` (2026-10-14, the original author: *"it says
+    /// something like V3 Large the original author, which is not nice to read. Instead, just
     /// [write] there, Local LoRA … the same … in the engine selection"*) —
     /// supersedes 2026-10-07's kebab `v3-turbo` / `v3-turbo-victor` / `v3-victor`.
     /// Turbo is the default size and goes unsaid; a word that is not Whisper's

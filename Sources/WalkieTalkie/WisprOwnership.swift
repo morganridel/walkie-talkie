@@ -7,7 +7,7 @@ import Foundation
 /// The tail used to be a clock: every Wispr ⌘V within 10 s of the relay's
 /// sentence going idle was dropped as *the relay's late paste*. In the lab that
 /// ate **8 of his 8** own right ⌥⇧ sentences that landed in those 10 s, all of
-/// them `formatted` by Wispr, all dropped with a log line only. Q19 (Victor's
+/// them `formatted` by Wispr, all dropped with a log line only. Q19 (the original author's
 /// Q7 = A) already said what his sentence is: his, pasted at the caret.
 ///
 /// A ⌘V does not say which row it pastes. The rows do: Wispr creates a row at

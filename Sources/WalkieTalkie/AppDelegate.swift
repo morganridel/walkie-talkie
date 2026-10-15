@@ -1,7 +1,7 @@
 import AppKit
 import ServiceManagement
 import ApplicationServices
-import VictorMacKit
+import WalkieMacKit
 
 /// **The last time the ring came down, and why** — written where the
 /// `⚡ ring down` line is, read by `GET /test/state`.
@@ -57,6 +57,7 @@ enum RingDown {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let codexChats = CodexChatPicker()
 
     private var overlay: RelayWindow!
     private var status: StatusItem!
@@ -90,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let pasteHint = PasteHint()
 
     /// Keeps every dictation's **recording** beside the model's reading of it,
-    /// so a recogniser can be measured on Victor's own voice later. It changes
+    /// so a recogniser can be measured on the original author's own voice later. It changes
     /// nothing about what the agent receives — see `VoiceCorpus`.
     private let corpus = VoiceCorpus()
 
@@ -108,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The relay's own microphone, transcribed in the cloud** (2026-09-18) —
     /// see `ElevenLabsSource`. Not lazy and costing nothing until it is picked:
     /// it holds a `MicRecorder` at rest and a string, and `prepare()` is a file
-    /// read. It is never the default — the only engine that puts Victor's voice
+    /// read. It is never the default — the only engine that puts the original author's voice
     /// on a wire has to be chosen by hand.
     private let elevenSource = ElevenLabsSource()
 
@@ -125,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What the finished recording left behind, waiting for the sentence it
     /// belongs to. Cleared with the rest of the pending state, so a film never
     /// rides a dictation it was not made during.
-    /// **Every recording made during this sentence**, oldest first — Victor
+    /// **Every recording made during this sentence**, oldest first — the original author
     /// asked for the row to read `6.1s (31📸), 2.1s (10📸)`, which is a sentence
     /// carrying two. One film per sentence was the first shape and it was mine,
     /// not his: the argument was that a second recording would have to replace
@@ -152,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// Separate from `listening` because it is a different claim. `listening` is
     /// *the relay has a sentence in flight*; this is *a microphone is open in
-    /// another app*, which is true of every ⌘⌥ push-to-talk Victor makes with
+    /// another app*, which is true of every ⌘⌥ push-to-talk the original author makes with
     /// the Engine on the local model — the commonest dictation of the day, and
     /// the one the music went on playing over until 2026-09-18.
     private var wisprHearing = false
@@ -160,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// evening) — set by the `wisprSource` wiring, cleared by the wired engine's.
     /// Behind the firewall a 🔽 → sentence raises `listening` like any other, so
     /// `foreignMic` (which needs `!listening`) can no longer tell it from a ⌘⌃D one
-    /// and the ring wore the bound terminal's Tunnel over a Wispr dictation Victor
+    /// and the ring wore the bound terminal's Tunnel over a Wispr dictation the original author
     /// had given Mosaic. **True only for a sentence Wispr's own chord opened**
     /// (`relayStarted == false`): with Wispr picked as the Engine a relay
     /// gesture lands on the same wiring, and it wears its destination's dress.
@@ -186,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **Where the words come from, and the only thing below this line that
     /// knows there is more than one answer.**
     ///
-    /// Victor, 2026-09-12: *Wispr Flow is the dictation source for everything*,
+    /// the original author, 2026-09-12: *Wispr Flow is the dictation source for everything*,
     /// the bound relay included. Everything downstream — the chip, the halo, the
     /// settle, the corpus, the held prompt, the caret paste — reads
     /// `DictationSource` and cannot tell which recogniser it is serving, which
@@ -208,7 +209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `CaretHalo`'s render timer fed the effect **1024 zeros, thirty times a
     /// second** — digital silence, for the whole sentence.
     ///
-    /// Victor found it on the dress that shows it most (2026-09-21, Mosaic on
+    /// the original author found it on the dress that shows it most (2026-09-21, Mosaic on
     /// the Wispr destination): *"abia, abia după zece secunde … au început să
     /// apară firav niște pătrate … nu se rotesc, nu sunt diagonale, e
     /// amatoricește. Ori sonorul nu e considerat destul de puternic"*. He was
@@ -230,7 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var source: DictationSource = {
         let wanted = ProcessInfo.processInfo.environment["WT_SOURCE"]?.lowercased()
-            ?? UserDefaults.standard.string(forKey: AppDelegate.engineKey)
+            ?? UserDefaults.standard.string(forKey: AppDelegate.engineKey) ?? "whisper"
         return self.engine(named: wanted)
     }()
 
@@ -249,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// reversal of the rule directly above this line, which read *anything
     /// unrecognised is Wispr … least of all the one engine that uploads*.
     ///
-    /// Victor, 2026-09-19: *"Wispr Flow nu mai e motorul meu de dictare default
+    /// the original author, 2026-09-19: *"Wispr Flow nu mai e motorul meu de dictare default
     /// … o să trec la ElevenLabs. Wispr Flow va rămâne motor de dictare atunci
     /// când vreau să dictez o idee, nu un prompt, cu gestul acela de back plus
     /// dreapta. M-a mulțumit calitatea, atât în română cât și în engleză, și
@@ -264,7 +265,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// prompt), and that path does not come through here at all: it posts
     /// Wispr's own chord raw.
     ///
-    /// **And since 2026-09-22 that is the *only* job it has.** Victor:
+    /// **And since 2026-09-22 that is the *only* job it has.** the original author:
     /// *"scoate wisprflow ca sursă de dictare din lista de Engine — n-am reușit
     /// niciodată să-l integrăm ca lumea în fluxul nostru să-i preluăm ce text
     /// injectează."* `WisprFlowSource` is still built and still a
@@ -299,7 +300,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The logo the chip wears while that engine is listening** — ElevenLabs'
     /// pause-in-a-ring, Wispr Flow's five bars, a laptop (the Apple mark until
     /// 2026-10-04) for the model
-    /// that runs on this Mac. Victor, 2026-09-22: *"în loc de litera care
+    /// that runs on this Mac. the original author, 2026-09-22: *"în loc de litera care
     /// urmează, aș vrea să am logo-ul lor stilizat cu gri. Exact culoarea
     /// fontului."*
     ///
@@ -323,8 +324,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// this is already a bug somewhere above.
     private static func engineMark(_ id: String) -> String {
         switch id {
-        // **A subscript `ᵥ` after the laptop when the weights are Victor's
-        // LoRA** (2026-10-04, Victor: *"pune un v mic după acel măr … dacă e
+        // **A subscript `ᵥ` after the laptop when the weights are the original author's
+        // LoRA** (2026-10-04, the original author: *"pune un v mic după acel măr … dacă e
         // modelul meu cu Lora"*). Read from the pick, which the helper loads at
         // the next idle moment — the same moment this mark is next pushed.
         // A space between the two (2026-10-04, *"pune un spațiu între laptop
@@ -339,7 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The recogniser's half: `Transcribing via ⬮...`** — the row that is
-    /// actually about it. Victor, 2026-09-22 evening: *"când fac transcribing,
+    /// actually about it. the original author, 2026-09-22 evening: *"când fac transcribing,
     /// să zici «transcribing via» și să pui simbolul tool-ului care face
     /// transcrierea efectivă."*
     ///
@@ -361,7 +362,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **A Wispr sentence names Wispr's microphone** (2026-09-22). Until then
     /// this said the device the *relay's* recorder was on — the meter's, the
     /// corpus's — while the words came from whatever Wispr had picked inside
-    /// its own settings. Victor: *"poate să fie un pic mincinos să zici că
+    /// its own settings. the original author: *"poate să fie un pic mincinos să zici că
     /// asculți la microfonul lui Walkie … ar trebui să-i citești microfonul
     /// activ al lui Wispr"*. See `pushMicMark`.
     private static func mark(engine id: String) -> String { " via " + engineMark(id) }
@@ -374,13 +375,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Otherwise it is the relay's recorder, as it always was.
     ///
     /// **Then an arrow and the recogniser** (2026-09-24) — `Listening to 🎤 →
-    /// ⬮...`. Victor: *"place an arrow and then specify as well the
+    /// ⬮...`. the original author: *"place an arrow and then specify as well the
     /// transcription engine that is used under the hood."* It rides the device
     /// half rather than being a third mark because it is the same question —
     /// *who is hearing me* — and it names Wispr whenever Wispr is the one
     /// holding the microphone, whatever the Engine row says.
     ///
-    /// **The device left the sentence for the ring** (2026-10-04, Victor: *"în
+    /// **The device left the sentence for the ring** (2026-10-04, the original author: *"în
     /// loc de simbolul de Walkie Talkie care clipește lent când dictez, pune
     /// simbolul microfonului folosit pentru dictare"*, then *"muta simbolul
     /// microfonului in fata, inainte de Dictating/Prompting"*). The text keeps
@@ -396,7 +397,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func pushMicMark() {
         let wispr = wisprHearsThis
         let wisprName = wisprMicName
-        // No "to" (2026-09-29, Victor: "Prompting to" -> "Prompting").
+        // No "to" (2026-09-29, the original author: "Prompting to" -> "Prompting").
         overlay.setMicMark(" → " + Self.engineMark(wispr ? "wispr" : engineId))
         micMarkAsk += 1
         let ask = micMarkAsk
@@ -412,7 +413,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var micMarkAsk = 0
 
     /// **The prompt panel's last line: which microphone heard this sentence and
-    /// which engine wrote it** (2026-10-06, Victor: *"be sure to clearly mention
+    /// which engine wrote it** (2026-10-06, the original author: *"be sure to clearly mention
     /// the engine that was used and the microphone that was used"*). Built from
     /// the route the words actually came by, never from the Engine setting — a
     /// local fallback, ⌘⌃X or the auto countdown says so. A Wispr route names
@@ -453,7 +454,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// in, until then the last row that named one (`WisprHistory.lastNamedMic`).
     private lazy var wisprMicName = WisprHistory.lastNamedMic()
 
-    /// **Victor picked a microphone from the menu** (2026-09-19).
+    /// **the original author picked a microphone from the menu** (2026-09-19).
     ///
     /// Unlike `setEngine` this is never refused mid-sentence, and the difference
     /// is real rather than an oversight: switching engines rewires five
@@ -622,7 +623,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **The dictation is over but the words have not landed yet.**
     ///
-    /// Victor, 2026-09-12: the ring and the chevrons go away when the text is
+    /// the original author, 2026-09-12: the ring and the chevrons go away when the text is
     /// *inserted*, not when the microphone closes. Between those two is the whole
     /// of the transcription — another app's round trip for Wispr Flow, the
     /// model's for the local one — and it is exactly the stretch in which he is
@@ -656,7 +657,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// safety net behind Wispr's own answer** (2026-09-12, evening).
     ///
     /// It was 6, which is the *average* of Wispr's round trip (2.6 s) with room
-    /// over it, and on 2026-09-12 Victor watched the ring go dark while the
+    /// over it, and on 2026-09-12 the original author watched the ring go dark while the
     /// words were still coming: measured that evening, 5.9 s on one sentence and
     /// past six on another, against a fleet maximum of 22.8 s. So it became 20 —
     /// and then he watched the lightning stand for twenty seconds over a
@@ -728,7 +729,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// he has usually switched away.
     private var localRecordingApp: String?
 
-    /// The terminal dictations are typed into, when Victor has pointed the relay
+    /// The terminal dictations are typed into, when the original author has pointed the relay
     /// at one. Unbound, everything below behaves exactly as it did before this
     /// existed — the outbox is still written, and the skill's watcher still
     /// reads it.
@@ -737,7 +738,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The first highlight that belongs to *this* dictation — the subject he
     /// selects and talks about. **Never whatever was already selected at the
     /// gesture** (reverted 2026-09-16, the same day it briefly worked the other
-    /// way): Victor found it kept attaching a leftover highlight that had
+    /// way): the original author found it kept attaching a leftover highlight that had
     /// nothing to do with what he was saying. Filled only by `fileSelection`'s
     /// `fillsTheBlank` rule, from a selection the watcher sees *change* during
     /// the sentence or one he deliberately takes with the shutter.
@@ -751,7 +752,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the only answer it could have. It is not the only answer any more — a
     /// dictation that opens with nothing highlighted takes the first
     /// mid-sentence highlight into this slot, and *that* one happened somewhere
-    /// in particular, relative to words he was already saying. Victor's ask is
+    /// in particular, relative to words he was already saying. the original author's ask is
     /// one sentence for all of it: the agent should know **when** in the
     /// dictation each selection happened, relative to what he was saying.
     ///
@@ -794,7 +795,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// they have always had — a line of their own under the words. → `ShotMarker`
     typealias SelectionRecord = (at: TimeInterval, text: String, source: String?, marker: Int?)
 
-    /// The screen Victor was looking at when he started talking, captured
+    /// The screen the original author was looking at when he started talking, captured
     /// automatically. Offered as context ("look if you need to"), unlike the
     /// deliberate ⌃⌥P shots which are things he wants seen.
     private var pendingScreen: String?
@@ -870,7 +871,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// highlight whose marker landed is already *in* the sentence, quoted where
     /// he said it, and listing it again under `text selected during dictation:`
     /// would hand the agent the same paragraph twice. The ones that are not here
-    /// are the fallback Victor asked for — *"în cazul în care markerul nu este
+    /// are the fallback the original author asked for — *"în cazul în care markerul nu este
     /// detectat în textul transcris, pui transcripția ca acum, la final"*.
     /// **Which pictures' tokens the words carry** (2026-09-19). Their footer
     /// rows drop the `at m:ss`, because the sentence already says when: the
@@ -975,7 +976,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **A cancel throws the audio away, and for five minutes it does not.**
     ///
-    /// Victor's ask, 2026-09-10: *"reține înregistrarea audio respectivă pe disk
+    /// the original author's ask, 2026-09-10: *"reține înregistrarea audio respectivă pe disk
     /// după cancel 5 minute, în caz că vreau totuși s-o recuperez + menu entry
     /// de rigoare."*
     ///
@@ -1037,7 +1038,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// such gate now**: pause used to bail out of the same four and is gone.
     ///
     /// Why this became necessary: the relay was started per session and lived
-    /// only as long as Victor was dictating at an agent, so "running" and "aimed
+    /// only as long as the original author was dictating at an agent, so "running" and "aimed
     /// at something" were the same fact. Since 2026-08-26 it is a login item and
     /// sits there all day — and every one of those behaviours was being applied
     /// to every sentence he spoke into a browser, a chat or a commit message,
@@ -1076,12 +1077,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// no terminal, no screenshots, no picked elements, no prompt panel. The back
     /// button is handed back to LinearMouse, which types Return with it.
     ///
-    /// It is named after the app it replaces. Victor dictates into chats, commit
+    /// It is named after the app it replaces. the original author dictates into chats, commit
     /// messages and forms all day through Wispr Flow, and this app already has
     /// the two expensive halves of that — a warm local Whisper and a mouse button
     /// — pointed at agents only.
     ///
-    /// **Restored from the last launch** (Victor, 2026-09-07), the same call
+    /// **Restored from the last launch** (the original author, 2026-09-07), the same call
     /// `autosend` makes: the mode is not a setting he drifts into, it is how he
     /// dictates for a whole stretch of work, and re-ticking it every launch is a
     /// tax charged on the one gesture that exists to save typing.
@@ -1114,7 +1115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// destination must not change halfway through.
     private var pasteMode = false
 
-    /// **The two things a sentence can be at the caret** (2026-09-23). Victor:
+    /// **The two things a sentence can be at the caret** (2026-09-23). the original author:
     /// *"The forward click should be transcribing, basically prompting, at the
     /// caret … the screenshot of the screen, the fact that is dictated … Clicking
     /// the back button on the mouse starts a plain voice transcription with no
@@ -1153,7 +1154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **Whether a dictation spoken with nothing bound is kept for the binding
     /// that follows it, instead of being refused.**
     ///
-    /// Victor's ask, 2026-09-11: *"tot ce pot să fac când sunt legat de un
+    /// the original author's ask, 2026-09-11: *"tot ce pot să fac când sunt legat de un
     /// terminal să pot să fac și atunci când sunt nelegat, urmând a mă lega
     /// ulterior"*. It is the fourth answer to *where do these words go*, and the
     /// answer is **later** — see `awaitingBind`.
@@ -1161,7 +1162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// It retires most of *Unbound is inert*, and it is worth being exact about
     /// what that rule was and was not. It was written on 2026-08-27 because the
     /// relay had just become a login item: it sat there all day, so every
-    /// sentence Victor spoke into a browser, a chat or a commit message was
+    /// sentence the original author spoke into a browser, a chat or a commit message was
     /// costing him a screenshot, mouse 4 and ⌘⇧-click, **with nowhere for the
     /// words to go**. The premise is the last clause, not the binding: a
     /// destination that arrives two minutes late is still a destination, which
@@ -1180,7 +1181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// refusal was.
     static let holdsForBind = true
 
-    /// **When the last bind Victor actually pressed for landed**, and the grace
+    /// **When the last bind the original author actually pressed for landed**, and the grace
     /// it buys the sentence that follows it.
     ///
     /// Pointing the relay at a terminal is a statement about where the next
@@ -1277,7 +1278,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var held: Message?
 
     /// Long enough to see the prompt, read it, and get a hand to the mouse.
-    /// Started at 3–5s and went to 4–7s the first time Victor tried to cancel a
+    /// Started at 3–5s and went to 4–7s the first time the original author tried to cancel a
     /// real dictation and didn't make it. Scaled up with length so a long
     /// dictation is still readable, and capped so it never parks over his work.
     private static let minHold: TimeInterval = 4.0
@@ -1390,7 +1391,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         /// …and what the source said about who had already inserted it.
         var deliveryKind: DictationDelivery = .route
         /// **The terminal these words are for, latched when the microphone
-        /// closed** (2026-09-26, Victor's Q2: *"vechi, ca poate vreau să deschid
+        /// closed** (2026-09-26, the original author's Q2: *"vechi, ca poate vreau să deschid
         /// altă dictare deja"* — the recipient is the terminal bound while he
         /// spoke). `commit` delivers here whatever was bound, rebound or unbound
         /// in the seconds since — the settle, the panel. Nil is *the next bind*:
@@ -1426,7 +1427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // session outright until 2026-09-12, which is the wrong verb at the one
         // moment the ✕ is actually reachable: it is hidden until the pointer is
         // over the overlay, and the overlay is a panel he can reach *during a
-        // dictation*. Victor, dictating into Wispr Flow with the ring up: the ✕
+        // dictation*. the original author, dictating into Wispr Flow with the ring up: the ✕
         // beside it has to mean **stop this sentence and throw it away**, not
         // quit the app that drew the ring. With nothing being dictated it still
         // means what it always did.
@@ -1454,7 +1455,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.micCurrentLabel = { InputDevice.currentShortLabel() }
         status.onPickMic = { [weak self] id in self?.setMicrophone(id) }
         status.setMic(InputDevice.chosenId)
-        // **The other app picked a microphone.** Victor Addons writes the same
+        // **The other app picked a microphone.** the original author Addons writes the same
         // file (`MicChoice`), and a pick made in its menu has to land here
         // without a restart — one microphone, two menus, and they must not be
         // able to disagree. The adopt is silent: no flash, because he is
@@ -1486,7 +1487,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         ReplyPanel.onPresent = { tty in
-            DispatchQueue.global(qos: .userInitiated).async { TerminalBinding.presentOnRetina(tty: tty) }
+            DispatchQueue.global(qos: .userInitiated).async {
+                if tty.hasPrefix("codex:"), let target = self.terminal.resolve(tty: tty) {
+                    _ = TerminalBinding.bringToFront(target)
+                } else { TerminalBinding.presentOnRetina(tty: tty) }
+            }
         }
         ReplyPanel.agentRunning = { TerminalBinding.agentRunning(onTTY: $0) }
         ReplyPanel.onKamikaze = { [weak self] tty in
@@ -1560,7 +1565,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // ring and the menu's tick is read off the same preference.
         // A pick under one of the three destination rows writes that
         // destination's preference; a pick in the top-level list writes all
-        // three (Victor, 2026-09-21: *"dacă îl selectez precis, atunci toate
+        // three (the original author, 2026-09-21: *"dacă îl selectez precis, atunci toate
         // trei sunt puse pe același"*).
         status.onPickHalo = { [weak self] style, destination in
             guard let self = self else { return }
@@ -1654,7 +1659,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // window — cheap once, and paid on the gesture that asks for the list.
         status.rebindRows = { [weak self] in
             guard let self = self else { return [] }
-            return RebindHistory.shared.rows(live: TerminalBinding.liveTitles(),
+            var live = TerminalBinding.liveTitles()
+            if let chats = try? CodexBridge.conversations(liveOnly: true) {
+                for chat in chats { live[chat.key] = chat.title }
+            }
+            return RebindHistory.shared.rows(live: live,
                                              boundAddress: self.terminal.target?.address)
         }
         // The same round trip a second time, for the panel's other half: a
@@ -1681,6 +1690,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // No toggle, off the main thread, and the window brought forward — see
         // `rebindFromMenu`.
         status.onRebind = { [weak self] tty in self?.rebindFromMenu(tty: tty) }
+        status.onBindCodexChat = { [weak self] in self?.showCodexChats() }
+        codexChats.onPick = { [weak self] chat in
+            DispatchQueue.global(qos: .userInitiated).async {
+                guard let self else { return }
+                let bound = self.terminal.bind(chat: chat)
+                DispatchQueue.main.async { self.showBound(bound) }
+            }
+        }
         status.whisperFootprint = { [weak self] in self?.whisperSource.footprintBytes }
         // The id the overlay used to carry beside the pulse. Same shape as the
         // footprint: asked when the menu opens, because that is the one moment
@@ -1691,7 +1708,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // launch, so pasting the key in and opening the menu is the whole of
         // setting it up — see `ElevenLabsSource.reloadKey`.
         status.elevenReady = { [weak self] in self?.elevenSource.reloadKey() ?? false }
-        // **The launch tab** (2026-09-28, Victor: *"when walkie starts up, it should
+        // **The launch tab** (2026-09-28, the original author: *"when walkie starts up, it should
         // show an overlay on the bottom saying what source/engine it uses. this way
         // I know when it restarted"*): the blue tab at the bottom of the screen
         // under the mouse, with the Engine row's words, 3 s. Here, after
@@ -2030,14 +2047,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Log.error("💬 POST /reply refused — wrong or missing token")
                 return (403, ["ok": false, "error": "token"])
             }
-            // **Pictures ride the answer** (2026-10-09, Victor: *"the reply bubble
+            // **Pictures ride the answer** (2026-10-09, the original author: *"the reply bubble
             // should be able to show images … small, but when clicked, opened
             // up"*): copied now, so a scratch file the agent deletes still opens.
             let images = ReplyPanel.keep((body["images"] as? [String]) ?? [])
             let text = (body["text"] as? String) ?? ""
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty
             else { return (400, ["ok": false, "error": "text"]) }
-            // **Which terminal asked** (Victor: *"do show what terminal asked
+            // **Which terminal asked** (the original author: *"do show what terminal asked
             // instead of 'walkie talkie'"*): the folder, then the task its tab
             // title carries — the spawn menu's own wording — else the tty.
             let folder = body["from"] as? String
@@ -2050,7 +2067,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     label = "\(base) · \(tty)"
                 }
-                // **Not over the terminal he is looking at** (2026-10-13, Victor:
+                // **Not over the terminal he is looking at** (2026-10-13, the original author:
                 // *"if I'm focusing the window, don't use the reply pop-up"*): the
                 // agent's answer is already on screen there.
                 if TerminalBinding.focusedTTY() == (tty as NSString).lastPathComponent {
@@ -2323,7 +2340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         status.onStartDictation = { [weak self] in self?.startDictation() }
         // The *Close Wispr Scratchpad* row went from the menu on 2026-09-14
-        // (Victor: *"sterge!"*) — the window is closed by
+        // (the original author: *"sterge!"*) — the window is closed by
         // `closeScratchpadAfterwards` and the idle sweep already, so the row was
         // a button for a job the app does for itself. See `StatusItem`.
         // **On main, like the toggle two lines down.** It was not, and the
@@ -2335,10 +2352,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **⬅️ — the forward button held and the mouse flicked left** (and the
         // wheel held, with Logi gestures off) — and since 2026-09-12 it throws a
         // **Wispr Flow** dictation away too, through the same one call the ✕ and
-        // the menu row make. Victor's ask: the gesture that abandons a sentence
+        // the menu row make. the original author's ask: the gesture that abandons a sentence
         // must not depend on which app happens to be hearing it. Local behaviour
         // is untouched — `cancelDictationInFlight` tries `localRecording` first.
-        // **At rest it asks a ⚡ quick question** (2026-10-09, Victor: *"the key
+        // **At rest it asks a ⚡ quick question** (2026-10-09, the original author: *"the key
         // to bind it to. I think forward and left"*): with nothing to cancel —
         // no microphone, no words in flight, no held panel — the flick opens a
         // clean sentence for `QuickAsk`. An answer still coming is cancelled.
@@ -2424,7 +2441,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.frontIsBindable = { [weak self] in self?.hotkeys.frontIsBindable ?? false }
         startWatchingFrontApp()
 
-        // **The model is brought up at launch again** (2026-09-06, Victor's ask),
+        // **The model is brought up at launch again** (2026-09-06, the original author's ask),
         // and the actual load is at the end of this method.
         //
         // It has been both ways. Lazy loading was argued from memory: since
@@ -2473,7 +2490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // the gallery"* — until then a step left no trace to check it by.
             Log.info("✨ ⌘/fn+F\(step > 0 ? 9 : 7) — the gallery steps to \(landed.rawValue) (\(landed.title))")
             self.overlay.flash("✨ \(landed.menuTitle)", duration: 4)
-            // 12 s, not 6 (Victor, 2026-09-23: *"at f7/9 leave the animation 2x longer"*)
+            // 12 s, not 6 (the original author, 2026-09-23: *"at f7/9 leave the animation 2x longer"*)
             self.caretHalo.preview(seconds: 12)
         }
         // The fluid sliders' Preview button: the same look as F7/F9, without stepping.
@@ -2488,7 +2505,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `{"style": …}` draws it for this run, `{"style": …, "for": "bound"}`
         // writes that destination's preference, `{"for": "spawn"}` alone wears
         // that destination's dress. A harness looking at effects has no
-        // business leaving Victor's three picks rearranged behind it.
+        // business leaving the original author's three picks rearranged behind it.
         picker.onTestHalo = { [weak self] body in
             guard let self = self else { return ["error": "gone"] }
             if let opts = body["opts"] as? [String: Any],
@@ -2525,7 +2542,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Main, because it touches the overlay's own state; and `async`, because
         // this arrives on the tap thread mid-gesture.
         hotkeys.onAreaEnd = { DispatchQueue.main.async { CropSelectionOverlay.endDrag() } }
-        // **The corner hints get out of a crop's way** (2026-10-09, Victor: *"if
+        // **The corner hints get out of a crop's way** (2026-10-09, the original author: *"if
         // my mouse while dragging gets into the area … occupied by the other
         // controls like hints … you should just hide those"*). A crop swallows
         // every drag before any window sees it, so the chip's own mouse monitors
@@ -2656,7 +2673,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **The bind grace is gone from here.** For three days the click made
         // within five seconds of a bind went to the terminal instead, on the
         // argument that a bind is him naming a precise destination and the
-        // caret is the vaguest one. Victor's vocabulary, restated 2026-09-12:
+        // caret is the vaguest one. the original author's vocabulary, restated 2026-09-12:
         // *"butonul forward pornește dictare la caret (indiferent dacă e legat
         // ceva); forward + right move: dictare legată"*. The two gestures are
         // the two destinations, and a click that sometimes means the other one
@@ -2691,7 +2708,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // gesture. It skips everything `bindFrontmostTerminal` does *because*
         // somebody pressed something: no toggle (a caller putting a binding back
         // must not find it there and let it go), no bind flight and no flash (an
-        // app that has just replaced itself is not announcing a gesture Victor
+        // app that has just replaced itself is not announcing a gesture the original author
         // made), and no `wakePointer` — he is not necessarily at the machine.
         //
         // **And not deliberate** (2026-09-26, the test plan's §3.5: TD5, TD6). It
@@ -2708,7 +2725,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { [weak self] in self?.showBound(bound, deliberate: false) }
             return Self.describe(bound)
         }
-        // The same call the loopback route makes, from the key Victor actually
+        // The same call the loopback route makes, from the key the original author actually
         // presses. Already off the main thread — the tap dispatches globally —
         // which this needs: it spends several subprocesses working out what it
         // is looking at.
@@ -3160,12 +3177,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **And who macOS thinks is asking.** On 2026-09-21 the app went entirely
         // dead — no hotkey, no gesture — while the Accessibility checkbox beside a
         // row called "Walkie Talkie" was still ticked, and this line said only
-        // `trusted=false`, which reads as *Victor has not granted it yet*. The
+        // `trusted=false`, which reads as *the original author has not granted it yet*. The
         // truth was that a bundle assembled by two concurrent builds had lost its
         // `Info.plist`, so the process had **no bundle identifier at all** and TCC
         // was attributing it to its executable path, as a second application with
         // none of the grants. `bundle=` is the whole diagnosis in one word: if it
-        // is not `ro.victorrentea.wispr-relay`, no checkbox anywhere will help and
+        // is not `local.walkie-talkie`, no checkbox anywhere will help and
         // the fix is `./build-app.sh`, not System Settings.
         Log.info("accessibility trusted=\(trusted) eventTap=\(tapped) bundle=\(Bundle.main.bundleIdentifier ?? "<none>")")
         if !trusted || !tapped {
@@ -3292,7 +3309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                     // **Q21 (2026-09-28): on Engine = Wispr the hold was the local
                     // model's** — fn ⌃ Space under a held ⌘⌥ is ignored by Wispr.
-                    // **Since 2026-09-29 the hold is Wispr's** (Victor: *"it should
+                    // **Since 2026-09-29 the hold is Wispr's** (the original author: *"it should
                     // use the same engine for transcription everywhere"*) when Wispr
                     // has right ⌘⌥ + F19 as a hands-free shortcut; without it, Q21.
                     if self.source === self.wisprSource {
@@ -3373,7 +3390,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **The model comes up here, at launch, not on the first gesture.**
         // Loading it lazily meant the first dictation of the day paid ten
         // seconds for the weights, and paid them in the worst place available:
-        // between Victor deciding to talk and the microphone opening. The relay
+        // between the original author deciding to talk and the microphone opening. The relay
         // is a login item that is up before he is, so the same ten seconds cost
         // nothing at all when they are spent here — by the time the first ⌘⌃B
         // happens the helper has been warm for minutes.
@@ -3409,7 +3426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             OverlayStates.shoot(overlay: overlay, into: dir)
         }
         // The `CaptureEffect` tryout — see `CaptureEffects.swift`. Fires once,
-        // on the whole app's normal running state, so Victor can watch all
+        // on the whole app's normal running state, so the original author can watch all
         // six live without anything else being disturbed. WALKIE_EFFECT_ONLY
         // / _REPS / _SPEED narrow that to "replay #1, 3 times, 1.5x slower".
         if ProcessInfo.processInfo.environment["WALKIE_EFFECT_DEMO"] == "1" {
@@ -3538,7 +3555,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.backUsesOwnEngine = source !== wisprSource
         // **Wispr Flow is wired whichever engine is picked** (2026-09-22): the
         // firewall in `HotkeyTap` drops its paste for every sentence, including
-        // one Victor starts with Wispr's own chord while the engine is
+        // one the original author starts with Wispr's own chord while the engine is
         // ElevenLabs, so its words have to come through here or nowhere. The
         // same five handlers, and the same routing — **the motivating case is
         // app1 in front with the relay bound to terminal 2: Wispr must not
@@ -3551,7 +3568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // microphone** (2026-09-22, an hour after the line above said the
         // opposite). With Wispr picked as the Engine every ⌘⌃D / 🔼 sentence
         // came through here and wore Mosaic; the up gesture opened a new claude
-        // under Wispr's dress and Victor said so from the projector (*"am făcut
+        // under Wispr's dress and the original author said so from the projector (*"am făcut
         // gestul de sus … Mosaic … trebuie Sparks"*). Mosaic is the raw chord's:
         // 🔽 → and his own keyboard, `relayStarted == false`. A sentence the
         // relay started wears its destination's dress whichever recogniser
@@ -3627,7 +3644,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **The shutter runs on `DispatchQueue.global()`, not the main thread**
         // (`HotkeyTap.onScreenshot`), so `reserveMarker` may not read `source` —
         // `setEngine` reassigns it from the main thread and that is a race on a
-        // gesture Victor presses mid-sentence. What the marker needs of a source
+        // gesture the original author presses mid-sentence. What the marker needs of a source
         // is two facts that only change when the source does, so they are
         // published here, under the lock the shutter already takes.
         stateLock.lock()
@@ -3647,9 +3664,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The ring is up on the keystroke, before the microphone.**
     ///
     /// The CoreAudio edge is the truth about the microphone and it is not the
-    /// first observable thing about the dictation: between Victor's finger and a
+    /// first observable thing about the dictation: between the original author's finger and a
     /// recorder in another process sit Electron waking, an overlay window and a
-    /// device open. Victor sees that gap (2026-09-12: *the ring still comes up
+    /// device open. the original author sees that gap (2026-09-12: *the ring still comes up
     /// late*), so the ring goes up on the gesture and the source takes it back
     /// if no microphone follows.
     /// **A Wispr sentence 🔽 → opened is a plain one** (2026-09-23 on the back
@@ -3683,7 +3700,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// lives here, because the two sources reach this moment differently: the
     /// local one arrives inside its own `start()`, Wispr Flow's arrives when
     /// CoreAudio says its input is running, which may be a second later and may
-    /// be a dictation Victor started with his own keyboard chord and this app
+    /// be a dictation the original author started with his own keyboard chord and this app
     /// never asked for. A sentence the relay did not start is still a sentence
     /// it must dress, book and route — that is what *Wispr Flow everywhere*
     /// means.
@@ -3770,7 +3787,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **No *unconditional* selection probe at the gesture** (2026-09-16),
         // and since 2026-09-18 a conditional one. The 2026-09-16 probe stashed
         // whatever was already highlighted as "the subject", on every dictation.
-        // Victor: *"să nu mai preia automat selecția la începutul dictării,
+        // the original author: *"să nu mai preia automat selecția la începutul dictării,
         // pentru că deseori rămâne selectat textul care nu are treabă cu ce am
         // spus. Să preia doar textul selectat în timpul dictării."* A highlight
         // left over from whatever he was doing a minute ago is not what he is
@@ -3791,7 +3808,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         //
         // **The forward click's caret prompt takes the picture too** (2026-09-23,
         // reversing 2026-09-19's *"if I'm dictating at caret, we still don't do
-        // an initial screenshot"*): Victor, *"The forward click should be …
+        // an initial screenshot"*): the original author, *"The forward click should be …
         // prompting, at the caret. There will be those metadata, the screenshot
         // of the screen, the fact that is dictated"*. The ⌘C probe that kept
         // caret sentences picture-less went on 2026-09-16, so the frame costs
@@ -3873,7 +3890,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 09-13; what the ring does on screen now is coast (`CaretHalo`).
         Log.info("⚡ ring down: the microphone closed — the words are in flight (the ring coasts, fading)")
         // **Only an explicit caret sentence goes to the caret** (2026-09-26,
-        // Victor's Q1: *"bind to send memory"*). Nothing bound used to latch the
+        // the original author's Q1: *"bind to send memory"*). Nothing bound used to latch the
         // caret here — `!isBound && !spawnPending && spawnPickInFlight == nil` —
         // while the chip said `bind to send`, so real unbound speech was pasted
         // wherever the focus was (TD3, TG18) and only the test route, which never
@@ -3883,7 +3900,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // clean sentence (`deliver`).
         latchedAtCaret = pasteMode
         // **And which terminal — the whole recipient, not only *not the caret***
-        // (2026-09-26, Victor's Q2). Until then the close latched the caret
+        // (2026-09-26, the original author's Q2). Until then the close latched the caret
         // question alone and `commit` asked `terminal.target` when the words
         // came back, 1–7 s later: a bind to B in the settle or under the panel
         // sent A's sentence to B (TD4, TR24, TG19), an unbind held it for
@@ -3927,7 +3944,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // estimate through `DecodeRate` and fills the word left to right as it
         // runs; called with the default `audio: 0` it takes the early exit, sets
         // no deadline and starts no ticker, so the row simply sat there grey.
-        // Victor: *"mi-a dispărut Progres Bar-ul … ca să mă prind când e gata,
+        // the original author: *"mi-a dispărut Progres Bar-ul … ca să mă prind când e gata,
         // cam cât mai am de așteptat și dacă transcrierea merge"* — the last of
         // those is the one that matters, because a row that cannot move cannot
         // distinguish a slow decode from a dead one.
@@ -4000,7 +4017,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // going into the middle of a sentence he has to be able to read back.
         var selections: [Int: String] = [:]
         // **The highlight he was already holding goes in front of the words**
-        // (2026-09-14). Victor: *"why did you put 'text selected during
+        // (2026-09-14). the original author: *"why did you put 'text selected during
         // dictation' AFTER the prompt text. it should be INLINE"* — and he is
         // right, but this one could not be, for a reason worth writing down: it
         // is the **frozen** selection, made *before* he started talking, so no
@@ -4055,7 +4072,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // an older model — and the tempting fallback is to let `resolve` have a
         // go at the text. It must not: with the spoken marker retired there is
         // no phrase in that audio to find, so every match `resolve` could make
-        // would be words Victor really said, rewritten into a reference to a
+        // would be words the original author really said, rewritten into a reference to a
         // picture. That is the precise failure the spoken marker was retired
         // for, arriving by the back door. The frames keep the rows under the
         // sentence, which is the fallback that has always been there.
@@ -4384,7 +4401,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The local model transcribes what the selected engine could not.**
-    /// Victor: *"in case the transcription model selected is unavailable,
+    /// the original author: *"in case the transcription model selected is unavailable,
     /// fallback to the local model, rather than giving up on the
     /// transcription"*. Only for a source whose WAV is ours
     /// (`recordsOwnAudio`) — Wispr's audio never reaches this app. Nothing is
@@ -4404,7 +4421,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !forced {
             lastFailure = (why, engineId, Date())
             // **A hard failure, not a timeout** — Q14 stays automatic (2026-09-29:
-            // noted in the journal for Victor to object to).
+            // noted in the journal for the original author to object to).
             noteEngineAnswered(failed: true)
         }
         let failed = source.name
@@ -4462,7 +4479,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - ⌘⌃X: the local model, now (2026-09-28)
 
-    /// **Whether ⌘⌃X has a take to hand the local model, and why not.** Victor,
+    /// **Whether ⌘⌃X has a take to hand the local model, and why not.** the original author,
     /// 2026-09-28: *"To compensate as a backup for slow transcriptions, I want a
     /// local fallback that I can access during the dictation, at any point,
     /// through a key combination displayed in the tooltip … Sometimes even
@@ -4514,7 +4531,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// The chip's `💻 Local now  ⌘⌃X` row follows `localNowAvailability`, **from
-    /// one second into the transcription** (2026-09-28, Victor: *"cmd-ctrl-x
+    /// one second into the transcription** (2026-09-28, the original author: *"cmd-ctrl-x
     /// should only be displayed after 1 s after starting the transcribing, if any
     /// other engine is used (wispr or 11labs)"*): never while the microphone is
     /// open, and not for a sentence the engine answers within the second — the
@@ -4622,7 +4639,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// (`dictationStoppedListening`), read by `syncLocalNow`'s tick. The budget
     /// is `DecodeRate.budget` (the engine's p95 for this length, clamped to
     /// [1.5 s, 0.3 × audio + 1 s]). It schedules the decode ahead and is logged
-    /// when it runs out; **then the local words go in** (2026-10-06, Victor:
+    /// when it runs out; **then the local words go in** (2026-10-06, the original author:
     /// *"when the timer expires, the local dictation is automatically injected"*
     /// — the 09-29 *only a human inserts* reversed). Kept after the words land, for
     /// `/test/state.localAuto`, until the next close.
@@ -4644,7 +4661,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var autoLocalWait: AutoLocalWait?
 
     /// **One sentence's local decode, run ahead and held** (2026-09-29).
-    /// Victor: *"by the time p95 elapses from the start of the transcription, I
+    /// the original author: *"by the time p95 elapses from the start of the transcription, I
     /// must ALREADY have the local model's transcription ready … Only when the
     /// local transcription is ready do you show the … hint"*. Never two local
     /// decodes of one take: ⌘⌃X and Q14 take this one's words (or wait for them,
@@ -5182,7 +5199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// Between the two is the transcription — another app's round trip for Wispr
     /// Flow, the model's for the local one — and it is exactly the stretch in
-    /// which Victor is waiting and the beacon used to be already dark.
+    /// which the original author is waiting and the beacon used to be already dark.
     ///
     /// - Parameter atCaret: what the ring was saying about the destination when
     ///   the microphone closed, kept so the chevrons do not disarm underneath the
@@ -5201,7 +5218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// comes back after another sentence has closed is dropped.
     ///
     /// **No window to aim at — the middle of the pointer's screen** (2026-10-01).
-    /// Victor: *"când n-ai pe ce centra tunelul … pe centrul ecranului pe care e
+    /// the original author: *"când n-ai pe ce centra tunelul … pe centrul ecranului pe care e
     /// mouse-ul"* — a new session (🔼 ↑: its terminal does not exist yet), a
     /// sentence held for a bind, or a window that did not answer.
     private func aimRewind() {
@@ -5218,7 +5235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             screenAim.x, screenAim.y))
             settleAim = screenAim
             // **A spawn's Sparks flies into the corner where the prompt panel is
-            // about to come up** (2026-10-14, Victor: *"the stars effect … should
+            // about to come up** (2026-10-14, the original author: *"the stars effect … should
             // go into the corner … where the preview prompt window appears in a
             // moment … Rather than going directly to where the new terminal will
             // land, you don't know where the new terminal is going to land"*).
@@ -5397,7 +5414,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **It has a price and the price is outside this app**: with *Use Logi
     /// Gestures* unticked, the wheel is the relay's for as long as the relay is
     /// running, so middle-click stops opening links in Chrome and closing tabs
-    /// in VS Code — which is exactly the cost Victor named when he moved the
+    /// in VS Code — which is exactly the cost the original author named when he moved the
     /// gestures onto the side buttons (*"folosesc middle click sa inchid de ex
     /// taburi chrome/vsc"*). In the **default** mode it costs nothing at all:
     /// `HotkeyTap` hands every mouse button straight back there and the dictate
@@ -5454,7 +5471,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard listening || source.isRecording else { return startDictation() }
         // **🔼→ during a caret dictation aims it at the terminal rather than
-        // ending it** (2026-09-14). Victor: *"if I am bound but I start a
+        // ending it** (2026-09-14). the original author: *"if I am bound but I start a
         // transcription at caret, if I do the gesture to start a bound
         // transcription … then it should turn into a bound transcription to the
         // terminal that is currently bound instead of being a free transcription
@@ -5475,7 +5492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         // **…and with nothing bound, at the terminal bound last** (2026-10-01).
-        // Victor: *"să pot să tranziționez din modul de dictare la caret … în
+        // the original author: *"să pot să tranziționez din modul de dictare la caret … în
         // modul de dictare legată de terminalul precedent … să dau forward și
         // să mut la dreapta, ca să trimit promptul curent la terminalul legat
         // precedent"*. Until now an unbound 🔼 → here had nowhere to aim and
@@ -5485,7 +5502,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         // **…and 🔼 → on a bound sentence takes it to the caret, so the gesture
-        // is a toggle** (2026-10-05). Victor: *"If, during a bound dictation, I
+        // is a toggle** (2026-10-05). the original author: *"If, during a bound dictation, I
         // do the gesture again to start a bound dictation, that dictation
         // becomes a caret. If I'm repeating it one more time, it gets back to
         // the bound status, so it's a toggle, just like kamikaze is."* The
@@ -5509,7 +5526,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var stillPrompt = false
         if cleanSentence {
             // **Once it carries an attachment there is no way back to plain**
-            // (2026-10-08). Victor: *"once I'm in the prompting mode, then I
+            // (2026-10-08). the original author: *"once I'm in the prompting mode, then I
             // have any of these attached … It will be unable for me to get back
             // into the plain dictation mode."* Plain words would drop them, so
             // it becomes what 🔼 would have opened: the caret prompt.
@@ -5662,10 +5679,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The guard above is the relay asking itself; this one asks the other
         // application. They are different questions exactly when the Engine is
         // **not** Wispr: 🔽 → posts Wispr's chord raw in every engine, and a
-        // dictation Victor starts with Wispr's own keyboard chord is invisible
+        // dictation the original author starts with Wispr's own keyboard chord is invisible
         // here too — so with the local model or ElevenLabs wired up, nothing
         // above knows Wispr is already listening, and ⌘⌃D would open a second
-        // microphone on the same voice. Victor, 2026-09-18: *"E absurd să
+        // microphone on the same voice. the original author, 2026-09-18: *"E absurd să
         // pornesc două motoare de transcriere simultan. Trebuie exclusiv, ba
         // unu, ba altu."*
         //
@@ -5722,7 +5739,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // says so (`Wispr Flow is not running`) in the flash below.
 
         // **A Wispr sentence never waits for Wispr Flow to start** (auto fallback,
-        // 2026-09-28 — Victor: *"10 s startup time is killing"*). Not running, or
+        // 2026-09-28 — the original author: *"10 s startup time is killing"*). Not running, or
         // launched by the relay moments ago: this sentence is the local model's
         // (Q21's one-sentence borrow — the relay's own microphone, decoded at the
         // close), and Wispr is launched in the background for the next one.
@@ -5765,7 +5782,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if offerFolders {
             overlay.setSpawnDestination("✨ \(Self.spawnFolderName)", mark: "✨")
-            // **As early as the press allows** — Victor's ask, 2026-09-04. Its
+            // **As early as the press allows** — the original author's ask, 2026-09-04. Its
             // clock is his reading time, which starts at the accepted start.
             offerSpawnFolders()
         }
@@ -5911,7 +5928,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return !listening
     }
 
-    /// **Ten minutes, and the sentence ends wherever it was going** — Victor,
+    /// **Ten minutes, and the sentence ends wherever it was going** — the original author,
     /// 2026-09-20: *"Uneori se întâmplă să rămână pornit microfonul în dictare.
     /// Vreau să implementăm un hard stop la zece minute … la minutul zece,
     /// efectiv se întrerupe dictarea și se termină. Orice ar fi fost, legată,
@@ -5920,7 +5937,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The failure it closes is a microphone nobody is talking into: a gesture
     /// that opened a dictation he walked away from, a Wispr window that never
     /// sent its terminal row, a recogniser that died with its input running.
-    /// Until now the only thing that ended those was Victor noticing, and what
+    /// Until now the only thing that ended those was the original author noticing, and what
     /// he noticed by was the ring — which is to say, minutes later.
     ///
     /// **It stops, it does not cancel.** *"Injectează la cursor sau trimite la
@@ -5996,19 +6013,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Logi mode — 2026-09-22). The side button used to be a spawn *only at rest*:
     /// mid-sentence the guard dropped it on the floor, so the one moment the
     /// decision is actually made — half a sentence in, realising this belongs in a
-    /// new terminal — was the one moment the gesture did nothing at all. Victor:
+    /// new terminal — was the one moment the gesture did nothing at all. the original author:
     /// *"atunci când, în timpul unei dictări, mă hotărăsc să pornesc într-un
     /// terminal nou, să meargă în continuare gestul"*.
     ///
     /// **A caret sentence converts as well** (2026-10-04, reverses Q7 of
-    /// 2026-09-26). Victor: *"o dictare la caret se poate transforma într-o
+    /// 2026-09-26). the original author: *"o dictare la caret se poate transforma într-o
     /// dictare în terminal nou, făcând gestul în sus. Să îmi arate atunci din nou
     /// dialogul cu unde vreau să pornesc."* The caret is taken off it the way
     /// 🔼 → takes it off for a terminal (`retarget`): `pasteMode` cleared, a
     /// clean sentence marked `cleanRedirected` so it carries the agent's envelope.
     ///
     /// **A sentence already headed for a new session gets the menu again**
-    /// (2026-10-05) — it used to be ignored. Victor: *"I should be able to do the
+    /// (2026-10-05) — it used to be ignored. the original author: *"I should be able to do the
     /// gesture of forward and swipe up to choose another target … Even if I
     /// already am in the state of opening in a new terminal, I might be able to
     /// choose a new one, or I may just as well leave it in a new terminal."* The
@@ -6109,7 +6126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     return
                 }
                 Log.info("📍 re-bound to \(bound.address) from Active Terminals")
-                // **Bound, not raised** (Victor, 2026-10-08: *"the terminal
+                // **Bound, not raised** (the original author, 2026-10-08: *"the terminal
                 // application pops in front. It should not … I usually don't
                 // care where it is"*). The words reach it wherever it sits.
                 self.showBound(bound)
@@ -6157,7 +6174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pickHeld = false
 
     /// **A rebind picked from a list — `Rebind to…`, or the spawn menu's open
-    /// terminals — and the window it names brought forward, focused** (Victor,
+    /// terminals — and the window it names brought forward, focused** (the original author,
     /// 2026-09-23: *"acel terminal … trebuie să-mi vină din nou în față, focusat,
     /// ca să văd dacă am trimis cui trebuie"*).
     ///
@@ -6168,10 +6185,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// in `osascript`. The chip is updated first and the raise follows: the chip
     /// is where he is looking, and it must not wait on a second round trip.
     /// `fly`: the terminal's border flies into the chip, the receipt a mouse bind
-    /// gives (Victor, 2026-10-08, on the answer panel's link: *"bring the border
+    /// gives (the original author, 2026-10-08, on the answer panel's link: *"bring the border
     /// of the receiving window zooming into the mouse … the same effect as when I
     /// bind"*). A plain outline, not a picture: the window may be under others.
-    /// **🔼 → over the reply pop-up answers its sender** (2026-10-09, Victor: *"If
+    /// **🔼 → over the reply pop-up answers its sender** (2026-10-09, the original author: *"If
     /// I do the gesture for … bound prompting while my mouse is over the tooltip
     /// with the reply, that should … close the bubble … first rebind me to the
     /// sender terminal, just like if I would press the pin button … an easy way
@@ -6208,16 +6225,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let token = quickToken
         let label = ReplyPanel.quickMark + question
         let started = CFAbsoluteTimeGetCurrent()
-        // **The pop-up holds the best answer so far** (2026-10-10, Victor: *"un
+        // **The pop-up holds the best answer so far** (2026-10-10, the original author: *"un
         // răspuns imediat, apoi unul căutat, apoi unul criticat"*): the 🔎 and 🧐
         // answers each replace the one before; the footer says which one it is
         // and what is still running, so ✕ at any moment keeps a whole answer.
-        // **One line, under it** (same day, Victor: *"totul inline, nu pe rânduri
+        // **One line, under it** (same day, the original author: *"totul inline, nu pe rânduri
         // separate"*): `— Opus 5.5 · 🌐 searching…` → `· 🌐 searched · 🧐
         // adversarial reviewing…` → `· 🧐 adversarial reviewed` (*"instead of
         // reviewed, say adversarial reviewed"*, 2026-10-14), the running one's dots animated
         // (`ReplyPanel.dots`); ✏️ after a step that changed the answer. **🌐, not
-        // 🔎** (2026-10-14, Victor: *"stick with searching and then put the globe
+        // 🔎** (2026-10-14, the original author: *"stick with searching and then put the globe
         // to mean searching internet"*).
         var answer = Self.quickPlaceholder, signature = QuickAsk.shared.answererName
         var steps: [String] = []
@@ -6226,7 +6243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard !signature.isEmpty else { return answer }
             return answer + "\n— " + ([signature] + steps).joined(separator: " · ")
         }
-        // **The pop-up opens the moment he has asked** (2026-10-14, Victor:
+        // **The pop-up opens the moment he has asked** (2026-10-14, the original author:
         // *"immediately after asking a question, the reply window should
         // immediately show … replying from training data placeholder until the
         // response comes"* — reverses 2026-10-09's *no pop-up until the answer
@@ -6297,6 +6314,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         })
     }
 
+    private func showCodexChats() {
+        if !Thread.isMainThread { return DispatchQueue.main.async { [weak self] in self?.showCodexChats() } }
+        codexChats.show()
+    }
+
     private func rebindFromMenu(tty: String, from origin: String = "the menu", fly: Bool = false,
                                 then andThen: (() -> Void)? = nil) {
         DispatchQueue.global(qos: .userInitiated).async {
@@ -6358,7 +6380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.info("🗑️ dictation cancelled via \(reason)")
         // **A recogniser with nothing to cancel leaves the relay's own state
         // standing, and until now nothing could take it down** (2026-09-14,
-        // Victor, twice: *"the lightning circle keeps rotating around the mouse
+        // the original author, twice: *"the lightning circle keeps rotating around the mouse
         // … but I can't really cancel it somehow. It stays there. Blocked in the
         // dictating state"*).
         //
@@ -6431,7 +6453,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    /// **Cancel while the prompt panel is held cancels the panel** (Victor, Q6,
+    /// **Cancel while the prompt panel is held cancels the panel** (the original author, Q6,
     /// 2026-09-26: *"cancel (🔼←, ✕, menu) while the prompt panel is held:
     /// cancels the panel"*). 🔼 ←, 🔽 ← and the menu's Cancel Dictation used to
     /// reach only `cancelDictationInFlight`, which found nothing in flight and
@@ -6502,8 +6524,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// settling into the session. Wispr Flow needs nothing — it is running or it
     /// is not, and this app does not launch it on his behalf.
     ///
-    /// **The load only.** Arming the microphone here was wrong: a bind is Victor
-    /// pointing the relay at a terminal, not Victor starting to talk, and the two
+    /// **The load only.** Arming the microphone here was wrong: a bind is the original author
+    /// pointing the relay at a terminal, not the original author starting to talk, and the two
     /// can be minutes apart.
     private func prepareSourceForBind() {
         (source as? LocalWhisperSource)?.bringUpModel()
@@ -6675,7 +6697,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Register the app as a login item, once, quietly.
     ///
-    /// **The relay has to be up before Victor starts talking**, and since ⌘⌃B
+    /// **The relay has to be up before the original author starts talking**, and since ⌘⌃B
     /// moved into this app there is nothing else left to launch it: the key that
     /// starts a session is served by the very process that has to be running to
     /// hear it. A login item is the whole of what that requires — the app is an
@@ -6686,7 +6708,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// `SMAppService` rather than a LaunchAgent plist: it registers the bundle
     /// that is running, so a copy moved or renamed cannot leave a stale plist
-    /// pointing at a path with nothing behind it — and Victor can turn it off in
+    /// pointing at a path with nothing behind it — and the original author can turn it off in
     /// System Settings → General → Login Items, which is where he would look.
     /// Already-registered is not an error, and a failure is logged rather than
     /// shown: an app that cannot register is still an app that runs.
@@ -6697,7 +6719,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `SMAppService` saw a *new* app each time: `sfltool dumpbtm` listed dozens
     /// of `WalkieTalkie` items pointing at the same `.build/…/debug/WalkieTalkie`,
     /// and macOS posted *"Login Item Added — WalkieTalkie"* on every rebuild.
-    /// Victor: *"apare întruna acest mesaj login item added, la fiecare
+    /// the original author: *"apare întruna acest mesaj login item added, la fiecare
     /// reinstall — e chiar necesar să-l văd?"*. It is not: a binary that is not
     /// `/Applications/Walkie Talkie.app` has no business starting at login.
     ///
@@ -6729,7 +6751,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `kill -USR1 <pid>` writes what is on screen right now to
     /// `<home>/snapshot.png` — the documentation screenshot the window itself
     /// refuses to appear in, and the only way to review a layout change without
-    /// standing behind Victor.
+    /// standing behind the original author.
     ///
     /// A `DispatchSourceSignal` on the main queue rather than a C handler: drawing
     /// a view has to happen on the main thread, and almost nothing is legal inside
@@ -6811,7 +6833,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // taking when there is somebody it is being taken *for*. A spawn counts
         // as somebody — the session it is about to open reads the same line.
         guard hasDestination else { return }
-        // **A clean dictation takes no picture** (Victor, 2026-09-23: *"butonul
+        // **A clean dictation takes no picture** (the original author, 2026-09-23: *"butonul
         // de Back trebuie să pornească dictarea simplă, fără poze, fără
         // nimic"*). The back click's sentence is armed (`backStopsWispr`) from
         // the click on, so it is told apart here without a second flag. The
@@ -6909,7 +6931,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.publishShotCount()
             guard let path = path else { return }
             Log.info("context screen captured: \((path as NSString).lastPathComponent)")
-            // **No flight for picture zero** (2026-09-23, Victor: *"poza
+            // **No flight for picture zero** (2026-09-23, the original author: *"poza
             // inițială din gesturile de prompting nu o mai anima ca vine spre
             // mouse. pune doar bulina galbenă"*). He did not press a shutter
             // for it, so the ripple at the press is its whole receipt; the
@@ -7044,7 +7066,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// rather than dropped; only the timer is different, and it is cancelled here.
     /// **🔽 ↑ — start the recording, or stop the one running** (2026-09-18).
     ///
-    /// **The gate is *a dictation is open*, and nothing more.** Victor,
+    /// **The gate is *a dictation is open*, and nothing more.** the original author,
     /// 2026-09-18: *"poți să faci video oricând dictarea e pornită. Da, legată,
     /// nelegată, cu folder nou, nu contează."* So it is deliberately **not**
     /// `hasDestination`: an unbound sentence is held for five minutes and
@@ -7135,7 +7157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The two gestures the relay **borrows from other software**, handed over and
     /// handed back together.
     ///
-    /// Mouse 4 is Victor's Return key (LinearMouse types one with it) and ⌘-click
+    /// Mouse 4 is the original author's Return key (LinearMouse types one with it) and ⌘-click
     /// is how a link opens in a new tab; the relay takes both **only while there is
     /// a dictation for them to add to**. Outside that window — at rest, the whole
     /// time nothing is bound — they must
@@ -7151,7 +7173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// For that one sentence the back button is its stop rather than Return, and
     /// the arm that says so has to come down at the end *however* the end
     /// arrives — Wispr's own silence timeout, a ⌃Escape, the relay's stop, or
-    /// Victor's keyboard chord. A flag that only ever goes up would survive into
+    /// the original author's keyboard chord. A flag that only ever goes up would survive into
     /// the next Wispr dictation he started some other way and take that one's
     /// back button too.
     ///
@@ -7217,7 +7239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `listening` is the relay's own sentence — it covers the wheel, the forward
     /// button, Replace Wispr and a Wispr dictation the relay asked for, and it
     /// has paused the music since 2026-09-03. `wisprHearing` is the other half
-    /// Victor found missing on 2026-09-18: with the Engine on the local model he
+    /// the original author found missing on 2026-09-18: with the Engine on the local model he
     /// still dictates everywhere by holding ⌘⌥, Wispr's own push-to-talk, and
     /// none of the five `DictationSource` events are wired to this source then —
     /// so the relay saw the chord, named it in the log, and let the music play
@@ -7277,7 +7299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **Replace Wispr borrows them too, since 2026-09-08.** It did not until
         // then, and the argument was that both buttons are taken in order to
         // *add to a message* while that mode has no message — one string, going
-        // where the caret is. Victor overruled the premise rather than the
+        // where the caret is. the original author overruled the premise rather than the
         // conclusion: *"chiar dacă pornesc dictare la caret … să poți să agăți și
         // poze și elemente, exact ca la o dictare țintită către un terminal"*. A
         // paste **is** a message; it is simply one whose recipient is whatever
@@ -7290,7 +7312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Enter"*) because nothing was borrowing it; now it is the shutter for
         // the length of a sentence, exactly as it is in every other dictation.
         // The window is the same narrow one — `listening`, not the mode — so
-        // outside it LinearMouse and Victor Addons go on typing Return with it.
+        // outside it LinearMouse and the original author Addons go on typing Return with it.
         hotkeys.dictating = live
         // A ⇧-locked box parked waiting for its destination belongs to this
         // sentence; with the sentence over there is nothing left to attach it to.
@@ -7304,7 +7326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.ownMicOpen = listening || source.isRecording || speculative
         hotkeys.sentenceQueueAccepts = Self.sentenceQueueOn && queueRefusal() == nil
         // **A plain dictation attaches nothing; a prompt attaches everything**
-        // (2026-10-08). Victor: *"If I am in plain dictation mode, there
+        // (2026-10-08). the original author: *"If I am in plain dictation mode, there
         // shouldn't be possible to take photos … Nor select text … Just plain
         // dictation mode. However … I can switch into the prompting mode."*
         // `relayPromptOpen` is what tells the tap a plain sentence has been
@@ -7340,7 +7362,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // right: there is a terminal now, and the chip is naming it. The ring
         // itself stays, because the microphone is still open.
         //
-        // The ring used to be gated on `pasteMode` outright, and Victor gave
+        // The ring used to be gated on `pasteMode` outright, and the original author gave
         // that reading up knowingly when he made it the beacon: *"asta va
         // implica și că va trebui să arăți … haloul de fulgi de zăpadă și când
         // dictezi cu țintă. Însă, da?"*. What the caret dictation lost is given
@@ -7358,13 +7380,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `settling` is *it closed, and the words have not landed yet*.
         // **Every ring grows out of the pointer** (2026-09-14). A bound
         // sentence's has since 2026-09-12, where the yellow bubble marks the
-        // point first and `grow()` follows it; Victor asked for the same of all
+        // point first and `grow()` follows it; the original author asked for the same of all
         // the others — *"să apară din mouse, să se mărească în momentul în care
         // începe să asculte"* — so a caret or a Wispr-started ring blooms the
         // moment it is up instead of arriving full size. `.afterFlash` is the
         // only case that waits, and the only case that has something to wait
         // for: nothing announces a dictation that takes no picture.
-        // **The ring is *microphone open*, and nothing else** (Victor,
+        // **The ring is *microphone open*, and nothing else** (the original author,
         // 2026-09-13). It used to stand through the settle as well, on the
         // 2026-09-12 argument that the dictation is not over until the words
         // land. That argument is still true and it is the *chip's* to make: the
@@ -7381,7 +7403,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **A fifth way, and it is somebody else's microphone** (2026-09-18).
         // `wisprHearing` is Wispr Flow listening to a sentence this app is not
         // running — he held ⌘⌥, or flicked 🔽 →, or started it from Wispr's own
-        // window. Victor: *"când pornesc Wispr Flow cu gestul de mouse back sau
+        // window. the original author: *"când pornesc Wispr Flow cu gestul de mouse back sau
         // cu tastele … să apară același cerc cu fulger în jurul cursorului …
         // fulgerul să arate că cineva ascultă"*.
         //
@@ -7390,7 +7412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // when Wispr became the *source* and `listening` looked as though it
         // covered everything. It does not: `listening` is the relay's own
         // sentence, so with the Engine on the local model or on ElevenLabs — and
-        // on any dictation Victor opens himself — the microphone was open with
+        // on any dictation the original author opens himself — the microphone was open with
         // nothing round the pointer to say so. `wisprHearing` is the witness
         // that works in every engine (`WisprState.listening`, wired at launch
         // beside the music pause), which is why it is the one read here and
@@ -7435,7 +7457,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // pushed only while settling, so the settle's end (which clears the
         // sentence's aim) does not pull the fading tunnel back onto the pointer.
         // **The window the caret sentence lands in wears an orange outline, and
-        // the heads converge on its caret** (2026-10-13, Victor: *"highlight in
+        // the heads converge on its caret** (2026-10-13, the original author: *"highlight in
         // an orange line … the window which is receiving currently my prompt …
         // The same should happen for the plain dictation"*). The prompt at the
         // caret and the plain sentence both, from the first word to the ⌘V; not
@@ -7481,7 +7503,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let ringUp = listening || speculative || wisprHearing || coasting
         if ringUp {
             // **`cleanSentence` wears the clean dictation's dress too** (2026-09-25,
-            // Victor: *"you did not preserve the effect that happened when it's a
+            // the original author: *"you did not preserve the effect that happened when it's a
             // clean dictation"*). On Wispr the back click's sentence was Wispr's
             // own microphone, so `wisprMicSentence` put it here; on the Engine
             // (`6a34a48`, `c3411de`) it is this app's microphone typing at the
@@ -7505,7 +7527,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if ringUp { pasteHint.hide() }
         // **The music pauses for every dictation, and so reads `listening`, not
         // `live`.** It hung off `live` until 2026-09-03, on the argument that an
-        // unbound dictation is Victor talking into some other app and none of the
+        // unbound dictation is the original author talking into some other app and none of the
         // relay's business. That argument was about *where the words go*, and the
         // music is not about where the words go — it is about the microphone
         // being open. Unbound, forwarding unbound, Replace Wispr, a test
@@ -7516,7 +7538,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // **The watcher runs in Replace Wispr too, since 2026-09-09.** It was
         // `live && !pasteMode`, on the argument that `caretLine` carried no
         // highlight at all so a watcher there would gather text nothing would
-        // ever send. Victor took the premise away rather than the conclusion —
+        // ever send. the original author took the premise away rather than the conclusion —
         // *"even during the dictation at the caret … I still want to capture
         // selection of text during the dictation"* — and `caretLine` now carries
         // `[selected: …]` exactly as `terminalLine` does. The paste is a message
@@ -7535,7 +7557,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - The bound terminal
 
-    /// ⌘⌃B, arriving over loopback from Victor Addons: point the relay at the
+    /// ⌘⌃B, arriving over loopback from the original author Addons: point the relay at the
     /// terminal in front and type every later dictation straight into it.
     ///
     /// **Runs on the listener queue** — `TerminalBinding.bind` spends a couple
@@ -7569,7 +7591,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// not**, since 2026-09-01.
     ///
     /// The chord is made while pointing at the terminal, and the ordinary reason
-    /// to make it twice is that Victor is not sure the first one landed — so the
+    /// to make it twice is that the original author is not sure the first one landed — so the
     /// answer he wants there is the flight again, not a session let go. Letting go
     /// already has two routes of its own that say nothing else: the right-held
     /// chord and the menu's Disconnect. A toggle is worth having on a key that has
@@ -7581,6 +7603,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // The next second or two is spent in `osascript`, and `isBound` is
             // false for all of it. See `bindInFlight`.
             bindInFlight = true
+        }
+        if let bundle = front?.bundleIdentifier, CodexBridge.desktopBundleIDs.contains(bundle) {
+            DispatchQueue.main.async { [weak self] in
+                self?.bindInFlight = false
+                self?.showCodexChats()
+            }
+            return ["selectChat": true]
         }
         // Read before binding: `bind` replaces the target, and what decides
         // between "point somewhere new" and "stop" is what it *was*.
@@ -7657,14 +7686,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // **`walkie: started in petclinic@main`** — the folder, and nothing
             // else. The flash used to name the `ttysNNN` address as well, on the
             // grounds that it settles "did it grab the right tab?"; it never was
-            // the question Victor asks at this moment, and the device file is
+            // the question the original author asks at this moment, and the device file is
             // noise on a projector. Addons' banner for the same press says the
             // same words, so the two panels read as one event rather than as two
             // announcements of it.
             //
             // It is still where the shell guard's absence is reported, now that
             // the chip no longer distinguishes ⌨️ from 🎯: binding is the moment
-            // that fact can still change what Victor does about it, and a warning
+            // that fact can still change what the original author does about it, and a warning
             // is not a label — it survives the shortening.
             // **Only the warning survives.** The flash used to read
             // `walkie: started in <folder>`, and the chip beside the cursor
@@ -7672,7 +7701,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // one fact said twice, in two places, one of which then sat over his
             // work for three seconds. The missing shell guard has nowhere else
             // to be said, and it is the one thing here that can still change what
-            // Victor does about it, so it flashes on its own.
+            // the original author does about it, so it flashes on its own.
             let unguarded = bound.isGuarded ? nil : "⚠️ no shell guard"
 
             // **The rectangle hands over to the chip.** It flies from the window
@@ -7694,7 +7723,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // moment for one: a dictation is coming, and the ten seconds overlap
             // him settling into the session.
             // **The load only.** Arming the microphone here was wrong: a bind is
-            // Victor pointing the relay at a terminal, not Victor starting to
+            // the original author pointing the relay at a terminal, not the original author starting to
             // talk, and the two can be minutes apart. The wheel remains the only
             // thing that opens it — and if he holds it while this load is still
             // running, `startLocalRecording` remembers the gesture and it fires
@@ -7764,7 +7793,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The window closing is the same question as the window being renamed**,
     /// which is why it rides the same tick: both ask whether the line on the
     /// chip is still true. Until this, only a *delivery* could find out — so a
-    /// terminal Victor closed left a chip naming a dead session, the wheel and
+    /// terminal the original author closed left a chip naming a dead session, the wheel and
     /// the shutter borrowed for it, and a microphone on the status line, until
     /// he spoke a whole sentence at it and was told afterwards.
     ///
@@ -7848,7 +7877,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the spawn chord followed by the left-plus-wheel chord opened a new
         // session anyway and left the terminal he had just pointed at empty.
         //
-        // The chord is Victor answering the same question with a destination
+        // The chord is the original author answering the same question with a destination
         // that exists. Taking the spawn back here rather than at delivery keeps
         // the chip honest too: it stops saying `✨ workspace` the moment it
         // stops being true.
@@ -7864,14 +7893,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // sec de vorbit, fără să apăs niciun buton, tooltipul a arătat că s-a
         // reconectat la unul dintre terminale"*.
         //
-        // A poll is not Victor answering anything. The rule is about the gesture,
+        // A poll is not the original author answering anything. The rule is about the gesture,
         // so it is gated on the gesture.
         if spawnPending, listening, deliberate {
             Log.info("✨ spawn dropped — bound mid-sentence, the words go to \(target.label)")
             clearSpawn()
         }
         // **And a caret dictation becomes a terminal one on the same terms**
-        // (Victor, 2026-09-09: *"sesiunea de dictare pornită pentru paste …
+        // (the original author, 2026-09-09: *"sesiunea de dictare pornită pentru paste …
         // trebuie să se poată converti într-o sesiune legată de un terminal,
         // prin același gest … și într-adevăr să se trimită nu la caret, ci în
         // terminal"*).
@@ -8034,7 +8063,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "wrapMode": wisprSource.wrapMode.rawValue,
             "wrapWhy": wisprSource.wrapReason,
             // Whether *this* dictation is the relay's to take — a dictation
-            // Victor started with his own chord is Wispr's and is only drawn.
+            // the original author started with his own chord is Wispr's and is only drawn.
             "relayStarted": wisprSource.relayStarted,
             // **Is the back button this dictation's stop?** (2026-09-17) Armed
             // by 🔽 → and nothing else, and the only way an assertion can see
@@ -8049,7 +8078,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // The Scratchpad wrap's precondition: a held chord writes no note
             // while this is true (measured 2026-09-13).
             // Where the parked window is, whether Wispr kept it there, and —
-            // the one Victor actually asked about — whether it has ever had the
+            // the one the original author actually asked about — whether it has ever had the
             // keyboard while he was typing.
             "scratchpad": WisprScratchpad.describe(),
             // Whose keyboard the relay is holding, and how many keys it has
@@ -8208,7 +8237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the wheel is inert (*Unbound is inert*). Reported 2026-09-01: *"nu s-a
     /// autolegat de acel terminal … a rămas idle"*.
     ///
-    /// Always, not only when unbound — Victor's call. A spawn is him saying the
+    /// Always, not only when unbound — the original author's call. A spawn is him saying the
     /// session he wants does not exist yet, which is the same sentence as "the
     /// one I am pointed at is not it" — the thing the right chord says by
     /// letting the binding go. Two spawns in a row still
@@ -8316,7 +8345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The spawned window becomes the binding, a beat after it appears** — and
     /// gets the bind flight that says so.
     ///
-    /// A spawn is the one destination Victor never pointed at: the window opens
+    /// A spawn is the one destination the original author never pointed at: the window opens
     /// on its own, somewhere he was not looking, while his hand is still on the
     /// mouse. Every other way a session becomes a destination answers itself with
     /// a picture of that window flying into the chip (*The bind flight*), and this
@@ -8328,7 +8357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// true, and the chip names the session that just opened.
     ///
     /// **The flight runs backwards, and starts when the window is on screen.**
-    /// Both on Victor's ask, 2026-09-04: *"the animation should be backwards,
+    /// Both on the original author's ask, 2026-09-04: *"the animation should be backwards,
     /// from the mouse going to the terminal, and should start as soon as the
     /// terminal window is displayed. Faster a bit."*
     ///
@@ -8383,7 +8412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // types, and the chip the dialog collapses back into must be
                     // somewhere he can see it land.
                     self.overlay.wakePointer()
-                    // **The outline leaves the dialog, not the chip** (Victor,
+                    // **The outline leaves the dialog, not the chip** (the original author,
                     // 2026-09-07). The panel he read the prompt on is still on
                     // screen — it was held for exactly this moment — so the
                     // flight is the same sentence the send flight says, with the
@@ -8406,7 +8435,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // lies pixel for pixel on the panel, so a panel already
                         // dissolving underneath it never reads as *a thing
                         // leaving a dialog* — it reads as both of them fading at
-                        // once. Victor, 2026-09-07: *"dialogul trebuie abia
+                        // once. the original author, 2026-09-07: *"dialogul trebuie abia
                         // atunci să înceapă să facă fade-out … dar doar după ce
                         // conturul lui pleacă în călătorie către terminalul nou
                         // deschis"*.
@@ -8419,7 +8448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // window has it.
                         //
                         // **…and then it waits for the session to have the prompt**
-                        // (2026-10-04, Victor: *"să rămână acolo și după ce a fost
+                        // (2026-10-04, the original author: *"să rămână acolo și după ce a fost
                         // lansat terminalul … până când terminalul efectiv primește
                         // și începe să lucreze … un timp în care aș vrea să pot să
                         // mă uit la prompt"*). A new Claude Code takes seconds to
@@ -8433,7 +8462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             guard let session = session else {
                                 return self.overlay.releaseSpawnPanel(fadeOver: Self.spawnPanelFade)
                             }
-                            self.releaseWhenSessionStarts(directory: session.directory, since: session.since)
+                            self.releaseWhenSessionStarts(directory: session.directory, since: session.since, tty: tty)
                         }
                     } else {
                         // No panel to leave from, so nothing to hold back for.
@@ -8441,7 +8470,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // A spawn that never showed a panel has only the chip to
                         // be born under — the same window growing out of the
                         // pointer instead of out of the dialog, which is where
-                        // Victor first put it before he corrected himself.
+                        // the original author first put it before he corrected himself.
                         let chip = self.overlay.chipFrame
                         let anchor = chip.isEmpty
                             ? CGRect(origin: NSEvent.mouseLocation, size: .zero) : chip
@@ -8490,7 +8519,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The half second the outline spends resting on the new window**, fading
-    /// out (Victor, 2026-09-07). The fade starts inside the last sixth of the
+    /// out (the original author, 2026-09-07). The fade starts inside the last sixth of the
     /// travel and finishes here, so the rectangle is already dissolving as it
     /// settles and is gone a beat later — see `BindFlight.tailFadeFraction`.
     ///
@@ -8501,7 +8530,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let spawnFlightRest: TimeInterval = 0.5
 
     /// **The half second the dialog spends dissolving** while the outline that
-    /// left it travels to the new terminal (Victor, 2026-09-07). Deliberately the
+    /// left it travels to the new terminal (the original author, 2026-09-07). Deliberately the
     /// same number as `spawnFlightRest` at the other end of the same flight: the
     /// panel empties out over half a second here, the outline dissolves over half
     /// a second there, and the travel between them is the 0.7s of
@@ -8534,89 +8563,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `"type":"user"` line — the prompt from `argv`, written as the session
     /// takes it. Polled off the main thread every quarter second; the folder is
     /// named the way Claude Code names it (every non-alphanumeric → `-`).
-    private func releaseWhenSessionStarts(directory: String, since: Date) {
-        let dir = Self.transcriptFolder(for: directory)
+    private func releaseWhenSessionStarts(directory: String, since: Date, tty: String) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let deadline = since.addingTimeInterval(Self.spawnStartWait)
-            var took: URL?
-            while took == nil, Date() < deadline {
-                guard let self = self else { return }
+            while Date() < deadline {
+                guard let self else { return }
                 var holding = true
                 DispatchQueue.main.sync { holding = self.overlay.isHoldingSpawnPanel }
-                if !holding { return }   // newer state took the chip already
-                took = Self.startedTranscript(in: dir, since: since)
-                if took == nil { Thread.sleep(forTimeInterval: 0.25) }
-            }
-            let waited = Date().timeIntervalSince(since)
-            if let took = took {
-                Log.info(String(format: "✨ the spawned session took the prompt %.1f s after the launch (%@) — the dialog goes", waited, took.lastPathComponent))
-            } else {
-                Log.error(String(format: "✨ no transcript with the prompt in %@ after %.0f s — the dialog goes anyway", dir.path, waited))
+                if !holding { return }
+                if CodexBridge.resolve(tty: tty) != nil { break }
+                Thread.sleep(forTimeInterval: 0.25)
             }
             DispatchQueue.main.async { self?.overlay.releaseSpawnPanel(fadeOver: Self.spawnPanelFade) }
         }
     }
 
-    /// `~/.claude/projects/<folder>/`, named the way Claude Code names it.
-    private static func transcriptFolder(for directory: String) -> URL {
-        let folder = String((directory as NSString).standardizingPath.map { $0.isASCII && ($0.isLetter || $0.isNumber) ? $0 : "-" })
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/projects").appendingPathComponent(folder)
-    }
-
-    /// **The kamikaze for a spawn waits until the session has taken its prompt**
-    /// (2026-10-07). The offer is armed at the bind, ~1 s after the launch, but
-    /// a new Claude Code takes 2–10 s to read its `argv` prompt; the word typed
-    /// into it before that sat in a booting TUI and surfaced 16 s later (13:48:46
-    /// typed, 13:49:02 queued — Victor: *"didn't really receive … about ten
-    /// seconds before it started working"*). The same signal as the held dialog
-    /// (`startedTranscript`); once it is there the word queues behind the prompt
-    /// and Claude Code hands it to the turn already running. Never past
-    /// `spawnStartWait`: a session that never started may be on a trust
-    /// question, where `kamikaze` + Return would answer it.
     private func sendKamikazeOnceStarted(to target: TerminalBinding.Target, directory: String, since: Date) {
-        let dir = Self.transcriptFolder(for: directory)
-        // A restart waits for it, as it does for the word itself.
         deliveriesInFlight += 1
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let deadline = since.addingTimeInterval(Self.spawnStartWait)
-            var took: URL?
-            while took == nil, Date() < deadline {
-                took = Self.startedTranscript(in: dir, since: since)
-                if took == nil { Thread.sleep(forTimeInterval: 0.25) }
+            var ready = false
+            while !ready, Date() < deadline {
+                if case .codex(let id, _) = target.handle {
+                    ready = (try? CodexBridge.conversation(id)) != nil
+                } else if let tty = target.handle.tty {
+                    ready = CodexBridge.resolve(tty: tty) != nil
+                }
+                if !ready { Thread.sleep(forTimeInterval: 0.25) }
             }
-            let waited = Date().timeIntervalSince(since)
             DispatchQueue.main.async {
-                guard let self = self else { return }
+                guard let self else { return }
                 self.deliveriesInFlight -= 1
-                guard took != nil else {
-                    Log.error(String(format: "☠️ kamikaze not sent — the spawned session had not taken its prompt %.0f s after the launch", waited))
+                guard ready else {
                     self.overlay.flash("☠️ Kamikaze not sent — the new session never started", duration: 3)
                     return
                 }
-                Log.info(String(format: "☠️ kamikaze to the spawned session, %.1f s after the launch — it has its prompt", waited))
                 self.sendKamikaze(to: target)
             }
         }
     }
 
-    /// A transcript created in `dir` since `since` that already has a user line.
-    private static func startedTranscript(in dir: URL, since: Date) -> URL? {
-        let keys: [URLResourceKey] = [.creationDateKey]
-        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: keys)
-        else { return nil }
-        let floor = since.addingTimeInterval(-1)
-        for file in files where file.pathExtension == "jsonl" {
-            guard let born = try? file.resourceValues(forKeys: Set(keys)).creationDate, born >= floor,
-                  let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            if text.contains("\"type\":\"user\"") { return file }
-        }
-        return nil
-    }
-
-    /// How long to keep asking Terminal for the new window before giving up on
-    /// the flight. Generous, because it costs nothing when the window is up in
-    /// 300ms — the loop exits on the first answer, not on the clock.
     private static let spawnWindowWait: TimeInterval = 4
 
     /// **A shorter second**, for the flight to a terminal that was already open.
@@ -8632,7 +8618,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// sent, and a plain rectangle needs little of the eye's time to follow.
     private static let sendFlightSeconds: CFTimeInterval = 0.55
 
-    /// **The second the little terminal spends growing** (Victor, 2026-09-09:
+    /// **The second the little terminal spends growing** (the original author, 2026-09-09:
     /// *"slowly move it out of the screen in about … one second"*). Longer than
     /// the send flight beside it, because this one is not glanced at: it is the
     /// only thing on screen that says *which* of the monitors around him the
@@ -8650,7 +8636,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **A little terminal window, born just under `anchor`.**
     ///
-    /// Victor, 2026-09-09: *"from the dialogue … it creates a terminal right
+    /// the original author, 2026-09-09: *"from the dialogue … it creates a terminal right
     /// under it and then slowly move it out of the screen … rather than having
     /// that just the frame flying out"*. A spawn is the one destination he never
     /// pointed at — the window opens on a monitor beside him while he is looking
@@ -8695,7 +8681,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.setSpawnDestination(nil)
     }
 
-    /// **The default, and nothing is inferred.** Victor's call, and the
+    /// **The default, and nothing is inferred.** the original author's call, and the
     /// three reasons line up behind it: it is where he starts every session by
     /// hand, so it is the one folder Claude Code already trusts — a spawn into a
     /// sub-repo stops on the "do you trust this folder" question instead of
@@ -8713,8 +8699,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// argument above: the alternative it beat was *guessing*, and a click is not
     /// a guess. Every folder on that menu is one Claude Code already trusts, so
     /// the failure this constant exists to prevent cannot happen there either.
-    private static let spawnDirectory = FileManager.default
-        .homeDirectoryForCurrentUser.appendingPathComponent("workspace").path
+    private static let spawnDirectory = ProcessInfo.processInfo.environment["WT_PROJECT_ROOT"]
+        ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("syncthing/projects").path
 
     /// What the chip calls that folder while he is talking at it.
     private static let spawnFolderName = (spawnDirectory as NSString).lastPathComponent
@@ -8725,7 +8711,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// all the way down. **The outbox line and `lastDelivery` are written here, on
     /// `.delivered` only** (2026-09-26) — see `commit`. Everything else is said by
     /// `report`, and a terminal that turned out to be gone gets the words at the
-    /// caret instead (Victor's Q4).
+    /// caret instead (the original author's Q4).
     ///
     /// **`to` is the recipient latched at the close** (Q2), which need not be
     /// the terminal bound now: a bind since then does not redirect the sentence,
@@ -8759,7 +8745,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 case .targetGone:
                     // **Q4 — a dead terminal at delivery: paste at the caret**
-                    // (Victor, 2026-09-26), not held. The binding goes
+                    // (the original author, 2026-09-26), not held. The binding goes
                     // (`report`); the sentence does not go with it. The whole
                     // envelope, since it was addressed to an agent. No outbox
                     // line, as for every caret sentence; `lastDelivery` says
@@ -8778,11 +8764,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private let deliveryQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.deliver", qos: .userInitiated)
+    private let deliveryQueue = DispatchQueue(label: "local.walkie-talkie.deliver", qos: .userInitiated)
 
     /// **Silent on success.** A dictation that landed announces itself in the
     /// terminal it landed in, which is a whole window of evidence; a flash
-    /// saying the same thing would be a panel thrown across Victor's work to
+    /// saying the same thing would be a panel thrown across the original author's work to
     /// repeat what the target already shows. Every other outcome is a message
     /// that goes nowhere unless this says so.
     private func report(_ outcome: TerminalBinding.Outcome, pastedAtCaret: Bool = false) {
@@ -8800,7 +8786,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                         : "⚠️ \(what) — unbound", duration: 6)
         case .wouldRunAsShell(let command):
             // A shell at its prompt, or since 2026-09-26 a program that hands the
-            // line to one (`TerminalBinding.shellCarriers`, Victor's Q5). Nothing
+            // line to one (`TerminalBinding.shellCarriers`, the original author's Q5). Nothing
             // was typed and nothing written to the outbox; ⌘⇧P still has it.
             let where_ = TerminalBinding.isShell(command) ? "is at the prompt" : "is in front"
             Log.error("⛔️ \(command) \(where_) — refused, nothing sent")
@@ -8822,7 +8808,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the sentence and leaves the rest to arrive as a prompt of its own.
     ///
     /// The shots travel as **paths, not as a `📸 ×2` count**: the panel's
-    /// preview is written for Victor, who took the pictures and needs only to
+    /// preview is written for the original author, who took the pictures and needs only to
     /// be told they landed, while this is written for an agent, which can do
     /// nothing with a number and everything with something to `Read`. That is
     /// the same split the outbox already makes, said in one line instead of in
@@ -8832,7 +8818,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// they might have been spoken.** This is the one clause here written to
     /// change how the text is *read* rather than to add something to read.
     ///
-    /// A transcript arrives looking exactly like something Victor typed, so a
+    /// A transcript arrives looking exactly like something the original author typed, so a
     /// mis-heard word reads as a word he chose. Measured on his own corpus, a
     /// local recogniser turned `Wispr Relay` — what this app was called then —
     /// into `risparerile ei`; an agent that knows the input came through a
@@ -8841,7 +8827,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **`RO or EN`, fixed, rather than the language the recogniser detected.**
     /// It did carry the detected code for one commit, and the reason it no
     /// longer does is that the code is not reliable enough to assert: a sentence
-    /// of Victor's plain Romanian came back labelled `en` in the very recording
+    /// of the original author's plain Romanian came back labelled `en` in the very recording
     /// used to test it. A clause naming the wrong language is worse than one naming
     /// neither — it points the phonetics of a mis-heard word in a direction it
     /// was never said in. Both, always, is true on every dictation and is still
@@ -8866,7 +8852,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// microphone path deliberately sends *below* the gate rather than
     /// swallowing, arrive looking exactly like a correct transcript. That is the
     /// one failure an agent cannot defend itself against by reading, so it is
-    /// told instead — which is what Victor asked for.
+    /// told instead — which is what the original author asked for.
     ///
     /// **It no longer names the recogniser** (2026-09-12). It said *a local
     /// Whisper* for as long as that was the only one; since Wispr Flow became
@@ -8880,7 +8866,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// deliberate reversal of the note above). Two things changed under it.
     /// The engine is a menu row now, so *which one heard this* is a question
     /// with a different answer from one sentence to the next and the reader
-    /// cannot infer it — Victor: *"you can say instead … the name of the local
+    /// cannot infer it — the original author: *"you can say instead … the name of the local
     /// model or the fact that it was a Wispr Flow"*. And the hallucination
     /// sentence had become redundant: *"the fact that it can hallucinate a
     /// fluent sentence is a bit redundant, you can just strip this off"* — an
@@ -8890,7 +8876,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **`[Dictated in RO or EN]`, and nothing else** (2026-09-19). It was
     /// `[this text dictated and transcribed in RO or EN by Scribe (scribe_v2)]`.
     ///
-    /// Victor: *"In textul emis sunt footere. Simplifica primul la `[Dictated in
+    /// the original author: *"In textul emis sunt footere. Simplifica primul la `[Dictated in
     /// RO or EN]`. Altfel ma costa rau."* This clause rides on **every single
     /// dictation**, so its length is not a matter of taste — it is a per-sentence
     /// tax on every agent this relay talks to, paid for ever.
@@ -8904,14 +8890,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// - **the recogniser's name** was added on 2026-09-14 for a real reason
     ///   (*"you can say instead … the name of the local model or the fact that it
     ///   was a Wispr Flow"*) and it is being taken back out for a better one: the
-    ///   engine is a **menu row and a log line**, both of which Victor reads, and
+    ///   engine is a **menu row and a log line**, both of which the original author reads, and
     ///   no agent has ever done anything differently on being told it was Scribe
     ///   rather than Wispr. It was paying tokens on every sentence to answer a
     ///   question only its author asks, and he can already see the answer.
     ///
     /// The engine is still recorded per sentence in `outbox.jsonl` and still on
     /// the chip; it simply stopped riding into the prompt. → `Message.engine`
-    /// **A dictated question asks for a short answer back** (2026-10-07, Victor:
+    /// **A dictated question asks for a short answer back** (2026-10-07, the original author:
     /// *"when I am asking directly a question, there should be a way that the
     /// agent is able to reach me back … very briefly"*). Only on a prompt with a
     /// `?` in it — every other prompt pays nothing. `walkie-reply` (`bin/`,
@@ -8920,7 +8906,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// **An answer, or a question it is blocked on — never "done"** (2026-10-08).
     /// *"E oare posibil?"* over a request was answered by doing it and then
-    /// `walkie-reply "Gata: … Dă refresh la Gmail."` — Victor: *"n-ar trebui să
+    /// `walkie-reply "Gata: … Dă refresh la Gmail."` — the original author: *"n-ar trebui să
     /// folosească acel feature decât dacă … o întrebare … blocant, nu că au
     /// terminat … mi s-a părut un pic abuz"*. A task phrased as a question is a
     /// task. Then, minutes later, narrower still: *"exclusiv când eu întreb
@@ -8928,7 +8914,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// ceva."* — his question in, its answer out; nothing else rides it.
     static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done.]"
 
-    /// **`[Transcribed in RO or EN by <engine>]`** (2026-10-12, Victor: *"let's
+    /// **`[Transcribed by <engine>]`** (2026-10-12, the original author: *"let's
     /// call it transcribed in RO or EN, and then you place the name of the engine
     /// that transcribed it"*). Reverses the 2026-09-19 cut above (`questionHint` sits between): the clause now
     /// rides as hidden context (the `walkie-inbox` mod's `splitTyped`), so it no
@@ -8936,14 +8922,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// way the panel's `Engine:` row names it (`engineName`). The mod matches
     /// both spellings.
     private static func dictatedHint(_ m: Message) -> String {
-        "[Transcribed in RO or EN by \(engineName(via: m.via, engineLabel: m.engine))]"
+        "[Transcribed by \(engineName(via: m.via, engineLabel: m.engine))]"
     }
 
     /// **What a Replace Wispr dictation actually pastes: the words, and only
     /// what he deliberately attached** (2026-09-08).
     ///
     /// The mode used to paste the transcript and nothing else, because it had
-    /// nothing else — no shutter, no picker. Victor turned both on here (*"să
+    /// nothing else — no shutter, no picker. the original author turned both on here (*"să
     /// poți să agăți și poze și elemente"*) and drew the line himself in the same
     /// breath: *"nu trebuie să facă poză originală și nu trebuie să vină cu tot
     /// sufixul standard … dar să pot să fac poză, în care caz poate să arate ca
@@ -8969,7 +8955,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// sentence about mis-hearing pasted into a Slack message is the mode failing
     /// at its one job.
     ///
-    /// **The highlights joined them on 2026-09-09**, on Victor's ask — *"even
+    /// **The highlights joined them on 2026-09-09**, on the original author's ask — *"even
     /// during the dictation at the caret … I still want to capture selection of
     /// text during the dictation"*. They were the one deliberate attachment this
     /// envelope refused, and the refusal was really about the *probe*: nothing
@@ -8984,7 +8970,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **`full` is the forward click's caret *prompt*** (2026-09-23) — the whole
     /// terminal envelope, `terminalLine` itself: the context frame as picture
     /// zero with its leading `auto` token, `[Dictated in RO or EN]`, the
-    /// highlights, the picks, the films. Victor: *"The forward click should be
+    /// highlights, the picks, the films. the original author: *"The forward click should be
     /// transcribing, basically prompting, at the carrot. There will be those
     /// metadata, the screenshot of the screen, the fact that is dictated, and
     /// any other feature."* The 2026-09-08 line above — *no context frame, no
@@ -9103,7 +9089,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                        inlined: inlined))
         // **The same footer the terminal gets, from the same function.** A caret
         // envelope differs in exactly one thing and it is not the wording: there
-        // is no context frame, because this mode never takes one (Victor,
+        // is no context frame, because this mode never takes one (the original author,
         // 2026-09-19: *"if I'm dictating at caret, we still don't do an initial
         // screenshot"*), so `screen` is nil and the numbering starts at 📸1.
         let envelope = Message(kind: "dictation", text: words, selection: nil,
@@ -9119,7 +9105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The back click's plain dictation: the words, and nothing else**
-    /// (2026-09-23). Victor: *"a plain voice transcription with no sorts of
+    /// (2026-09-23). the original author: *"a plain voice transcription with no sorts of
     /// prompting tweaks around it. It should be just clean voice that I had."*
     /// Whatever the sentence gathered anyway — a shot through ⌃⌥P before the
     /// shutter refused it, a pick, a highlight the watcher saw — is drained with
@@ -9134,7 +9120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The forward click's prompt at the caret: pasted, or submitted where the
-    /// caret is a Claude Code prompt** (2026-09-23). Victor: *"Hit Enter to
+    /// caret is a Claude Code prompt** (2026-09-23). the original author: *"Hit Enter to
     /// trigger. For example, if I am putting my [caret] into a Claude Code
     /// terminal prompt, it should already submit the prompt as it's actually a
     /// prompt."*
@@ -9199,10 +9185,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // settle standing now is the next sentence's (Q12) — not ours to end.
                 guard submitted, let tty else {
                     self.pasteText(line, to: pid, settles: false)
-                    self.promptWentNowhere(serial, why: "the prompt went to no Claude Code prompt")
+                    self.promptWentNowhere(serial, why: "the prompt went to no Codex prompt")
                     return
                 }
-                Log.info("⏎ caret prompt typed into Claude Code on \(tty) and submitted — \(line.count) chars")
+                Log.info("⏎ caret prompt typed into Codex on \(tty) and submitted — \(line.count) chars")
                 self.lastDictation = line
                 self.offerKamikaze(already: already, at: tty, serial: serial) { [weak self] in
                     DispatchQueue.global(qos: .userInitiated).async {
@@ -9213,7 +9199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             return
                         }
                         let ok = TerminalBinding.submitPrompt("kamikaze", toTTY: tty)
-                        Log.info(ok ? "☠️ kamikaze typed into Claude Code on \(tty)" : "☠️ kamikaze could not be typed into \(tty)")
+                        Log.info(ok ? "☠️ kamikaze typed into Codex on \(tty)" : "☠️ kamikaze could not be typed into \(tty)")
                     }
                 }
             }
@@ -9225,7 +9211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **A prompt that has just landed in a terminal can still be made a
     /// kamikaze** — for three seconds, `☠️ Kamikaze?` beside the pointer, and
     /// 🔼 ↓ in that window sends the word alone (`kamikaze`, then Return) to the
-    /// session the prompt went to. Victor: *"At the moment that I've fired
+    /// session the prompt went to. the original author: *"At the moment that I've fired
     /// already a dictation and it's actually enacted in a terminal. For the
     /// following three seconds, there should be a tooltip next to the mouse
     /// saying «kamikaze» with question mark. And if I drag my mouse down holding
@@ -9240,7 +9226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A sentence open or settling outranks the offer — the flick is then
     /// that sentence's (`onGestureKamikaze`).
     ///
-    /// **The offer outlives its label** (2026-10-08). Victor: *"If I do the
+    /// **The offer outlives its label** (2026-10-08). the original author: *"If I do the
     /// gesture for Kamikaze, the last terminal that has received a prompt would
     /// be sent a Kamikaze signal. Even if it's much later than the window
     /// allowed, the label disappears after a while, but then I can still."* So
@@ -9275,7 +9261,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             _ = takeKamikazeOffer(after: settle)
             return
         }
-        // **No `☠️ Kamikaze?` flash** (2026-10-14, Victor: *"you don't need to hint
+        // **No `☠️ Kamikaze?` flash** (2026-10-14, the original author: *"you don't need to hint
         // me … I know the drill … Don't show it up so visible"*): the offer
         // stands silently until the next prompt.
         Log.info("☠️ kamikaze offered (silently) — the prompt landed in \(destination); the offer stands until the next prompt")
@@ -9298,7 +9284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Kamikaze while the prompt travels (2026-10-10)
 
     /// **🔼 ↓ is honoured from a sentence's start to the next one's** (2026-10-10).
-    /// Victor: *"în timpul transcrierii am făcut simbolul de kamikaze, dar nu mi
+    /// the original author: *"în timpul transcrierii am făcut simbolul de kamikaze, dar nu mi
     /// l-a preluat … de la începutul unei dictări, până la începutul unei alte
     /// dictări, trebuie să pot să fac semnul de kamikaze."* The flick that was
     /// lost (17:26:32, a 🔼 ↑) fell between two owners: the panel had gone and
@@ -9377,7 +9363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// A late flick whose session is no longer there to take the word.
     private func kamikazeNotSent(to destination: String) {
-        Log.error("☠️ kamikaze not sent — no Claude Code prompt on \(destination) any more")
+        Log.error("☠️ kamikaze not sent — no Codex prompt on \(destination) any more")
         overlay.flash("☠️ Kamikaze not sent — that session has ended", duration: 3)
     }
 
@@ -9409,7 +9395,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             HotkeyTap.postReturn()
-            Log.info("⏎ caret prompt pasted into Claude Code in VS Code on \(tty) and Return pressed — \(chars) chars")
+            Log.info("⏎ caret prompt pasted into Codex in VS Code on \(tty) and Return pressed — \(chars) chars")
         }
     }
 
@@ -9421,7 +9407,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.info("⏎ plain dictation ended by 🔽 — Return after the words")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             // **Q18 (2026-09-28): never a Return at a shell prompt.** The words
-            // land where the caret is when they arrive (Victor's Q6 = C); if that
+            // land where the caret is when they arrive (the original author's Q6 = C); if that
             // is a Terminal tab whose foreground job is a shell (or passes the
             // line to one), the Return would *run* them. Asked at the Return.
             let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
@@ -9439,6 +9425,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static func terminalLine(_ m: Message) -> String {
         var parts: [String] = []
         if let text = m.text, !text.isEmpty { parts.append(leading(m) + text) }
+        if let text = m.text, TerminalBinding.saysKamikaze(text) { parts.append(CodexBridge.completionCue) }
         if m.kind == "dictation", let text = m.text, !text.isEmpty {
             parts.append(dictatedHint(m))
             // **`[voice: hesitant]` / `[voice: tense]`, beside the hint, or
@@ -9451,7 +9438,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                   marker: m.selectionMarker,
                                                   extras: m.extraSelections,
                                                   inlined: m.inlinedSelections))
-        // **`[Focused window: …]` is gone** (2026-09-19). Victor's template has
+        // **`[Focused window: …]` is gone** (2026-09-19). the original author's template has
         // no slot for it and the whole point of the template is that the footer
         // stops repeating what the sentence already carries: the app is named in
         // the one place it answers a question — the highlight's own token, which
@@ -9466,7 +9453,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // desktop into a context window nobody asked to spend.
         parts.append(contentsOf: artifactsClause(m))
         if let clause = filmClause(m.films) { parts.append(clause) }
-        // **The words, a blank line, then one clause per line** (Victor,
+        // **The words, a blank line, then one clause per line** (the original author,
         // 2026-09-07: *"vreau să-i dai două linii goale … după mesajul dictat, și
         // textele ajutătoare să fie fiecare începând pe rând nou"*).
         //
@@ -9484,7 +9471,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // its own line breaks cannot fragment the sentence; the structure below
         // is the app's, not the recogniser's.
         //
-        // Why it is worth it: this envelope is read by Victor as often as by an
+        // Why it is worth it: this envelope is read by the original author as often as by an
         // agent — `⌘⇧P` pastes exactly this, and the Prompt Log shows it — and
         // five bracketed clauses run together on one line is the shape he has to
         // parse a sentence out of. The shell guard is unaffected: it looks at
@@ -9524,7 +9511,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// having and is **not** where the tokens are: measured, the addressing is a
     /// rounding error beside the pixels, which is why this method is short and
     /// `handoverWidth` has an essay over it.
-    /// `~/Library/Caches/ro.victorrentea.wispr-relay/shots/<stamp>` written as
+    /// `~/Library/Caches/local.walkie-talkie/shots/<stamp>` written as
     /// `$WALKIE_SHOTS/<stamp>`.
     ///
     /// **The variable is real**, exported from `~/.zshrc`, so the shell this
@@ -9585,7 +9572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// **The footer: one row per artifact, keyed by the token that names it**
-    /// (2026-09-19, Victor's template).
+    /// (2026-09-19, the original author's template).
     ///
     /// ```
     /// [📁=$WALKIE_SHOTS/2026-09-19-17-32-15/17-33-02]
@@ -9605,7 +9592,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   met `📸3✂️` mid-sentence does not have to match a file name to it. The
     ///   key and the token are built by the same `ShotMarker.Token`.
     /// - **The folder is said once and stands in as `📁`** — and only when there
-    ///   is something in it. Victor: *"the folder path: only worth adding if
+    ///   is something in it. the original author: *"the folder path: only worth adding if
     ///   there are any artifacts to convey"*.
     /// - **The pointer, the rectangle and the window title are no longer here.**
     ///   The first two are in the token where he pressed; the title went with
@@ -9623,7 +9610,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// was, how long the recording ran, which frame was automatic — against
     /// 10/11 and 11/11 for the envelope this replaces, in **half** the
     /// characters (925 against 1810).
-    /// **The automatic frame's token, in front of the words** — `±` in Victor's
+    /// **The automatic frame's token, in front of the words** — `±` in the original author's
     /// sketch, because it is the one attachment he did not press for and the one
     /// that is simply absent at the caret.
     ///
@@ -9632,7 +9619,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// first. Empty when there is no context frame (every caret dictation) and
     /// when a cue somehow already put it in the words.
     ///
-    /// **Not on Wispr** (2026-09-30). Victor: *"să nu înceapă prompt-ul generat
+    /// **Not on Wispr** (2026-09-30). the original author: *"să nu înceapă prompt-ul generat
     /// cu imagine zero … Prompt-ul să înceapă direct cu ce am dictat eu și
     /// ulterior să fie pozele cu timpii"*. With no word timings nothing else can
     /// stand in the words, so 📸0 goes where the others are — the footer, `at 0:00`.
@@ -9641,10 +9628,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               !m.inlinedShots.contains(n) else { return "" }
         // `auto:` is true here and nowhere else — this *is* the frame he did not
         // press for, and this is the one place that knows it. See `Token.shot`.
-        // **A line of its own** (2026-09-25, Victor, correcting a sent prompt
+        // **A line of its own** (2026-09-25, the original author, correcting a sent prompt
         // by hand: the token is a caption for the frame, not the start of the
         // sentence, and on one line with it the first words read as its label).
-        // **No blank line after it since 2026-09-29** (Victor's edit of a sent
+        // **No blank line after it since 2026-09-29** (the original author's edit of a sent
         // prompt): the newline alone keeps it a caption.
         return ShotMarker.Token.shot(n, mouse: m.mice[screen] ?? nil, auto: true) + "\n"
     }
@@ -9694,7 +9681,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // **The plain frames share one row when they have nothing to say apart**
-        // (2026-09-20). Victor, looking at two rows that differed by one digit:
+        // (2026-09-20). the original author, looking at two rows that differed by one digit:
         // *"Chiar e nevoie de astea? Nu inferă agentul singur că în loc de `1`
         // trebuie să pună `2`?"* — measured, and yes: `evals/envelope-symbols/`,
         // 36 runs over a scene with three of them, Sonnet and Opus both name
@@ -9736,7 +9723,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }()
 
         // **An area whose token is in the words says its corners there, and only
-        // there** (2026-10-07, Victor, reading `[📸1✂️61,341→585,535]` in the
+        // there** (2026-10-07, the original author, reading `[📸1✂️61,341→585,535]` in the
         // sentence and the same four numbers again in its row: *"only the first
         // scissors should say [it]; the rest would only add what's new … the
         // whole thing is inferable from just the number"*). So an inlined area's
@@ -9784,7 +9771,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Written once, where the first of them would have stood, so the
                 // footer still reads in the order the sentence does.
                 if path == plain.first?.path {
-                    // **No `at 800px width` since 2026-09-29** (Victor's edit):
+                    // **No `at 800px width` since 2026-09-29** (the original author's edit):
                     // 12/12 fresh agents still read 800 as the width from the
                     // name and the original's size (`evals/envelope-width/`).
                     rows.append("[📸n = 📁/screenshot-n-\(ScreenCapture.handoverWidth)px.jpg, "
@@ -9797,7 +9784,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                let to = ScreenCapture.moveTarget(for: path) {
                 // **The ⇧-drag** (2026-09-24): two boxes on one clean frame,
                 // and the sentence says which way the arrow points. **No clock
-                // on an area row** (2026-09-24, Victor's edit of the row): the
+                // on an area row** (2026-09-24, the original author's edit of the row): the
                 // corners are the address, and `at 0:02` read as noise beside them.
                 rows.append("[\(ShotMarker.Token.key(shot: n, area: true)) = "
                     + "user-drawn MOVE: the box between corners (x,y) "
@@ -9835,7 +9822,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rows.append(String(format: "[%@ = %@, a contact sheet of the whole %.0fs at %.0f fps; "
                                + "its %d frames are %@/frame-NNNN.jpg, numbered as on the sheet]",
                                ShotMarker.Token.key(film: i + 1),
-                               name(sheet.path), film.duration, ScreenFilm.fps,
+                               shotsRootAbbreviated(sheet.path), film.duration, ScreenFilm.fps,
                                film.frames.count, frames))
         }
         return rows
@@ -9851,7 +9838,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// It was two different shapes before: `[selected: …]` for the subject, with
     /// no offset at all, and `[selected 0:31: …]` per extra, each in its own
-    /// bracket. Victor asked for one shape, the shots clause's — *the agent
+    /// bracket. the original author asked for one shape, the shots clause's — *the agent
     /// should know when in the dictation each selection happened, relative to
     /// what he was saying*.
     ///
@@ -9872,13 +9859,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   one window and talks about another; which one it was is the half a
     ///   quoted string cannot carry.
     /// - **Quoted, and clamped where it always was** (`clampForTerminal`, 400).
-    ///   A selection can be an entire file, and this line is read by Victor as
+    ///   A selection can be an entire file, and this line is read by the original author as
     ///   often as by an agent; the whole text is in the outbox either way.
     /// - Parameter inlined: the selection markers `deliver` found in the words
     ///   and replaced with the highlight itself. Those rows are dropped from
     ///   this list — the paragraph is already in the sentence, quoted where he
     ///   said it, and printing it twice is how an agent comes to think there
-    ///   were two of them. What is left is exactly Victor's fallback: *"în cazul
+    ///   were two of them. What is left is exactly the original author's fallback: *"în cazul
     ///   în care markerul nu este detectat în textul transcris, pui transcripția
     ///   ca acum, la final"*. → `ShotMarker`
     private static func selectionsClause(_ selection: String?, at: TimeInterval?,
@@ -9918,7 +9905,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// is a prompt somebody has to be able to read back, and a selection can be
     /// an entire file.
     /// **The application out of a window reading.** `WindowContext.describe()`
-    /// answers `Google Chrome — Notes on latency budgets`; Victor's token wants
+    /// answers `Google Chrome — Notes on latency budgets`; the original author's token wants
     /// only the first half (*"from app <application-name>"*), because the page
     /// he had open is already in the words he is dictating and the app is the
     /// part that says *where this text came from*.
@@ -9960,7 +9947,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **A highlight is picked up on its own, without the shutter** (2026-09-09).
     ///
-    /// Victor's ask, and his reason: *"de multe ori selectez text și apoi apas
+    /// the original author's ask, and his reason: *"de multe ori selectez text și apoi apas
     /// butonul de back ca să ți-l dau, doar că asta face și poza la ecran, ceea
     /// ce uneori nu-i nevoie. Ai putea să preiei automat textul selectat printr-un
     /// polling, să vezi dacă s-a selectat text nou în timpul dictării … dacă e
@@ -9986,7 +9973,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   A selection made by dragging grows under the cursor — `Hel`,
     ///   `Hello wor`, `Hello world` — and a poll that filed the first thing it
     ///   saw would put a fragment in the message and the whole line beside it.
-    ///   Victor's rule, and his words for what three unchanged reads mean:
+    ///   the original author's rule, and his words for what three unchanged reads mean:
     ///   *"3 selecții identice = m-am oprit"*. At a 1s tick that is two seconds
     ///   of a hand that has stopped moving, which is a much stronger statement
     ///   than one second and costs nothing that matters — the sentence is still
@@ -10020,7 +10007,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   with nothing highlighted takes the first thing he selects as its
     ///   subject, which is `fileSelection`'s existing rule and is exactly right
     ///   here: he starts talking, then selects the thing he is talking about.
-    /// **One second, not the 0.6 it shipped at.** Victor: *"pune 1s în loc de
+    /// **One second, not the 0.6 it shipped at.** the original author: *"pune 1s în loc de
     /// 0,6, să nu fie grabă"*. Nothing downstream of this is in a hurry — the
     /// sentence is still being spoken — and three ticks at a second apart is a
     /// far better statement about a hand having stopped than three at 0.6.
@@ -10040,7 +10027,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Which dictation `polledSeen` belongs to — see `resetPolledForDictation`.
     private var polledSeenFor: Date?
     private var selectionWatch: DispatchSourceTimer?
-    private let selectionQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.selection")
+    private let selectionQueue = DispatchQueue(label: "local.walkie-talkie.selection")
 
     /// On for the length of a dictation, off otherwise — driven from
     /// `syncBorrowedGestures`, the one switch every edge of a dictation passes
@@ -10124,7 +10111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The settle rule needs `selectionSettleReads` seconds of a hand that has
     /// stopped, and a highlight made in the last of those would never be
     /// confirmed — which is precisely the moment he selects the thing he has
-    /// just finished describing. Victor: *"la finele dictării preiei selecția
+    /// just finished describing. the original author: *"la finele dictării preiei selecția
     /// activă încă o dată, să nu fi selectat exact pe final"*.
     ///
     /// **No settling here**, deliberately: the drag is over, or he would not
@@ -10194,7 +10181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// How long a selection gesture goes on counting as *this* sentence's
-    /// subject. Victor asked for five seconds over ten: *"if it's an old
+    /// subject. the original author asked for five seconds over ten: *"if it's an old
     /// selection, more than let's say ten seconds ago or five seconds ago,
     /// five, then not to pick selection when the dictation starts."*
     private static let recentSelectionSeconds: TimeInterval = 5
@@ -10557,7 +10544,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **A plain dictation attaches nothing** (2026-10-08) — the one read every
     /// attachment door asks: the shutter, the crop, a ⌘⇧ pick, a highlight, a
-    /// film, the typing box. Victor: *"If I am in plain dictation mode, there
+    /// film, the typing box. the original author: *"If I am in plain dictation mode, there
     /// shouldn't be possible to take photos … Nor select text … Just plain
     /// dictation mode."* `HotkeyTap.cleanSentenceOpen` is lock-guarded, so any
     /// thread may ask, and it turns false the moment the sentence becomes a
@@ -10573,7 +10560,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func plusOneShot(cursor: NSPoint) {
         guard hasDestination else { return }
         // **A plain dictation takes no picture, at the start or at the end**
-        // (2026-09-23, Victor: *"there is no screenshot in a clean dictation"*).
+        // (2026-09-23, the original author: *"there is no screenshot in a clean dictation"*).
         // The back click is its stop, not a shutter, already; this closes the
         // other door, ⌃⌥P. Asked of the tap's arm, which is lock-guarded — this
         // runs off the main thread, where `cleanSentence` lives.
@@ -10664,7 +10651,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The words on the selection overlay. **English**, like every other string
     /// this app renders — the chip and everything near it go on a projector in
-    /// front of an international room. Victor Addons draws the same overlay in
+    /// front of an international room. the original author Addons draws the same overlay in
     /// Romanian, which is exactly why the strings are a parameter of
     /// `CropSelectionStyle` rather than a constant inside the shared module.
     ///
@@ -10703,7 +10690,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// millisecond with nothing on screen to show for it. This one he watched
     /// himself draw, at the pixels he drew it around; a flash lit over them
     /// afterwards would be the same news, later, on top of the thing he framed.
-    /// It is the same call Victor made in Victor Addons, where the crop's yellow
+    /// It is the same call the original author made in the original author Addons, where the crop's yellow
     /// border went the same day.
     ///
     /// `takenAt` is the **press**, not the release: the shot is named by where
@@ -10733,7 +10720,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // cancel or not.
             self.caretHalo.veiled = true
             self.overlay.veiled = true
-            // **And the spawn's folder menu, for good** (2026-10-08, Victor: *"the
+            // **And the spawn's folder menu, for good** (2026-10-08, the original author: *"the
             // popup for the new session … should hide immediately rather than
             // waiting for me to hover out of it. Sometimes it gets in the way of
             // my selection"*). A drag means he is framing, not choosing; the
@@ -10813,7 +10800,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         publishShotCount()
         // The box he framed flies from where he framed it — the display is not
         // what he pointed at, the box is. **Its outline only** (2026-09-24,
-        // Victor: *"just the border, the rectangle"*).
+        // the original author: *"just the border, the rectangle"*).
         flyShotIntoChip(path, from: movedTo ?? rect, outlineOnly: true)
         return path
     }
@@ -10890,7 +10877,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// *"this button"* resolves to a selector, but *"the error it showed me"*
     /// resolves to nothing unless the words travel.
     ///
-    /// It read `[pointed at: <path> (<text>)]` until then, and Victor named all
+    /// It read `[pointed at: <path> (<text>)]` until then, and the original author named all
     /// three things missing from it in one breath: *"dacă se aleg mai multe
     /// elemente pe parcursul dictării, ele trebuie toate să fie capturate
     /// împreună cu timpul la care au fost clickate … și nu «pointed at» ca text,
@@ -10915,7 +10902,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   the gesture; this one names what arrived, which is a DOM element from a
     ///   browser and not a direction.
     /// - **The move is spelled out in words** rather than as a pair of fields,
-    ///   because the clause is read by an agent as a sentence and by Victor as a
+    ///   because the clause is read by an agent as a sentence and by the original author as a
     ///   receipt, and *moved from 120,340 to 500,205* is the same instruction in
     ///   both readings — his own wording: *"se mută de la XY la XY, coordonata
     ///   originală cu colțul stânga sus"*.
@@ -11101,7 +11088,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// would otherwise queue a second one behind it.
     private var restartAsked = false
 
-    /// **A click on the Dock tile is a restart** (Victor, 2026-09-14) — see
+    /// **A click on the Dock tile is a restart** (the original author, 2026-09-14) — see
     /// `Relaunch` for why the tile had nothing else to do.
     ///
     /// This is the reopen Apple Event: the Dock sends it on every click at a
@@ -11125,7 +11112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// words were going to.
     ///
     /// So the click waits, and says so once. No ceiling: a sentence ends when
-    /// Victor ends it, and the panel holding the prompt is him reading it.
+    /// the original author ends it, and the panel holding the prompt is him reading it.
     private func restartWhenTheSentenceIsDelivered(announced: Bool) {
         guard sentenceInFlight else { return restartNow() }
         if !announced {
@@ -11149,7 +11136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **Why a restart must wait right now, in words — empty means idle**
     /// (2026-09-23). The one definition of *busy* behind the Dock tile's restart,
     /// the deferred quit (`applicationShouldTerminate`) and `GET /test/state.busy`,
-    /// which `relay-restart.sh` polls. Victor: *"make sure it's idle before you
+    /// which `relay-restart.sh` polls. the original author: *"make sure it's idle before you
     /// restart the app … After the clean insert of the text [and submit], only
     /// then restart."* Every engine's microphone, the recogniser still answering,
     /// a Wispr sentence the firewall is holding, the prompt on screen, a sentence
@@ -11366,7 +11353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// Which is exactly why it consults the replacement marker first. Restarting
     /// the relay kills the old one, and reporting *that* as "user closed the
-    /// overlay" would tell the agent to stop watching at the very moment Victor
+    /// overlay" would tell the agent to stop watching at the very moment the original author
     /// asked for a fresh session — the one failure mode worth writing code to
     /// avoid, since it is silent and he would only notice by talking into a void.
     func applicationWillTerminate(_ notification: Notification) {
@@ -11397,7 +11384,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                       latched: Latch? = nil) {
         // **The outbox is not written either.** It used to be, on the grounds
         // that an agent might be watching the queue without a binding — the
-        // `/relay` skill's original mode. Victor settled it on 2026-08-27: with
+        // `/relay` skill's original mode. the original author settled it on 2026-08-27: with
         // the app running from login, that meant every sentence he spoke all day
         // was being filed for a watcher that mostly is not there. Unbound now
         // means inert, and `/relay` gets its destination by binding like
@@ -11434,7 +11421,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                  pendingDeliveryKind = nil; pendingAffect = nil }
         // **A dictation is never dropped for want of a binding any more**
         // (`holdsForBind`): it is built, shown and read exactly as a bound one
-        // is, and `commit` parks it for the terminal Victor is about to point
+        // is, and `commit` parks it for the terminal the original author is about to point
         // at. Everything else here still is — `session_start`, `session_end` and
         // a bare screenshot are addressed to a watcher of the outbox, and an
         // outbox with nothing bound is the one thing the 2026-08-27 rule was
@@ -11627,7 +11614,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// neither happens.
     ///
     /// **The outbox is written whether or not a terminal is bound**, and that is
-    /// deliberate. It is the log of what Victor said — the record that outlives
+    /// deliberate. It is the log of what the original author said — the record that outlives
     /// the session, the thing to read when a delivery went somewhere surprising
     /// — and a binding is a second destination, not a replacement for the first.
     /// It also means an agent watching the queue the old way keeps working while
@@ -11641,7 +11628,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// It was the words alone until 2026-09-04, on the argument that the
     /// envelope — `📸 ×2 0:38`, the quoted selection, the picked selectors, the
     /// paths of the frames — is addressed to an agent and is noise in a commit
-    /// message. Victor reversed it: *"paste the whole text with all the image
+    /// message. the original author reversed it: *"paste the whole text with all the image
     /// references and everything"*. The argument was about the wrong caret. The
     /// place this lands is overwhelmingly **another agent** — a second session, a
     /// web chat, an editor's assistant — and there the screenshots and the
@@ -11660,7 +11647,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// **The newest sentence in the log, read once and remembered** — the answer
     /// to *what does `⌘⇧P` paste when this process has not heard one yet*.
     ///
-    /// Victor, 2026-09-22: *"în prompt history apar elemente, dar «paste last
+    /// the original author, 2026-09-22: *"în prompt history apar elemente, dar «paste last
     /// prompt» e dezabilitat. Nu prea are sens asta, nu?"* — and it does not:
     /// `lastDictation` lives in memory and is born nil, so every relaunch (a
     /// Dock click, `relay-restart.sh`, a rebuild) greyed the row out while the
@@ -11854,7 +11841,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // **Every sentence that leaves gets the `⌘⇧P` reminder** (2026-09-23) —
         // a bound terminal, a new session, a sentence released by the bind it
-        // was held for, Wispr's own routed through here. Victor: *"indiferent
+        // was held for, Wispr's own routed through here. the original author: *"indiferent
         // prin ce mecanism am închis o dictare … uneori îl plasez greșit"*. A
         // held sentence returned above and gets it when it is released, since
         // until then it has landed nowhere to be wrong about. Hopped to main
@@ -11903,14 +11890,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **A sentence spoken with nothing bound, and the clock it is kept under.**
     ///
-    /// Victor's ask, 2026-09-11: *"tot ce pot să fac când sunt legat de un
+    /// the original author's ask, 2026-09-11: *"tot ce pot să fac când sunt legat de un
     /// terminal să pot să fac și atunci când sunt nelegat, urmând a mă lega
     /// ulterior"* — the second half is the feature. He has a thought before he
     /// has a window for it, and until now the app's answer was to refuse the
     /// gesture outright (*Unbound is inert*), which meant the thought had to
     /// survive the trip to the terminal in his head instead.
     ///
-    /// **A queue, delivered in order** (Victor's Q3, 2026-09-26: *two held
+    /// **A queue, delivered in order** (the original author's Q3, 2026-09-26: *two held
     /// sentences — both are kept*). It was one sentence until then — a second
     /// dictation replaced the first, silently (TD2: the bind delivered BRAVO and
     /// ALFA was gone; ⌘⇧P had it, and nobody was told). Each sentence keeps its
@@ -11995,7 +11982,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **⌘⇧P — the last dictation, again, wherever the caret is.**
     ///
-    /// Dictating is how Victor writes, and the agent is not the only place his
+    /// Dictating is how the original author writes, and the agent is not the only place his
     /// words belong: the same sentence is often wanted in a commit message, a
     /// chat or a form a minute later. Saying it twice is worse than saying it
     /// once — the second take is never the same sentence, and it costs another
@@ -12030,7 +12017,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `pasteLastDictation`, its first caller.
     ///
     /// The clipboard is deliberately **not** restored, unlike the blind paste in
-    /// `TerminalBinding`: there the relay borrows it behind Victor's back, here
+    /// `TerminalBinding`: there the relay borrows it behind the original author's back, here
     /// he asked for the words, and keeping them is what makes a paste that landed
     /// somewhere unhelpful recoverable with one ⌘V of his own.
     ///
@@ -12068,7 +12055,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// **Q17 (2026-09-28): the clipboard always holds the finished sentence** —
     /// the prompt envelope for a relay sentence, the clean words for a plain one,
-    /// whatever the engine and wherever it went. Victor: *"întotdeauna la finalul
+    /// whatever the engine and wherever it went. the original author: *"întotdeauna la finalul
     /// dictării cu walkie-talkie să rămână în clipboard ce s-a dictat … indiferent
     /// ce și cum."* Never restored: that is the feature (⌘⇧P went with it).
     ///
@@ -12154,7 +12141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         commit(m)
-        // **The send flight** (Victor, 2026-09-04): the panel the prompt was
+        // **The send flight** (the original author, 2026-09-04): the panel the prompt was
         // just read on flies to the terminal the words were sent to, growing
         // into that window's frame — *"once the timer expires or it sends to
         // the terminal I would love it to pan and increase the size until it
@@ -12177,7 +12164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// keystroke targets have no window this app can name, and a flight toward
     /// a guessed rectangle is worse than none.
     ///
-    /// **An outline, never a picture** — Victor, 2026-09-07: *"când dialogul se
+    /// **An outline, never a picture** — the original author, 2026-09-07: *"când dialogul se
     /// duce spre terminal, vreau să se ducă spre un border doar … nu mai știu
     /// mental ce era în acel terminal, doar să înțeleg că se duce într-un
     /// terminal, undeva"*. It carried the panel's own drawing, which is the
@@ -12204,7 +12191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch target.handle {
         case .terminalApp(let t): tty = t
         case .tmux(_, let t): tty = t
-        case .ide, .keystroke: tty = nil
+        case .ide, .keystroke, .codex: tty = nil
         }
         guard let tty = tty else { return giveUp() }
         // AppleScript, so off the main thread — the same discipline
@@ -12215,7 +12202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             DispatchQueue.main.async {
-                // **A plain outline, from the panel onto the terminal** (Victor,
+                // **A plain outline, from the panel onto the terminal** (the original author,
                 // 2026-09-23, reversing the same morning's picture: *"shouldn't
                 // be an image. It should just be a plain border because taking
                 // screenshots of the screen is not robust"*). The picture needed
@@ -12240,7 +12227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - The sentence queue (Q12, 2026-09-26 batch 6)
 
 /// **One sentence, from its gesture to its delivery** (Q12, 2026-09-26, 19:10,
-/// Victor: *"Da. Max 2 in flight. În ordine."*).
+/// the original author: *"Da. Max 2 in flight. În ordine."*).
 ///
 /// The relay's per-sentence state still lives in `AppDelegate`'s fields — every
 /// path that builds, routes and delivers a sentence reads them there, and that

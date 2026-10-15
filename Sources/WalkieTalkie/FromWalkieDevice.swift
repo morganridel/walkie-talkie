@@ -11,7 +11,7 @@ import Foundation
 /// the device from CoreAudio, 1 brings it back — no GUI, no sudo, no coreaudiod
 /// restart, ~0.2 s. So Wispr, with "From Walkie" first in its ranking, listens to
 /// the relay while it runs, and falls back to the next microphone the moment the
-/// device disappears — which is why a quit turns it off. A crash cannot; Victor
+/// device disappears — which is why a quit turns it off. A crash cannot; the original author
 /// Addons' watchdog turns it off within 5 s of the relay being gone.
 ///
 /// A Mac without the driver installed simply has no box: every call is a logged no-op.

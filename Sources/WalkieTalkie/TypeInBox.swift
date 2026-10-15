@@ -2,7 +2,7 @@ import AppKit
 
 /// **A few typed letters, into the prompt being spoken** (2026-10-07).
 ///
-/// Victor: *"sometimes I would like to type a word or two … when I'm dictating
+/// the original author: *"sometimes I would like to type a word or two … when I'm dictating
 /// it is hard to spell [it] … the back button moved to the bottom … would open
 /// up a very tiny input text right next to the cursor, focused for me to type a
 /// few letters … that would expand the more I write, and that would be

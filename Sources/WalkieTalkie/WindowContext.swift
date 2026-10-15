@@ -16,7 +16,7 @@ import ApplicationServices
 /// files; `IntelliJ IDEA — OwnerController.java` and `IntelliJ IDEA —
 /// OwnerRepository.java` tell them apart before either is opened.
 ///
-/// The three cases Victor named are all one mechanism, which is why it is worth
+/// The three cases the original author named are all one mechanism, which is why it is worth
 /// having only one: Chrome puts the **page title** in its window title, both
 /// IDEs put the **project and the open file** in theirs, and a terminal puts
 /// whatever the shell or the agent last set — the same `custom title` the chip
@@ -29,7 +29,7 @@ enum WindowContext {
     /// **Sampled at the gesture**, never inside the capture — the same rule the
     /// cursor position and the dictation offset already follow, and for the same
     /// reason: `screencapture` is a subprocess we wait on, and by the time it
-    /// returns Victor has moved on to whatever he is talking about next. A title
+    /// returns the original author has moved on to whatever he is talking about next. A title
     /// read afterwards would name the window he *ended up* in front of.
     static func describe() -> String? {
         guard let app = frontmostApp() else { return nil }
@@ -47,13 +47,13 @@ enum WindowContext {
 
     /// Drop the app's own name where the window title repeats it.
     ///
-    /// Chrome titles its window `Netflix - Google Chrome – Victor (Vic)`, so the
+    /// Chrome titles its window `Netflix - Google Chrome – the original author (Vic)`, so the
     /// unedited reading comes out
-    /// `Google Chrome — Netflix - Google Chrome – Victor (Vic)`: the app is
+    /// `Google Chrome — Netflix - Google Chrome – the original author (Vic)`: the app is
     /// named twice and the profile is named once, and the only word an agent
     /// needed was *Netflix*. Cutting from the app's name takes the profile with
     /// it, which is the right call — which Chrome profile a tab was open in has
-    /// never been the subject of a sentence Victor dictated.
+    /// never been the subject of a sentence the original author dictated.
     ///
     /// Matched on the separator too (` - ` / ` – `, hyphen and en dash, since
     /// Chrome uses both in one title) rather than on a bare substring: a page

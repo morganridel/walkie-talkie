@@ -121,7 +121,7 @@ enum WisprFlowDB {
 /// ## Why this is the delivery the wrap was looking for
 ///
 /// Three candidates for *take Wispr's words without letting Wispr put them
-/// anywhere* were tried on 2026-09-13 and two were rejected by Victor:
+/// anywhere* were tried on 2026-09-13 and two were rejected by the original author:
 ///
 /// - **The sink** — a borderless window that takes the key focus for the length
 ///   of the dictation. It works (measured 3/3: Wispr picks its insertion target
@@ -282,7 +282,7 @@ enum WisprScratchpad {
     static let windowName = "Scratchpad"
 
     /// **What kind of window it is** — read from the window server, because the
-    /// thing Victor objected to is not in Accessibility at all.
+    /// thing the original author objected to is not in Accessibility at all.
     ///
     /// He tried it by hand and said what it does: *the Scratchpad sits on top of
     /// every other window* for the two or three seconds it exists. That is a
@@ -524,7 +524,7 @@ enum WisprScratchpad {
 
     /// **Where the parked window went, and whether Wispr kept it there.**
     ///
-    /// Victor's ask: the Scratchpad is a side effect of the wrap, not something
+    /// the original author's ask: the Scratchpad is a side effect of the wrap, not something
     /// he asked to look at, so it goes to the bottom-right corner of the second
     /// display (the main one's corner when there is only one), as small as Wispr
     /// will allow and mostly off the edge — a sliver, so that it is visible
@@ -535,7 +535,7 @@ enum WisprScratchpad {
     private(set) static var minimumSize: CGSize?
     /// The frame the window had the last time it was seen, whatever that was.
     private(set) static var lastSeenFrame: CGRect?
-    /// **Has it ever had the keyboard?** Victor's real worry about this wrap is
+    /// **Has it ever had the keyboard?** the original author's real worry about this wrap is
     /// one of his own keystrokes landing in Wispr's note, so the answer is
     /// measured rather than asserted — polled at 50 ms for the whole of every
     /// Scratchpad dictation.
@@ -719,7 +719,7 @@ enum WisprScratchpad {
 
         // **What it is, once per session.** `AXSubrole` says what Wispr calls
         // it; `kCGWindowLayer` says whether it floats — which is the property
-        // Victor objected to and the one AX cannot answer.
+        // the original author objected to and the one AX cannot answer.
         if windowSubrole == nil {
             var sub: CFTypeRef?
             if AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &sub) == .success {
@@ -795,7 +795,7 @@ enum WisprScratchpad {
     private(set) static var closeMs: Double?
     private static var armedAt: Date?
     /// **How long it was on screen where he could see it** — first sight to
-    /// parked. Victor's target is zero, which needs Wispr to reopen it already
+    /// parked. the original author's target is zero, which needs Wispr to reopen it already
     /// parked; until it does, this is the poll's own latency plus the AX calls.
     private(set) static var visibleMs: Double?
     /// Called the moment the window is confirmed gone, with how long it was up,
@@ -815,7 +815,7 @@ enum WisprScratchpad {
     private(set) static var lastOpenMs: Double?
 
     /// **The watch starts at the chord, not at the release** (2026-09-13,
-    /// corrected by Victor and by the runner's first `scratchpad-hold`).
+    /// corrected by the original author and by the runner's first `scratchpad-hold`).
     ///
     /// The window appears at the **start of the hold**, the way a tap would, and
     /// stays for the whole sentence — so the thing he objected to, a panel
@@ -860,7 +860,7 @@ enum WisprScratchpad {
     }
 
     /// **On for the length of a Scratchpad dictation, and off the rest of the
-    /// day.** What it is watching for is the one thing Victor is actually
+    /// day.** What it is watching for is the one thing the original author is actually
     /// worried about: the note taking the keyboard while he is typing.
     static func beginWatch(interval: TimeInterval = 0.05) {
         if let watch, abs(watch.timeInterval - interval) < 0.001 { return }
@@ -955,7 +955,7 @@ enum WisprScratchpad {
                 abs((f?.minX ?? 0) - p.minX) > 2 || abs((f?.minY ?? 0) - p.minY) > 2
             } ?? true
             if moved, parkedFrame != nil { reopenedElsewhere += 1 }
-            // **Parked before anything else, and before the close.** Victor's
+            // **Parked before anything else, and before the close.** the original author's
             // objection is not that the window exists, it is that it *floats
             // over his work* while it does — so the first thing done to it is to
             // put it where it cannot, and only then is it asked to go.

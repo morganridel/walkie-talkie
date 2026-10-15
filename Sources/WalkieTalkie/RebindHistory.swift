@@ -3,7 +3,7 @@ import Foundation
 /// **Every destination the relay has been pointed at, most recent first** — the
 /// list behind the menu's *Rebind to*.
 ///
-/// **The problem it answers is Victor's, said plainly: *"nu mai știu în ce
+/// **The problem it answers is the original author's, said plainly: *"nu mai știu în ce
 /// terminal am făcut ce task"*.** A day's work is fifteen to twenty Claude Code
 /// sessions in Terminal.app, and by the afternoon the window that was fixing the
 /// Bluetooth keep-alive is somewhere in the pile behind PowerPoint. Everything
@@ -12,7 +12,7 @@ import Foundation
 /// kept the one before.
 ///
 /// **It is a log of bindings, not a scan of the machine.** Nothing here goes
-/// looking for terminals — a session Victor never spoke to does not appear, by
+/// looking for terminals — a session the original author never spoke to does not appear, by
 /// design (*"strict ceva recent"*). What earns a row is having been a
 /// destination, which is also what makes the list short enough to read.
 ///
@@ -63,7 +63,7 @@ final class RebindHistory {
         /// that finds the target gone — see `TerminalBinding.adopt`.
         var unboundAt: Date?
         /// **Whether this app opened the window itself** (`SpawnTerminal`) as
-        /// opposed to being pointed at one already on screen. Victor's ask: a
+        /// opposed to being pointed at one already on screen. the original author's ask: a
         /// session he started by talking at nothing reads differently from one he
         /// had already been working in, and the menu marks it ✨.
         ///
@@ -97,7 +97,7 @@ final class RebindHistory {
     /// on whatever background thread the bind ran on.
     func adopted(_ target: TerminalBinding.Target, spawned: Bool) {
         mutate { entries in
-            var entry = Entry(tty: target.handle.deviceTTY,
+            var entry = Entry(tty: target.address.hasPrefix("codex:") ? target.address : target.handle.deviceTTY,
                               address: target.address,
                               label: target.label,
                               appName: target.appName,
@@ -184,7 +184,7 @@ final class RebindHistory {
 
     /// `42s ago`, `7 min ago`, `2 h ago`, `3 d ago`.
     ///
-    /// **Seconds are spelled out below a minute** and not rounded away — Victor
+    /// **Seconds are spelled out below a minute** and not rounded away — the original author
     /// asked for *"câte secunde a trecut de când m-am deconectat"*, and the
     /// binding he wants back is very often the one he left ninety seconds ago.
     static func elapsed(since: Date, now: Date = Date()) -> String {

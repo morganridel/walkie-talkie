@@ -4,7 +4,7 @@ import QuartzCore
 /// **A map pin standing on the caret for the whole of a caret dictation — and
 /// glinting when he falls quiet** (2026-10-14).
 ///
-/// Victor: *"When I dictate at caret, simple dictation or prompt at caret,
+/// the original author: *"When I dictate at caret, simple dictation or prompt at caret,
 /// there should be the same icon as the one displayed in the tooltip but larger
 /// like a pin on Google Maps, which is pointing exactly to where the caret is
 /// … And if that … cursor location changes, [the pin] should follow it. And
@@ -93,7 +93,7 @@ final class DropArrow {
     }
 
     /// **No caret to stand on — the pin is grey and crossed out, and never
-    /// shines** (2026-10-14, Victor: *"when you don't have where to put the pin,
+    /// shines** (2026-10-14, the original author: *"when you don't have where to put the pin,
     /// there is no cursor, tell that visually somehow"*). Placed by `CaretHalo`
     /// on the middle of the window the words would go to (`noCaretAt`). Grey
     /// because the red is *here*; a red ✕ because that is *nowhere* in every

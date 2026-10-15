@@ -1,7 +1,7 @@
 import Foundation
 
 /// Append-only JSONL queue read by the agent side (a blocking `wc -l`
-/// watcher armed by the skill). One line = one message from Victor.
+/// watcher armed by the skill). One line = one message from the original author.
 ///
 /// Appends are serialised on a private queue and written with a single
 /// `write(2)` of a newline-terminated blob, so a watcher that wakes mid-append
@@ -19,7 +19,7 @@ enum Outbox {
     /// **Where the bound tty is published**, for the status line to read.
     ///
     /// The chip says which session the words go to, and it says it beside the
-    /// cursor — which is the one place Victor is not looking while an agent
+    /// cursor — which is the one place the original author is not looking while an agent
     /// works, and which macOS hides the moment he touches the keyboard. In a
     /// screen of identical terminals that left *which of these is bound?* with
     /// no answer anywhere in the window itself. The status line is the row that
@@ -56,15 +56,15 @@ enum Outbox {
     /// **Screenshots live in Caches, not next to the outbox, and not in `/tmp`.**
     ///
     /// They are a staging area, never an archive: each retina JPG is a megabyte
-    /// or two, Victor dictates all day, and what any of them is *for* is over
+    /// or two, the original author dictates all day, and what any of them is *for* is over
     /// within the turn that reads it. Caches is the one folder that emptying the
     /// Trash, Storage Management and every cleaner tool actually reach, and macOS
     /// may purge it under disk pressure — all of which is welcome here. `/tmp`
     /// only clears on reboot and on a 3-day sweep, neither of which is "when the
-    /// disk is full". It is the same call `ScreenshotManager` makes in Victor
+    /// disk is full". It is the same call `ScreenshotManager` makes in the original author
     /// Addons, for the same reason.
     ///
-    /// The **outbox stays where it is**: it is the log of what Victor said, the
+    /// The **outbox stays where it is**: it is the log of what the original author said, the
     /// record that outlives the session, and a log the system may delete under
     /// pressure is not a log.
     static let cacheRoot = FileManager.default
@@ -72,10 +72,10 @@ enum Outbox {
         // **The old bundle id, on purpose.** The app is Walkie Talkie now, but its
         // identity to macOS is unchanged — see `build-app.sh` — because TCC keys
         // Accessibility, Screen Recording and the microphone to that string, and
-        // a new one costs three grants Victor has to re-tick in System Settings.
+        // a new one costs three grants the original author has to re-tick in System Settings.
         // The Caches folder follows the bundle id rather than the name, so it is
         // the one place the old name survives, and it survives for a reason.
-        .appendingPathComponent("ro.victorrentea.wispr-relay/shots")
+        .appendingPathComponent("local.walkie-talkie/shots")
 
     /// One folder per relay session, stamped with when it started.
     ///
@@ -102,7 +102,7 @@ enum Outbox {
     /// the envelope means *this sentence's artifacts*, and every picture in it
     /// is `screenshot-<n>` with nothing appended.
     ///
-    /// **Flat, not `<session>/<dictation>`.** Victor, reading
+    /// **Flat, not `<session>/<dictation>`.** the original author, reading
     /// `$WALKIE_SHOTS/2026-09-30-23-56-21/07-20-31`: *"Shouldn't it just be the
     /// date and then the hour and the second of the start of the dictation?
     /// Why are there 2 subfolders?"* The session stamp told the agent nothing it
@@ -132,7 +132,7 @@ enum Outbox {
     static var cancelledDir = cacheRoot.deletingLastPathComponent()
         .appendingPathComponent("cancelled")
 
-    private static let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.outbox")
+    private static let queue = DispatchQueue(label: "local.walkie-talkie.outbox")
 
     static func prepare() {
         adoptLegacyHome()
@@ -152,7 +152,7 @@ enum Outbox {
 
     /// The home folder was `~/.wispr-relay` until the app was renamed, and it is
     /// **moved rather than recreated**: it holds the voice corpus — 300 MB of
-    /// Victor's own speech paired with transcripts, and the one thing in this app
+    /// the original author's own speech paired with transcripts, and the one thing in this app
     /// that cannot be regenerated at any price. Starting fresh beside it would
     /// have orphaned every sample.
     ///
@@ -174,7 +174,7 @@ enum Outbox {
     ///
     /// **A `--home` override skips it**, and that has to be checked rather than
     /// assumed: without the guard, a test instance pointed at a scratch directory
-    /// would drag Victor's real corpus into it — the one folder here that cannot
+    /// would drag the original author's real corpus into it — the one folder here that cannot
     /// be regenerated, moved somewhere he would never think to look.
     ///
     /// This is the one place the old name is allowed to appear in a path, and it
@@ -235,7 +235,7 @@ enum Outbox {
     /// the relay ran, sitting where no amount of tidying would find them.
     ///
     /// **To the Trash, not to `rm`.** Old outbox lines still name these files,
-    /// and a picture Victor might still want to open is not something to delete
+    /// and a picture the original author might still want to open is not something to delete
     /// out from under him on a launch he did not ask a question with. The Trash
     /// is also literally the answer he asked for — they go when he empties it —
     /// and it is the one destination that needs no new habit.
@@ -267,7 +267,7 @@ enum Outbox {
     /// dictation started (nil when there was none); `paths` any screenshots that
     /// belong to this message — always an array, because shots taken while
     /// dictating are delivered together with that dictation.
-    /// `screen` is the automatic capture of the display Victor was looking at
+    /// `screen` is the automatic capture of the display the original author was looking at
     /// when he started talking — offered as context to consult if the words need
     /// it, as opposed to `paths`, which are shots he deliberately took.
     /// `elements` are the DOM nodes he ⌘-clicked in Chrome while this message was

@@ -24,7 +24,7 @@ import AppKit
 /// puts it back afterwards.
 enum OverlayStates {
 
-    /// One photograph: what it is, when Victor sees it, and what the picture is
+    /// One photograph: what it is, when the original author sees it, and what the picture is
     /// of. `apply` leaves the overlay in exactly that state — every state is set
     /// up from scratch after `reset`, so nothing here depends on what came before.
     struct Shot {
@@ -117,7 +117,7 @@ enum OverlayStates {
 
             Shot(slug: "spawn", group: "Dictating", title: "This sentence opens a new session",
                  when: "🔼 ↑ — the forward button held, mouse moved up (🛞🛞 with Logi gestures off): the dictation goes to a terminal that does not exist yet.",
-                 note: "**One row, and the ✨ is all that is left of the destination.** It had a title row of its own — Terminal's icon, ✨, `workspace` — and Victor took it off on 2026-09-02: the folder is *always* `~/workspace`, which is the whole point of the gesture, and the icon names an app he is not looking at yet. So the mark rides in front of `Listening…` and the row above it goes. The 🔴 keeps the glyph column: a frozen recording row is indistinguishable from a hung app, and that is the one thing the pulse is here to rule out.",
+                 note: "**One row, and the ✨ is all that is left of the destination.** It had a title row of its own — Terminal's icon, ✨, `workspace` — and the user took it off on 2026-09-02: the folder is *always* `~/workspace`, which is the whole point of the gesture, and the icon names an app he is not looking at yet. So the mark rides in front of `Listening…` and the row above it goes. The 🔴 keeps the glyph column: a frozen recording row is indistinguishable from a hung app, and that is the one thing the pulse is here to rule out.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setSpawnDestination("✨ workspace", mark: "✨")
@@ -127,7 +127,7 @@ enum OverlayStates {
 
             Shot(slug: "spawn-folder", group: "Dictating", title: "…and he picked which folder",
                  when: "After clicking a row in the folder menu, for the rest of that dictation.",
-                 note: "**The chosen folder gets the row a binding would have taken**, behind the ✨ (Terminal's icon until 2026-10-07, *\"the new [✨] should be there instead of that console icon\"*) — Victor's ask, 2026-09-07: *\"ca și cum aș fi fost deja bind-uit la un alt astfel de terminal … să știu dacă am setat ce trebuie\"*. The argument that removed this row was that the folder is *always* `~/workspace`, so it said nothing; that holds until he picks one out of five, at which point the only place the choice could be checked was a label that had already gone. Since 2026-10-07 the ✨ is that row's icon and leaves `Listening...`: *not yet running* is said once, beside the folder it will run in.",
+                 note: "**The chosen folder gets the row a binding would have taken**, behind the ✨ (Terminal's icon until 2026-10-07, *\"the new [✨] should be there instead of that console icon\"*) — your ask, 2026-09-07: *\"ca și cum aș fi fost deja bind-uit la un alt astfel de terminal … să știu dacă am setat ce trebuie\"*. The argument that removed this row was that the folder is *always* `~/workspace`, so it said nothing; that holds until he picks one out of five, at which point the only place the choice could be checked was a label that had already gone. Since 2026-10-07 the ✨ is that row's icon and leaves `Listening...`: *not yet running* is said once, beside the folder it will run in.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setSpawnDestination("training-assistant", mark: "✨", icon: RelayWindow.sparkleGlyph)
@@ -145,7 +145,7 @@ enum OverlayStates {
             },
 
             Shot(slug: "held-waiting", group: "At rest", title: "Unbound, with sentences waiting for a bind",
-                 when: "A sentence was spoken with nothing bound (Victor's Q1, 2026-09-26: held, never pasted at the caret) — from the moment it is held until a bind sends it or its five minutes run out. Two here.",
+                 when: "A sentence was spoken with nothing bound (your Q1, 2026-09-26: held, never pasted at the caret) — from the moment it is held until a bind sends it or its five minutes run out. Two here.",
                  note: "**The one chip an unbound pointer may carry.** *The pointer is clean when nothing is bound* still holds for a relay with nothing to say; this row is something to say — *\"mi-ar trebui un cue vizual să știu că trebuie să las mesajul din memorie\"*. It counts what `awaitingBind` holds, so a second sentence says `2`, and it goes the instant a bind delivers them. Built like `☠️ Kamikaze`: an emoji in the icon column, words beside it. It is announced once with a flash, `📨 held — bind a terminal to send it`.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setHeldCount(2)
@@ -183,7 +183,7 @@ enum OverlayStates {
             Shot(slug: "replace-wispr-attached", group: "At rest",
                  title: "…and he attached things to it anyway",
                  when: "The shutter or a ⌘⇧-pick during a caret dictation — live in this mode since 2026-09-08.",
-                 note: "It borrowed nothing before, on the argument that both gestures add to a *message* and this mode has none. Victor overruled the premise: a paste is a message whose recipient happens to be whatever holds the caret, which is routinely another agent. So the rows a bound dictation grows, this one grows too — the tally included — and what gets pasted carries `[the shots I took: …]`, `[selected: …]` and `[elements I picked in Chrome: …]` in the wording the terminal already uses. **The highlights joined them on 2026-09-09**, on his ask: they were the one deliberate attachment this envelope refused, and the refusal was really about the *probe* rather than about the highlight. What it still does not carry is anything **automatic**: no opening frame, no `[Focused window: …]` and no `dictated aloud` hint. Attach nothing and it pastes the words alone, byte for byte as before.",
+                 note: "It borrowed nothing before, on the argument that both gestures add to a *message* and this mode has none. the user overruled the premise: a paste is a message whose recipient happens to be whatever holds the caret, which is routinely another agent. So the rows a bound dictation grows, this one grows too — the tally included — and what gets pasted carries `[the shots I took: …]`, `[selected: …]` and `[elements I picked in Chrome: …]` in the wording the terminal already uses. **The highlights joined them on 2026-09-09**, on his ask: they were the one deliberate attachment this envelope refused, and the refusal was really about the *probe* rather than about the highlight. What it still does not carry is anything **automatic**: no opening frame, no `[Focused window: …]` and no `dictated aloud` hint. Attach nothing and it pastes the words alone, byte for byte as before.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setSpawnDestination("caret", icon: RelayWindow.pinGlyph)
@@ -211,7 +211,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-opening", group: "Dictating", title: "Opening Wispr Flow — its microphone is not open yet",
                  when: "A Wispr Flow sentence, from the gesture until Wispr's own microphone opens (0.3–0.7 s warm, 5–6 s cold).",
-                 note: "**Q20 (2026-09-28, Victor's Q8 = A).** A cold Wispr is deaf for up to six seconds after the chord, and the chip used to say `Listening` over it — the first words went nowhere and nothing said so. It says `Opening Wispr Flow...` until the 100 ms poll or the CoreAudio edge sees Wispr's microphone open (`WisprFlowSource.micOpened`), then the ordinary row. The relay's own recording runs from the gesture regardless, which is what the local fallback (Q14) transcribes if Wispr never hears the sentence.",
+                 note: "**Q20 (2026-09-28, your Q8 = A).** A cold Wispr is deaf for up to six seconds after the chord, and the chip used to say `Listening` over it — the first words went nowhere and nothing said so. It says `Opening Wispr Flow...` until the 100 ms poll or the CoreAudio edge sees Wispr's microphone open (`WisprFlowSource.micOpened`), then the ordinary row. The relay's own recording runs from the gesture regardless, which is what the local fallback (Q14) transcribes if Wispr never hears the sentence.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -222,7 +222,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-long", group: "Dictating", title: "Two minutes in",
                  when: "Any dictation that has been running for a whole minute — and every one that runs for several.",
-                 note: "**`(2m)` is the one fact the rest of the row cannot carry.** `Listening...` fills in the first three voiced seconds and then never changes again, so from that moment on nothing distinguishes a sentence from a monologue — and a monologue costs real seconds at the other end, since the decode is charged per second of audio and the panel he has to read while Cancel is running is as long as he made it. Victor's ask, 2026-09-09: *\"să pui după toată povestea o paranteză rotundă în care treci numărul de minute\"*. **Nothing under a minute**: `(0m)` would be a readout saying only that a clock exists, an inch from what he is reading, for the length of every ordinary dictation — which is the rent the model id was taken off this row for paying.",
+                 note: "**`(2m)` is the one fact the rest of the row cannot carry.** `Listening...` fills in the first three voiced seconds and then never changes again, so from that moment on nothing distinguishes a sentence from a monologue — and a monologue costs real seconds at the other end, since the decode is charged per second of audio and the panel he has to read while Cancel is running is as long as he made it. your ask, 2026-09-09: *\"să pui după toată povestea o paranteză rotundă în care treci numărul de minute\"*. **Nothing under a minute**: `(0m)` would be a readout saying only that a clock exists, an inch from what he is reading, for the length of every ordinary dictation — which is the rent the model id was taken off this row for paying.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -231,8 +231,8 @@ enum OverlayStates {
             },
 
             Shot(slug: "listening-overrun", group: "Dictating", title: "Eight minutes — the wash starts creeping",
-                 when: "From the eighth minute of a single dictation. Nothing Victor has ever said reaches it by talking.",
-                 note: "**A microphone left open is the one failure the row could not report.** `Listening...` says exactly the same thing at ten minutes as at ten seconds, and `(8m)` is a number he has to read and then compare against a ceiling he has to remember. So the row itself changes: a brick wash creeps across it left to right over the whole of the eighth minute — the same direction the bar fills in, so the two readings never fight — and reaching the far end is the one-minute warning. **Behind the text, never in it**: the ink on this row is spoken for (the letters are the ramp, the tag is `HQ`, the grey is *not yet*), and a background is the only channel left that overwrites no meaning already there. Victor, 2026-09-20: *\"de la opt minute să înceapă progresiv … un fel de background pe subtext … cărămiziu, ceva care să se întindă pe tot textul timp de un minut, încet\"*. Shown here about halfway across.",
+                 when: "From the eighth minute of a single dictation. Nothing the user has ever said reaches it by talking.",
+                 note: "**A microphone left open is the one failure the row could not report.** `Listening...` says exactly the same thing at ten minutes as at ten seconds, and `(8m)` is a number he has to read and then compare against a ceiling he has to remember. So the row itself changes: a brick wash creeps across it left to right over the whole of the eighth minute — the same direction the bar fills in, so the two readings never fight — and reaching the far end is the one-minute warning. **Behind the text, never in it**: the ink on this row is spoken for (the letters are the ramp, the tag is `HQ`, the grey is *not yet*), and a background is the only channel left that overwrites no meaning already there. the user, 2026-09-20: *\"de la opt minute să înceapă progresiv … un fel de background pe subtext … cărămiziu, ceva care să se întindă pe tot textul timp de un minut, încet\"*. Shown here about halfway across.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -254,7 +254,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-cold", group: "Dictating", title: "The first words — too little speech to trust",
                  when: "From the instant the microphone opens until about a second of actual speech has arrived.",
-                 note: "**`Listening...` is a progress bar, and it is empty here.** It fills one character at a time as speech arrives and is full when the last dot lights — a *count*, not a brightness, because a fade over an unknown backdrop gives him nothing to judge \"is it done yet?\" against. What it forecasts: the local model picks a language off a 30-second window before it decodes a word, and with a second of speech in that window the pick is a guess — and a wrong guess is not a wrong word, it is a whole sentence of Turkish made out of Romanian. Counted by re-decoding 803 of his own clips, **by voiced seconds**: 42% under one voiced second come back in a language Victor does not speak, 15% between one and two, and 1% past two. (The language pin has since taken that mode to zero — the bar still forecasts everything else that is worse when there is less to hear.)",
+                 note: "**`Listening...` is a progress bar, and it is empty here.** It fills one character at a time as speech arrives and is full when the last dot lights — a *count*, not a brightness, because a fade over an unknown backdrop gives him nothing to judge \"is it done yet?\" against. What it forecasts: the local model picks a language off a 30-second window before it decodes a word, and with a second of speech in that window the pick is a guess — and a wrong guess is not a wrong word, it is a whole sentence of Turkish made out of Romanian. Counted by re-decoding 803 of his own clips, **by voiced seconds**: 42% under one voiced second come back in a language the user does not speak, 15% between one and two, and 1% past two. (The language pin has since taken that mode to zero — the bar still forecasts everything else that is worse when there is less to hear.)",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -264,7 +264,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-warming", group: "Dictating", title: "Halfway — six characters lit",
                  when: "About a second and a half of speech in. Speech, not seconds: if he stops to think, the bar stops with him.",
-                 note: "**It counts `MicRecorder.voicedSeconds`, not the clock**, and that correction is Victor's: *\"uneori eu pur și simplu tac — dacă tac pe microfon și nu vine semnal, nu știu cât de valoroasă e întârzierea asta\"*. The corpus is emphatic — the median dictation is only **38% voiced**, so a wall-clock bar would fill while he was thinking and tell him the one thing it exists not to. Full at **three voiced seconds**: the first bucket where both failure modes are at their floor, about fifteen words at his measured 5.1 words per voiced second, and within a hair of where he put the boundary by feel.",
+                 note: "**It counts `MicRecorder.voicedSeconds`, not the clock**, and that correction is your: *\"uneori eu pur și simplu tac — dacă tac pe microfon și nu vine semnal, nu știu cât de valoroasă e întârzierea asta\"*. The corpus is emphatic — the median dictation is only **38% voiced**, so a wall-clock bar would fill while he was thinking and tell him the one thing it exists not to. Full at **three voiced seconds**: the first bucket where both failure modes are at their floor, about fifteen words at his measured 5.1 words per voiced second, and within a hair of where he put the boundary by feel.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -284,7 +284,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-picks-settled", group: "Dictating", title: "…and four seconds later, with one dragged",
                  when: "Every pick ends here — the selector has had its seconds and the row is the count alone. One of these three was ⌘⇧-dragged.",
-                 note: "`×3` and nothing else, which is Victor\'s ask of 2026-09-09: *\"the Chrome icon should also be followed only by the ×2 … I don\'t want to see the div thing here\"*. It is the selection row\'s bargain one row up, arriving here for the same reason: the selector answers *did the click catch the button or the div around it* at the instant it lands, and after that it is the longest string on the chip restating something already checked, beside a cursor he is trying to work with. **`⤢` is the one thing a count cannot say** — that one of them was dragged, i.e. that the message carries *move it here* and not only *this element*.",
+                 note: "`×3` and nothing else, which is the user\'s ask of 2026-09-09: *\"the Chrome icon should also be followed only by the ×2 … I don\'t want to see the div thing here\"*. It is the selection row\'s bargain one row up, arriving here for the same reason: the selector answers *did the click catch the button or the div around it* at the instant it lands, and after that it is the longest string on the chip restating something already checked, beside a cursor he is trying to work with. **`⤢` is the one thing a count cannot say** — that one of them was dragged, i.e. that the message carries *move it here* and not only *this element*.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -316,7 +316,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-selection-caught", group: "Dictating", title: "The shutter caught a highlight",
                  when: "For a beat after every side-button press that reads a new selection — including one in a Chrome page, which is where it used to read nothing at all.",
-                 note: "His own words back, on a row that was not there a moment ago — deliberately not a flash, since a flash is a panel and a shutter press must not throw one over the work he is photographing. It said `selecting` in front of them until 2026-09-09, when Victor had the verb removed: the row appearing is the receipt. It collapses to `×N` after four seconds, and it truncates at 34 characters.",
+                 note: "His own words back, on a row that was not there a moment ago — deliberately not a flash, since a flash is a panel and a shutter press must not throw one over the work he is photographing. It said `selecting` in front of them until 2026-09-09, when the user had the verb removed: the row appearing is the receipt. It collapses to `×N` after four seconds, and it truncates at 34 characters.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -326,7 +326,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-everything", group: "Dictating", title: "Dictating, everything at once",
                  when: "Rare, and the widest the chip ever gets: three frames taken, picks made, a highlight riding along.",
-                 note: "Five rows beside the cursor. This is the state to look at when a row is added — it is the one that says how much of his screen the chip can cover. **The quotation is above Chrome and Chrome is last**, since 2026-09-09: a highlight belongs to *this* message and goes out with it, while the picks row outlives the message — and a row that shuffles up and down as a highlight comes and goes is a row he has to find again each time. **The counts line up in the icon column**, which is the overview Victor asked for — `📸 ×3`, the quotation, `×3` in Chrome, read downwards — rather than a fourth row restating the other three.",
+                 note: "Five rows beside the cursor. This is the state to look at when a row is added — it is the one that says how much of his screen the chip can cover. **The quotation is above Chrome and Chrome is last**, since 2026-09-09: a highlight belongs to *this* message and goes out with it, while the picks row outlives the message — and a row that shuffles up and down as a highlight comes and goes is a row he has to find again each time. **The counts line up in the icon column**, which is the overview the user asked for — `📸 ×3`, the quotation, `×3` in Chrome, read downwards — rather than a fourth row restating the other three.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -348,7 +348,7 @@ enum OverlayStates {
 
             Shot(slug: "transcribing", group: "Dictating", title: "Waiting on the model",
                  when: "Between the gesture that ends the sentence and the panel that shows what it heard.",
-                 note: "The one row left in which Victor is waiting on the app — `preparing`, the model coming up, was the other, and it stopped existing once the weights started loading at launch instead of at the first gesture. It used to be a flash, which put it at the foot of a panel while the thing it replaced sat at the top. The seconds it used to count down came off on 2026-09-08 — the filling word says the same estimate, and a number ticking toward zero is a deadline to watch.",
+                 note: "The one row left in which the user is waiting on the app — `preparing`, the model coming up, was the other, and it stopped existing once the weights started loading at launch instead of at the first gesture. It used to be a flash, which put it at the foot of a panel while the thing it replaced sat at the top. The seconds it used to count down came off on 2026-09-08 — the filling word says the same estimate, and a number ticking toward zero is a deadline to watch.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setTranscribing(true)
@@ -356,9 +356,9 @@ enum OverlayStates {
                 o.pinTranscribeWarmth(0.45)
             },
 
-            Shot(slug: "transcribing-lora", group: "Dictating", title: "…on Victor's own model",
+            Shot(slug: "transcribing-lora", group: "Dictating", title: "…on your own model",
                  when: "The wait, when the local model is the Engine and its weights are the LoRA trained on his voice.",
-                 note: "**A subscript `ᵥ` after the local model's 💻** (2026-10-04, Victor: *\"pune un v mic după acel măr … dacă e modelul meu cu Lora\"*, then *\"ca indice\"*, and the apple became the laptop: *\"ca să se înțeleagă local\"*) — on `Transcribing via` and on the listening row's arrow alike. Small and lowered in the font itself, and it fills with the bar like the letters round it. The published Turbo weights wear the bare laptop.",
+                 note: "**A subscript `ᵥ` after the local model's 💻** (2026-10-04, the user: *\"pune un v mic după acel măr … dacă e modelul meu cu Lora\"*, then *\"ca indice\"*, and the apple became the laptop: *\"ca să se înțeleagă local\"*) — on `Transcribing via` and on the listening row's arrow alike. Small and lowered in the font itself, and it fills with the bar like the letters round it. The published Turbo weights wear the bare laptop.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setEngineMark(" via \(Glyphs.Engine.mac.rawValue) \(Glyphs.loraMark)")
@@ -369,7 +369,7 @@ enum OverlayStates {
 
             Shot(slug: "transcribing-local-now", group: "Dictating", title: "⌘⌃X — the local model, now",
                  when: "From one second into the wait for ElevenLabs (or Wispr Flow) with *Backup Local Pre-Transcribe* off — never while the microphone is open. With it on, the row is the `💻 local in 3s / ⌘⌃X ...` countdown.",
-                 note: "**The quick exit, written where he is looking** (2026-09-28). Victor: *\"I want a local fallback that I can access during the dictation, at any point, through a key combination displayed in the tooltip\"*. ⌘⌃X closes the microphone as the ordinary stop does and has this Mac transcribe the take — nothing is uploaded; pressed during the wait, the cloud answer is abandoned and only logged when it lands. A row like `📋 Re-paste ⌘V`: an emoji, the words, the keys. The key works from the first sample; the row waits a second into the transcription (*\"only displayed after 1 s after starting the transcribing\"*), so a fast engine never shows it. It goes when the words land.",
+                 note: "**The quick exit, written where he is looking** (2026-09-28). the user: *\"I want a local fallback that I can access during the dictation, at any point, through a key combination displayed in the tooltip\"*. ⌘⌃X closes the microphone as the ordinary stop does and has this Mac transcribe the take — nothing is uploaded; pressed during the wait, the cloud answer is abandoned and only logged when it lands. A row like `📋 Re-paste ⌘V`: an emoji, the words, the keys. The key works from the first sample; the row waits a second into the transcription (*\"only displayed after 1 s after starting the transcribing\"*), so a fast engine never shows it. It goes when the words land.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setTranscribing(true)
@@ -391,7 +391,7 @@ enum OverlayStates {
 
             Shot(slug: "transcribing-fallback-countdown", group: "Dictating", title: "Fallback to local — counting down to the budget",
                  when: "From one second into the wait for ElevenLabs or Wispr Flow with *Backup Local Pre-Transcribe* on (the default), until the engine's p95 for that length runs out.",
-                 note: "**The countdown is on the row with the keys** (2026-10-07; `💻 local in 3s / ⌘⌃X ...` is Victor's own wording, the 💻 in the glyph column — replacing 10-06's `⌘⌃X - 💻 fallback, auto in 3s...`). Victor: *\"put a countdown timer … when the timer expires, the local dictation is automatically injected\"*, then *\"put it like fallback to local in countdown timer and then show the key shortcuts\"*. At the close the relay reads the engine's p95 (`DecodeRate.budget`) and starts the local model `budget − localEta` into the wait, so its words are ready about when the count reaches zero — and then they go in (`via: local-auto`). ⌘⌃X puts them in sooner (`via: local-forced`); the engine's words landing first take the row down and the local ones are discarded. Whole seconds, rounded up; **no engine's name** (*\"don't leak the name of any tool, only the icon\"* — the logo on the first row says which). It replaces the `🤔⏱️` the first row grew past 150 % of the estimate, and 09-29's *offered, never inserted* `Use local`.",
+                 note: "**The countdown is on the row with the keys** (2026-10-07; `💻 local in 3s / ⌘⌃X ...` is your own wording, the 💻 in the glyph column — replacing 10-06's `⌘⌃X - 💻 fallback, auto in 3s...`). the user: *\"put a countdown timer … when the timer expires, the local dictation is automatically injected\"*, then *\"put it like fallback to local in countdown timer and then show the key shortcuts\"*. At the close the relay reads the engine's p95 (`DecodeRate.budget`) and starts the local model `budget − localEta` into the wait, so its words are ready about when the count reaches zero — and then they go in (`via: local-auto`). ⌘⌃X puts them in sooner (`via: local-forced`); the engine's words landing first take the row down and the local ones are discarded. Whole seconds, rounded up; **no engine's name** (*\"don't leak the name of any tool, only the icon\"* — the logo on the first row says which). It replaces the `🤔⏱️` the first row grew past 150 % of the estimate, and 09-29's *offered, never inserted* `Use local`.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setTranscribing(true)
@@ -413,7 +413,7 @@ enum OverlayStates {
 
             Shot(slug: "listening-wispr-starting", group: "Dictating", title: "Wispr Flow is not up — this Mac listens",
                  when: "A sentence started on Engine = Wispr Flow while Wispr is not running, or was launched by the relay under 12 s ago (auto fallback on).",
-                 note: "Victor: *\"10 s startup time is killing\"*. The relay records on its own microphone and the local model has the words at the close; Wispr Flow is launched in the background for the next sentence.",
+                 note: "the user: *\"10 s startup time is killing\"*. The relay records on its own microphone and the local model has the words at the close; Wispr Flow is launched in the background for the next sentence.",
                  shape: "flash", alpha: 0.80) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 o.setListening(true)
@@ -479,7 +479,7 @@ enum OverlayStates {
 
             Shot(slug: "paste-again", group: "Flashes", title: "Re-paste — ⌘V, after every sentence",
                  when: "Five seconds after every delivered sentence (caret, bound terminal, new session, a held sentence's release) and after a cancelled prompt. Never after a cancelled dictation.",
-                 note: "**Q17 (2026-09-28): the clipboard always holds the finished sentence** — the envelope for a prompt, the clean words for a plain one — so the row says `Re-paste` and `⌘V`; ⌘⇧P is gone (it was `Re-paste ⌘⇧P` until 2026-09-28, `On the clipboard ⌘V` for a few hours, `Re-paste ⌘V` since). **An ordinary row**, built like `☠️ Kamikaze`: 📋, the words, then the keys in the chip's own face. It was a keycap in a window of its own until 2026-09-23 — a white outline round the keys in another font — and Victor read the border and the font as wrong. Unbound, it is the chip's only row, which is what puts the chip beside the pointer.",
+                 note: "**Q17 (2026-09-28): the clipboard always holds the finished sentence** — the envelope for a prompt, the clean words for a plain one — so the row says `Re-paste` and `⌘V`; ⌘⇧P is gone (it was `Re-paste ⌘⇧P` until 2026-09-28, `On the clipboard ⌘V` for a few hours, `Re-paste ⌘V` since). **An ordinary row**, built like `☠️ Kamikaze`: 📋, the words, then the keys in the chip's own face. It was a keycap in a window of its own until 2026-09-23 — a white outline round the keys in another font — and the user read the border and the font as wrong. Unbound, it is the chip's only row, which is what puts the chip beside the pointer.",
                  shape: "chip", alpha: 0.80) { o in
                 o.setPasteHint(true)
             },
@@ -544,7 +544,7 @@ enum OverlayStates {
 
             Shot(slug: "prompt-film", group: "The held prompt", title: "The prompt, with a screen recording",
                  when: "The dictation carried a 🎬 film (🔽 ↑ while recording).",
-                 note: "2026-10-08, Victor: the film shows in the strip like a picture, at the end — its middle frame, a red rim, and a red ● with its length where a screenshot carries its m:ss.",
+                 note: "2026-10-08, the user: the film shows in the strip like a picture, at the end — its middle frame, a red rim, and a red ● with its length where a screenshot carries its m:ss.",
                  shape: "panel", alpha: 1.0) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 let frames = mockShots(3)
@@ -555,7 +555,7 @@ enum OverlayStates {
 
             Shot(slug: "prompt-inline", group: "The held prompt", title: "The prompt, with its pictures where they were taken",
                  when: "Word timings placed the markers (ElevenLabs, local): every `[📸N…]` token in the words.",
-                 note: "2026-10-07, Victor: the panel must show *where* each thing landed, to check the annotation. A picture token ends its paragraph, captions the picture drawn under it — the ✂️ cut-out, or the frame — and the words carry on below. A highlight or a picked element is its own indented paragraph. Frames the words did not take (here the automatic one) stay in the strip.",
+                 note: "2026-10-07, the user: the panel must show *where* each thing landed, to check the annotation. A picture token ends its paragraph, captions the picture drawn under it — the ✂️ cut-out, or the frame — and the words carry on below. A highlight or a picked element is its own indented paragraph. Frames the words did not take (here the automatic one) stay in the strip.",
                  shape: "panel", alpha: 1.0) { o in
                 o.setBound(label: "petclinic", folder: "petclinic@main", title: "✳ petclinic — Fix the tax rounding", icon: terminal)
                 let frames = mockShots(3)
@@ -755,7 +755,7 @@ enum OverlayStates {
     }
 
     /// Stand-in frames for the strip. Drawn rather than borrowed from a real
-    /// dictation: the shots that ride with a prompt are pictures of Victor's
+    /// dictation: the shots that ride with a prompt are pictures of the original author's
     /// screen, and a documentation page is the last place they belong.
     private static func mockShots(_ count: Int) -> [String] {
         let dir = NSTemporaryDirectory() + "walkie-state-shots"

@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 
-/// **A window of this app's own that stands in for the app Victor is dictating
+/// **A window of this app's own that stands in for the app the original author is dictating
 /// into** — so Wispr Flow inserts its sentence *here*, where the relay can read
 /// it, instead of into his work where it cannot be taken back.
 ///
@@ -10,7 +10,7 @@ import ApplicationServices
 /// It was written on 2026-09-13 as a test instrument, and it is still only that
 /// today: `POST /test/sink` opens it and nothing on a real dictation path calls
 /// it. But it is built as a component rather than a throwaway window because
-/// Victor's design is that it becomes **the wrapping mechanism**. His ask: only
+/// the original author's design is that it becomes **the wrapping mechanism**. His ask: only
 /// Wispr's transcription engine, with Walkie giving Wispr its inputs and taking
 /// its outputs synthetically, and Wispr never inserting into the real app at
 /// all. Under that design the wrap stops being *swallow the ⌘V and hope* and
@@ -21,7 +21,7 @@ import ApplicationServices
 /// to dictations *this app started* — the chord it posted itself, stamped
 /// `backButtonStamp` — and only while the wrap is on (`wrapWispr`; the menu
 /// row that used to say so is gone since 2026-09-14). A
-/// dictation Victor starts with his own keyboard shortcut is Wispr's and is
+/// dictation the original author starts with his own keyboard shortcut is Wispr's and is
 /// left alone; taking the focus off him for one of those would be the app
 /// interfering with a tool he is using directly.
 ///
@@ -359,7 +359,7 @@ private final class SinkTextView: NSTextView {
     /// being tested for.
     ///
     /// Handled here rather than by installing an Edit menu while the sink is up:
-    /// the menu bar is Victor's, and a route that works by changing the app's
+    /// the menu bar is the original author's, and a route that works by changing the app's
     /// menus would be testing the menus.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)

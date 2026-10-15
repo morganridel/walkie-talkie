@@ -12,7 +12,7 @@ import Network
 /// `ElementPicker` makes about reading the DOM, made about audio.
 ///
 /// **Why a push, and not the HTTP server that is already there.** The extension
-/// polls `ElementPicker` only while Victor holds ⌘⇧; a poll fast enough to catch
+/// polls `ElementPicker` only while the original author holds ⌘⇧; a poll fast enough to catch
 /// the front edge of a dictation would have to run all day for a thing that
 /// happens a few times an hour. A socket the app writes to costs nothing while
 /// idle and lands in the same millisecond as the recording row.
@@ -23,7 +23,7 @@ import Network
 /// also replayed to each client the moment it connects, so a worker that *was*
 /// torn down mid-dictation comes back knowing it still owes a resume.
 ///
-/// **Its own port, and not 8766.** Victor Addons runs the same bridge for its
+/// **Its own port, and not 8766.** the original author Addons runs the same bridge for its
 /// own dictations. Both may be installed, both may pause, and that is harmless —
 /// each extension resumes only the elements it marked, and an element the other
 /// one already stopped is skipped as "not playing". But they cannot share a
@@ -36,7 +36,7 @@ final class MusicBridge {
     private var listener: NWListener?
     private var connections: [UUID: NWConnection] = [:]
     private var keepAliveTimer: DispatchSourceTimer?
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.music", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "local.walkie-talkie.music", qos: .userInitiated)
 
     /// Current window state, mirrored to every client. Queue only.
     private var active = false
@@ -115,7 +115,7 @@ final class MusicBridge {
     /// automation both — so until now every edit to `inspect.js` ended with a
     /// manual click, and an edit that was *not* clicked looked exactly like an
     /// edit that did not work. We are already inside the browser; we can just
-    /// ask. Same manoeuvre as Victor Addons' `/chrome/extension/reload`.
+    /// ask. Same manoeuvre as the original author Addons' `/chrome/extension/reload`.
     ///
     /// Synchronous because the caller is an HTTP handler that has to put the
     /// count in its reply — and because a reload the extension performs is a

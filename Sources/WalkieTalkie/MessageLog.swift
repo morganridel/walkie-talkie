@@ -2,7 +2,7 @@ import AppKit
 
 /// **The outbox, read back as a page.**
 ///
-/// `outbox.jsonl` is the record of everything Victor has dictated, and until now
+/// `outbox.jsonl` is the record of everything the original author has dictated, and until now
 /// the only way to read it was `tail`ing a file of one-line JSON blobs with
 /// absolute paths to retina JPGs in them — i.e. a format written for the agent
 /// watching the queue, not for the person who filled it. **Prompt Log** renders
@@ -128,7 +128,7 @@ enum MessageLog {
 
     // MARK: - Local time
 
-    /// **The page is in Victor's own time zone, and the file is not.** `ts` is
+    /// **The page is in the original author's own time zone, and the file is not.** `ts` is
     /// UTC, which is right for the queue and useless for the only question ever
     /// asked of this page — *when did I say that?* Three hours off in summer is
     /// enough to make yesterday evening look like today.
@@ -276,7 +276,7 @@ enum MessageLog {
         // **The copy button, and the whole message behind it.** The page is read
         // to *find* a sentence, and what happens next is that it is pasted
         // somewhere — which until now meant a drag-select across a card that also
-        // holds a timestamp, an app name and a block quote. Victor's ask,
+        // holds a timestamp, an app name and a block quote. the original author's ask,
         // 2026-09-04: *"there should be a copy icon, visible, that would allow to
         // copy the whole text for easy pasting"*.
         out += "<button class=\"copy\" type=\"button\" title=\"Copy this message\">"

@@ -11,7 +11,7 @@ import Foundation
 /// coarse and could not be made otherwise at the screen's resolution (a
 /// full-screen CoreGraphics trail pass measured 48–86 ms a frame), so they went.
 ///
-/// **The names are Victor's** (2026-09-20, the page's `name` field; the old
+/// **The names are the original author's** (2026-09-20, the page's `name` field; the old
 /// descriptions moved to `desc`): `Eclipse` and `Water Dream` are his own
 /// words. A `−` on the page (Petals, Silk, Nova, Royal, Mosaic) is not here;
 /// neither is the page's `Lagoon` (the hand-drawn water) — *"drop those
@@ -26,7 +26,7 @@ enum HaloStyle: String, CaseIterable {
     /// **What ships and what he uses every day** — the rotating lightning film
     /// in `CaretHalo`. Native, never waits on a web view.
     case lightning
-    /// **The ⚡ quick question's own film** (Victor, 2026-10-11: *"redai acest
+    /// **The ⚡ quick question's own film** (the original author, 2026-10-11: *"redai acest
     /// semn al întrebării … zonele negre să fie transparente … mai opac sau mai
     /// puțin opac în funcție de cum vorbesc … în buclă"*). A golden electric `?`
     /// keyed off black, `assets/question-mark.mov` (`tools/build-question-mark.py`
@@ -47,7 +47,7 @@ enum HaloStyle: String, CaseIterable {
     /// Page 6, *Atom*: orbite rare — gaură mare, blocuri clare.
     case orbits
     /// Page 19, *Beads*: inel de blocuri — cerc în repaus, crește doar în afară.
-    /// Listed before Gemini (Victor, 2026-09-20: *"beads: before gemini"*) —
+    /// Listed before Gemini (the original author, 2026-09-20: *"beads: before gemini"*) —
     /// the menu, the dial and F7/F9 walk this order, not the page's.
     case blockBeads
     /// Page 7, *Gemini*: două bile — ceață suflată din contur spre exterior.
@@ -65,14 +65,14 @@ enum HaloStyle: String, CaseIterable {
     /// it went. `git show` on this commit brings back the case, the `Preset` row
     /// and the `.milk`.
     case milkdrop7, milkdrop8, milkdrop20, milkdrop85, milkdrop87, milkdrop99, milkdrop103
-    /// **Acelasi preset ca `milkdrop7`, alta incadrare** (Victor, 2026-09-22:
+    /// **Acelasi preset ca `milkdrop7`, alta incadrare** (the original author, 2026-09-22:
     /// *"adauga aceasta forma de tunel ca «Tunel faded» si las-o si pe cea
     /// originala (opaca dar localizata)"*). Tunnel obisnuit ramane discul din
     /// jurul cursorului; asta e panza cat ecranul, cu discul vechi opac in mijloc
     /// si o coada stinsa pana in margini. Doua randuri in meniu pentru acelasi
     /// `.milk`, fiindca ce difera nu e presetul, ci cat din ecran ocupa.
     case milkdrop7Faded
-    /// **Tunnel intors pe dos** (Victor, 2026-09-23: *"inversa dinamica
+    /// **Tunnel intors pe dos** (the original author, 2026-09-23: *"inversa dinamica
     /// efectului de tunnel … sa mearga liniile INVERS din periferie-n centru"*).
     /// Presetul lui Geiss isi naste liniile dintr-un inel de unda mic in centru
     /// si le impinge in afara. Intors din `.milk` (zoom 1/1,033, inelul mutat la
@@ -89,7 +89,7 @@ enum HaloStyle: String, CaseIterable {
     /// Numerele sunt pozițiile lor din răsfoire, singurele nume pe care le are el
     /// pentru ele.
     case milkdrop213, milkdrop179
-    /// **Tendrils care lasa urme** (Victor, 2026-09-23: *"un «tendrils2» care sa
+    /// **Tendrils care lasa urme** (the original author, 2026-09-23: *"un «tendrils2» care sa
     /// nu se translateze pe ecran imediat dupa mouse ci sa lase la mutarea
     /// mouseului urme in spate unde a fost … mutarea instant cu mouseul e un pic
     /// brutala uneori"*). Acelasi preset si aceeasi marime ca Tendrils; ce difera
@@ -103,29 +103,29 @@ enum HaloStyle: String, CaseIterable {
     /// purtata de un fluid pe care cursorul il amesteca (`Preset.fluid`), deci
     /// ramane in urma ca fum, nu ca o dara dreapta.
     case milkdrop20Fluid
-    /// **Fluid Cursor de la Cursify** (Victor, 2026-09-23: *"impl si asta
+    /// **Fluid Cursor de la Cursify** (the original author, 2026-09-23: *"impl si asta
     /// https://cursify.ui-layouts.com/components/fluid-cursor"*). Fluidul lui
     /// Pavel Dobryakov in forma lui de cursor, cu constantele lor: fara preset,
     /// doar vopsea care isi schimba nuanta de zece ori pe secunda si moare
     /// repede. Traieste pe ruta nativa (`pmh_set_canvas` mod 3); presetul din
     /// rand e doar biletul de intrare — motorul nu e randat deloc.
     case fluidCursor
-    /// Page 22, *Fairy dust* — Cursify's fairydust cursor (Victor, 2026-09-23:
+    /// Page 22, *Fairy dust* — Cursify's fairydust cursor (the original author, 2026-09-23:
     /// *"si asta https://cursify.ui-layouts.com/components/fairydust-cursor"*):
     /// steluțe care cad din urma cursorului, plus praf presărat de voce când
     /// mouse-ul stă pe loc. O pânză 2D cu glife, deci locul ei e pagina, nu
     /// motorul MilkDrop.
     case fairyDust
-    /// **liquid-cursor** (Victor, 2026-09-23: *"impl
+    /// **liquid-cursor** (the original author, 2026-09-23: *"impl
     /// https://cravinadventure.github.io/liquid-cursor/"*): acelasi fluid ca
     /// Fluid cursor, cu reglajul lor — violete, vopsea care atarna in aer,
     /// vartejuri puternice (`pmh_set_canvas` mod 4).
     case liquidCursor
-    /// **ink** (Victor, 2026-09-23: *"https://mkmlman.github.io/ink/ poti si
+    /// **ink** (the original author, 2026-09-23: *"https://mkmlman.github.io/ink/ poti si
     /// asta?"*): fluidul lui Pavel intreg, cu bloom si sunrays, la valorile
     /// panoului lor de butoane (`pmh_set_canvas` mod 5).
     case ink
-    /// **Smoke** — cssscript's *Interactive Smoke/Fluid Motion* (Victor,
+    /// **Smoke** — cssscript's *Interactive Smoke/Fluid Motion* (the original author,
     /// 2026-09-23: *"adauga si asta … cu param cat mai apropiati"*): solverul lui
     /// Pavel din 2017, la parametrii paginii lor (`pmh_set_canvas` mod 6).
     case smoke
@@ -139,7 +139,7 @@ enum HaloStyle: String, CaseIterable {
     /// indiferent unde este mouse-ul … pe tot ecranul"*).
     var isAnchored: Bool { preset?.anchored == true || self == .questionMark }
 
-    /// The menu row's wording — Victor's short names.
+    /// The menu row's wording — the original author's short names.
     var title: String {
         switch self {
         case .lightning:      return "Lightning ring"
@@ -173,7 +173,7 @@ enum HaloStyle: String, CaseIterable {
         }
     }
 
-    /// Victor's review mark, as the page carries it in the effect's name
+    /// the original author's review mark, as the page carries it in the effect's name
     /// (`★` likes a lot, `•` has potential). A `−` is never here, because a
     /// `−` effect is not offered.
     var mark: String {
@@ -184,7 +184,7 @@ enum HaloStyle: String, CaseIterable {
         }
     }
 
-    /// **The menu shows the name and nothing else** (Victor, 2026-09-20 late:
+    /// **The menu shows the name and nothing else** (the original author, 2026-09-20 late:
     /// *"don't put stars or dots in the menu in the effect names any more,
     /// just a lightning bolt after their name"*): the verdict marks stay on
     /// the page, where they are recorded; a preset's bolt is a symbol the
@@ -217,14 +217,14 @@ enum HaloStyle: String, CaseIterable {
     /// values, halved on 2026-09-20 with the rest, then resized on sight the
     /// same evening: Snowflake ×4 (*"much too small"*), Tendrils ×2, Sparks
     /// ×1.5, Tunnel ÷3 then ×2.5 then ×2 (0.84), Cauldron ×1.5 (0.525). `fade` is the radial
-    /// dimming, and the rest are Victor's asks on Tunnel that day: *"de 2x mai
+    /// dimming, and the rest are the original author's asks on Tunnel that day: *"de 2x mai
     /// opac/intens … fade out complet la o distanță de 1/2 din width ecran
     /// (adică să se răspândească mai mult pe ecran)"* plus *"2x more
     /// rotation"* — so Tunnel keeps the full canvas, fades to nothing at half
     /// the screen's width from the pointer, at twice the intensity and twice
     /// the turn. See `halo.html`'s `preset(name, fade, opts)`.
     ///
-    /// **No square, anywhere** (Victor, 2026-09-20: *"it still renders effects
+    /// **No square, anywhere** (the original author, 2026-09-20: *"it still renders effects
     /// with a square crop around them"*): a preset's canvas *is* its
     /// composition, so a scaled-down one that paints to its border would show
     /// an edge. Every scaled preset therefore fades radially to nothing at its
@@ -242,13 +242,13 @@ enum HaloStyle: String, CaseIterable {
         /// in its frame equations). Default the middle.
         var centerAt: CGPoint = CGPoint(x: 0.5, y: 0.5)
         /// A fixed shift of the whole canvas from the pointer, in points, y up
-        /// (Cocoa). Tunnel sits 50 pt above it (Victor, 2026-09-20).
+        /// (Cocoa). Tunnel sits 50 pt above it (the original author, 2026-09-20).
         var offset: CGPoint = .zero
         /// Append `a.cx = a.cy = 0.5` to the preset's frame equations, so a
         /// composition that drifts its own centre stays on the pointer.
         var pinCenter = false
         /// The preset's custom waves (`wavecode_N`) switched off in our copy.
-        /// Mosaic's `wave_0` is the reason (Victor, 2026-10-02: *"apar unele
+        /// Mosaic's `wave_0` is the reason (the original author, 2026-10-02: *"apar unele
         /// linii gri subțiri, verticale … ascund animația reală"*): a 1-px white
         /// additive line whose x moves on ~5 points of every 41, so it draws a
         /// staircase of mostly vertical strokes, brightest on the beat
@@ -262,7 +262,7 @@ enum HaloStyle: String, CaseIterable {
         /// **This preset is drawn by butterchurn whichever engine is picked.**
         /// Not a preference and not a fallback: a preset whose *look* depends on
         /// how the engine reads the spectrum, where the two engines disagree and
-        /// the web one is the picture Victor approved. It lives here, beside the
+        /// the web one is the picture the original author approved. It lives here, beside the
         /// preset's other knobs, because the alternative — a preset number
         /// compared by hand at each of the two places that decide — is a fact
         /// kept in two heads. `CaretHalo.engineHost` and `isAvailable` both read
@@ -284,7 +284,7 @@ enum HaloStyle: String, CaseIterable {
         /// one.
         ///
         /// **It is not a quality dial, it is a feature-size dial** (2026-09-21,
-        /// Victor on Sparks after the 1:1 fix: *"parcă tot puncte cețoase
+        /// the original author on Sparks after the 1:1 fix: *"parcă tot puncte cețoase
         /// văd"*). A MilkDrop preset's features are not a constant fraction of
         /// its canvas: measured on the same 10 % of the canvas at the same
         /// second of the same clip, a chain-breaker spark is ~5 canvas px at
@@ -304,7 +304,7 @@ enum HaloStyle: String, CaseIterable {
         /// **Gaura din mijloc**, ca fractiune din raza mastii: sub ea nu se vede
         /// nimic, pana la ea urca lin. Un preset care isi strange liniile spre
         /// centru le pune exact peste cursor, care e locul pe care haloul trebuie
-        /// sa-l lase liber (Victor, 2026-09-21: *"sa nu mai aiba linii atat de
+        /// sa-l lase liber (the original author, 2026-09-21: *"sa nu mai aiba linii atat de
         /// apropiate de centru"*). 0 = fara gaura.
         var hole: CGFloat = 0
         /// **Cat de opac e stratul, in varf** — 1 = cum a fost pana acum. Atinge
@@ -317,7 +317,7 @@ enum HaloStyle: String, CaseIterable {
         /// Sub el masca isi pastreaza profilul intreg — plin pana la `fadeStart`
         /// din el, apoi o cadere — dar se opreste la `tailTop` in loc de zero, iar
         /// de acolo incolo se prelungeste stins pana la marginea ecranului
-        /// (Victor, 2026-09-22: *"centrul efectului ... sa ramana opac, ca pana
+        /// (the original author, 2026-09-22: *"centrul efectului ... sa ramana opac, ca pana
         /// acum. Doar periferia ... sa o prelungesti cu transparenta mica pana la
         /// marginea ecranului"*). 0 = fara coada, masca de dinainte.
         var core: CGFloat = 0
@@ -347,13 +347,13 @@ enum HaloStyle: String, CaseIterable {
         var fluid = false
         /// Fluidul singur, fara preset (Cursify's Fluid Cursor). Cere `trail` > 0.
         var pureFluid = false
-        /// **Pus o data, nu urmarit** (Victor, 2026-09-23, pe Mosaic: *"make mosaic
+        /// **Pus o data, nu urmarit** (the original author, 2026-09-23, pe Mosaic: *"make mosaic
         /// effect NOT follow cursor, but be placed inspired by the original cursor
         /// position (still to fit most of it in the screen)"*). Patratul se aseaza
         /// cand urca inelul, pornind de la cursor, impins inapoi in ecran — vezi
         /// `CaretHalo.anchoredFrame` — si sta acolo toata propozitia.
         var anchored = false
-        /// **Pus in mijlocul ecranului**, nu langa cursor (Victor, 2026-09-29, pe
+        /// **Pus in mijlocul ecranului**, nu langa cursor (the original author, 2026-09-29, pe
         /// Sparks: *"has to remain fixed at the center of the screen where the
         /// mouse is … wherever I move my mouse, that thing stays at the center"*).
         /// Cere `anchored`: ecranul e cel al cursorului cand urca inelul.
@@ -380,7 +380,7 @@ enum HaloStyle: String, CaseIterable {
         /// in afara ecranului si aproape invizibile, iar 1,5 s ascuns mancau
         /// jumatate dintr-o transcriere Scribe. `WT_REWIND_WARMUP` il muta.
         var warmup: TimeInterval? = nil
-        /// **Warm-up dintr-o rafala, nu pe ceas** (2026-10-05, Victor: *"începe
+        /// **Warm-up dintr-o rafala, nu pe ceas** (2026-10-05, the original author: *"începe
         /// să scrie transcribing, deși încă n-a apărut reverse tunnel-ul"*). Cele
         /// `warmup` secunde de cadre ascunse sunt randate pe loc, una dupa alta,
         /// pe zgomotul de start (`ProjectMHalo.preroll`), si imaginea se arata
@@ -388,7 +388,7 @@ enum HaloStyle: String, CaseIterable {
         /// incarcarea presetului (~0,17 s) mancau aproape tot o transcriere locala
         /// (~1 s): tunelul aparea deja pe fereastra si se stingea pe loc.
         var burstWarmup = false
-        /// **Cat a curs deja efectul cand apare** (2026-09-26, Victor: *"în loc să
+        /// **Cat a curs deja efectul cand apare** (2026-09-26, the original author: *"în loc să
         /// văd linia, vreau să văd urmele lungi deja construite, ca și cum ar fi
         /// trecut 100–200 ms"*). Un inel ridicat din nou pe acelasi motor pornea din
         /// ultimul cadru al propozitiei de dinainte — de obicei linistea de la
@@ -422,7 +422,7 @@ enum HaloStyle: String, CaseIterable {
         // key can show (the bright parts are at 1 already) — what dims Tunnel is
         // the mask, half-light at half the radius. So: full light out to 55 %
         // of the radius, then one fall to nothing at the edge; gain 4 as asked.
-        // **Tunnel nu mai e un halo, e o camera** (Victor, 2026-09-21 noaptea:
+        // **Tunnel nu mai e un halo, e o camera** (the original author, 2026-09-21 noaptea:
         // *"fa tunnel sa se raspandeasca pe tot ecranul, cu transparenta 20%-5%,
         // nu doar in zona din jurul mouse"*). Deci `pinnedHorizon` — panza nu mai
         // urmareste cursorul — si latura = latura LUNGA a ecranului, adica acopera
@@ -479,7 +479,7 @@ enum HaloStyle: String, CaseIterable {
         // pe dos. `invert` 0,9: inelul lui Geiss (~0,24 din raza) ajunge la ~0,66,
         // unde masca abia incepe sa cada; marginea lui ajunge sub `hole`.
         // **Mai mic cu 30 % si la 30 % opacitate, venind din afara ecranului**
-        // (Victor, 2026-09-23: *"tunelul sa fie mai mic cu 30% si de transparenta
+        // (the original author, 2026-09-23: *"tunelul sa fie mai mic cu 30% si de transparenta
         // 30% … sa para ca vine din exterior ecranului, de la transparenta 100%
         // pana la converge in jurul mouseului pe durata transcrierii"*). Panoul e
         // cat latura lunga a ecranului, centrat pe cursor, ca apropierea sa aiba
@@ -502,7 +502,7 @@ enum HaloStyle: String, CaseIterable {
                            return Preset(number: 7, name: "Geiss - 3 layers (Tunnel Mix)", scale: 0.647 * 0.7 * 0.7,
                                          fade: true, fadeAtEdge: true, fadeFloor: 0, gain: 3.2, rot: 1.0,
                                          fadeStart: 0.55, pinCenter: true,
-                                         // audioGain 0,55 → 0,8 (Victor, 2026-09-23: *"poate vrei sa
+                                         // audioGain 0,55 → 0,8 (the original author, 2026-09-23: *"poate vrei sa
                                          // maresti sensibilitatea tunelului"*)
                                          hole: 0.22, peak: 0.80, audioGain: 0.8, trail: 0.01, lag: 0,
                                          nativeOnly: true, invert: 0.9,
@@ -510,7 +510,7 @@ enum HaloStyle: String, CaseIterable {
                                          burstWarmup: ProcessInfo.processInfo.environment["WT_REWIND_BURST"] != "0")
         // **Cauldron needs `gain: 6` to be seen at all** (2026-09-21). It came
         // out of the catalogue at the default 1 and nobody had worn it for a
-        // whole dictation until it became Wispr's dress; Victor's report was
+        // whole dictation until it became Wispr's dress; the original author's report was
         // *"nu vad nici o animatie"*, and a capture of the real panel
         // (`WT_HALO_DEMO`, the only path that is screenshottable) showed why —
         // at 1 it is a smudge a shade off the terminal behind it, at 3 still
@@ -521,7 +521,7 @@ enum HaloStyle: String, CaseIterable {
         // the per-style brightness, and it is applied in both engines.
         case .milkdrop8:   return Preset(number: 8, name: "Geiss - Cauldron - painterly 2 (saturation remix)", scale: 0.525,
                                          fade: true, fadeAtEdge: true, fadeFloor: 0, gain: 6, pinCenter: true)
-        // Tendrils ×0.7 on sight (Victor, 2026-09-21: *"tendrils să fie .7x
+        // Tendrils ×0.7 on sight (the original author, 2026-09-21: *"tendrils să fie .7x
         // mărime (mai mic)"*) — 0.728 → 0.51, the same move Sparks got the
         // evening before — and ×0.7 again the same morning, together with
         // Sparks (*"micșorează la 0.7x și pentru efectul cu dictarea
@@ -550,7 +550,7 @@ enum HaloStyle: String, CaseIterable {
         case .milkdrop85:  return Preset(number: 85, name: "Zylot - Star Ornament", scale: 0.69,
                                          fade: true, fadeAtEdge: true, fadeFloor: 0)
         // **Sparks' size is a chain of factors, each one applied to what was
-        // drawn at the time** — never to the page's `FORMULAS` 0.75 (Victor,
+        // drawn at the time** — never to the page's `FORMULAS` 0.75 (the original author,
         // 2026-09-20/21):
         //   0.75 ×0.7 ×0.7 → 0.3675  two *"mai mic cu treizeci la sută"*, asked
         //                            while the destinations were still moving
@@ -635,7 +635,7 @@ enum HaloStyle: String, CaseIterable {
         case .milkdrop87:  return Preset(number: 87, name: "martin - chain breaker", scale: 1.3042575,
                                          fade: true, fadeAtEdge: true, fadeFloor: 0, webOnly: true,
                                          renderScale: 0.5, peak: 0.75, anchored: true, centred: true)
-        // **Mosaic, back from the `−` list for Wispr Flow** (Victor, 2026-09-21:
+        // **Mosaic, back from the `−` list for Wispr Flow** (the original author, 2026-09-21:
         // *"când am Wispr Flow, dictare să apară mozaic"*). It was dropped on
         // 2026-09-20 with the other `−` effects — *"the bricks look lame"* —
         // and is here now because he asked for it by name against a
@@ -659,13 +659,13 @@ enum HaloStyle: String, CaseIterable {
         // 0.5 → 0.75 is his ×1.5; `speed` 0.6 is *"puțin mai lent"*, which the
         // frame cap cannot do (see `Preset.speed`).
         //
-        // `gain` 1 → 1.2 (Victor, 2026-10-02: *"puzzle effect să fie +20% mai
+        // `gain` 1 → 1.2 (the original author, 2026-10-02: *"puzzle effect să fie +20% mai
         // vizibil"*) — the page multiplies the colour before keying it to alpha,
         // so it is opacity and intensity together.
         case .milkdrop99:  return Preset(number: 99, name: "martin - reflections on black tiles", scale: 0.75,
                                          fade: true, fadeAtEdge: true, fadeFloor: 0, gain: 1.2,
                                          noWaves: [0], webOnly: true, speed: 0.6, anchored: true)
-        // **Water Dream is a hybrid** (Victor, 2026-09-20 late: *"the water stays
+        // **Water Dream is a hybrid** (the original author, 2026-09-20 late: *"the water stays
         // locked in the bottom 20% of the screen, but the meteors follow the
         // mouse"*): the preset gives the sky and the pool, pinned to the screen
         // with its horizon at the pool's edge (`pinnedHorizon`), and the page's
@@ -685,9 +685,9 @@ enum HaloStyle: String, CaseIterable {
     var isPreset: Bool { preset != nil }
 
     /// **On the list today.** Water Dream is off it *"for the moment"*
-    /// (Victor, 2026-09-20 late — the dearest style measured, 0.79 of a GPU
+    /// (the original author, 2026-09-20 late — the dearest style measured, 0.79 of a GPU
     /// core and 866 MB, and still "too violent"); its hybrid stays built.
-    /// Snowflake is off it too (Victor, 2026-09-20: *"scoate temporar din
+    /// Snowflake is off it too (the original author, 2026-09-20: *"scoate temporar din
     /// meniu/din efecte Snowflake"*). It came back for a few hours on
     /// 2026-09-21, on the reading that it was the dress of a sentence opening
     /// a new claude — and that reading was wrong (*"la dictarea in terminal
@@ -700,7 +700,7 @@ enum HaloStyle: String, CaseIterable {
     /// preference off it reads as the film.
     /// Gemini too (2026-09-21, *"scoate gemini din opțiuni"*).
     /// Fairy dust, Fluid cursor and Tendrils 2 went the evening they came
-    /// (Victor, 2026-09-23: *"fairy dust: remove"*, *"remove fluid cursor"*,
+    /// (the original author, 2026-09-23: *"fairy dust: remove"*, *"remove fluid cursor"*,
     /// *"remove tendrils2"*), and Magma and Sigil with them (*"remove magma &
     /// sigil"*). Built and drawable, just not offered — the same standing as
     /// Snowflake.
@@ -719,7 +719,7 @@ enum HaloStyle: String, CaseIterable {
     /// **Drawn on a panel the size of the pointer's screen**: every page
     /// effect. The page lays out from the viewport, several effects run to
     /// its edge by design, and the pointer is handed in as the origin rather
-    /// than the window moved (Victor: *nothing may clip; no artificial scaling*).
+    /// than the window moved (the original author: *nothing may clip; no artificial scaling*).
     var coversScreen: Bool { pageIndex != nil || hasTrail }
 
     /// A preset that leaves a trail: its panel is the screen, the pointer is
@@ -758,7 +758,7 @@ enum HaloStyle: String, CaseIterable {
     /// **Three preferences since 2026-09-21, one per destination** — see
     /// `HaloDestination`. The single old key (`haloStyle`) is no longer read:
     /// it held one answer to a question that now has three, and the three
-    /// defaults Victor asked for are better than any migration of it.
+    /// defaults the original author asked for are better than any migration of it.
     static func current(for destination: HaloDestination) -> HaloStyle {
         if let name = ProcessInfo.processInfo.environment["WT_HALO_STYLE"],
            let forced = HaloStyle(rawValue: name) { return forced }
@@ -779,7 +779,7 @@ enum HaloStyle: String, CaseIterable {
 /// **Where the sentence being dictated is headed** — and therefore which
 /// effect is drawn round the pointer while it is being said.
 ///
-/// Victor, 2026-09-21: *"tunnel să fie la dictarea la caret … tendrils dacă
+/// the original author, 2026-09-21: *"tunnel să fie la dictarea la caret … tendrils dacă
 /// sunt legat și sparks dacă dictez în terminal nou"*, then *"mi-ar plăcea să
 /// pot alege separat cele trei efecte"*. One preference per destination rather
 /// than one for the app: the ring is already the only thing on screen while he
@@ -804,19 +804,19 @@ enum HaloDestination: String, CaseIterable {
     /// It wore the caret's dress until 2026-09-21 (*"Wispr Flow, când
     /// dictează, să fie dictare la caret"*, which was about the **destination**
     /// — Wispr types at the caret — and was read as being about the effect too).
-    /// Victor separated the two the same day: *"Wispr-ul este o dictare … la fel
+    /// the original author separated the two the same day: *"Wispr-ul este o dictare … la fel
     /// de dictare. Folosește un efect MilkDrop rămas pentru el"*. A foreign
     /// microphone is worth telling apart on sight, because it is the one kind of
     /// sentence none of this app's gestures apply to — no shot, no pick, no
     /// arrow, nothing to hang on it.
     case wispr
     /// **A ⚡ quick question** (🔼 ←, `QuickAsk`) — its own row since 2026-10-10
-    /// (Victor: *"add menu: question with liquid cursor as default for now"*).
+    /// (the original author: *"add menu: question with liquid cursor as default for now"*).
     case quick
 
     /// The menu row's wording, in the menu's own vocabulary.
     ///
-    /// **Listening vs Prompting** (2026-09-25, Victor: *"The clean dictation
+    /// **Listening vs Prompting** (2026-09-25, the original author: *"The clean dictation
     /// should have the label listening. The other three modes … should be
     /// prompting, not dictating"*). The same two words the chip says while the
     /// sentence is open (`RelayWindow.prompting`): a clean sentence is only
@@ -833,7 +833,7 @@ enum HaloDestination: String, CaseIterable {
         }
     }
 
-    /// **Victor's picks of 2026-09-21**, and what an unset preference reads as.
+    /// **the original author's picks of 2026-09-21**, and what an unset preference reads as.
     /// Not the film: he named a preset for each.
     ///
     /// `wispr` gets **Cauldron**, which is *"un efect MilkDrop rămas"* quite
@@ -852,7 +852,7 @@ enum HaloDestination: String, CaseIterable {
         // that spent the evening needing his voice louder than it is.
         case .caret: return .milkdrop20   // Tendrils
         case .bound: return .milkdrop7    // Tunnel
-        // **Sparks — and "stars" never meant Snowflake** (Victor, 2026-09-21,
+        // **Sparks — and "stars" never meant Snowflake** (the original author, 2026-09-21,
         // correcting the same day's guess: *"la dictarea in terminal nou, sa
         // redai efectul stars, nu snowflake"*). Sparks had held this
         // destination and was taken off it that morning by reading *stars* as
@@ -888,7 +888,7 @@ enum HaloDestination: String, CaseIterable {
     var defaultsKey: String { "haloStyle.\(rawValue)" }
 }
 
-/// **The frame cap for every web view** (Victor, 2026-09-20: *"30 is more
+/// **The frame cap for every web view** (the original author, 2026-09-20: *"30 is more
 /// than enough … I'll probably only run these effects on battery"*): the
 /// pages' per-frame constants are time-based, so 30 looks like 60 at half
 /// the CPU. `WT_HALO_FPS=60` for a comparison run, `0` for no cap.

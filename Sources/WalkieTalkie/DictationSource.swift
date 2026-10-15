@@ -11,7 +11,7 @@ import Foundation
 /// produced *a boolean*: the ring knew a microphone was open and nothing else
 /// did, because Wispr pasted its own text into whatever had focus.
 ///
-/// Victor's decision (2026-09-12) is that **Wispr Flow is the microphone for
+/// the original author's decision (2026-09-12) is that **Wispr Flow is the microphone for
 /// everything**, bound relay included. That is only buildable once the two
 /// paths are the same shape: the destination logic, the settle, the halo and the
 /// corpus must not be able to tell which recogniser they are serving, or every
@@ -189,7 +189,7 @@ protocol DictationSource: AnyObject {
     /// flight, which is not always the source's newest upload.
     func cancelTake(_ take: Int)
 
-    /// **⌘⌃X — the take goes to the local model, now** (2026-09-28). Victor:
+    /// **⌘⌃X — the take goes to the local model, now** (2026-09-28). the original author:
     /// *"Sometimes even ElevenLabs takes a lot to transcribe and I want this
     /// quick exit."* Recording: the microphone closes as `stop()` closes it
     /// (`didStopListening`, the destination latched) but nothing is handed to
@@ -313,7 +313,7 @@ struct DictationResult {
     /// gets the **raw** text. → `ShotMarker`, `AppDelegate.deliver`
     var markersInAudio: Bool = false
 
-    /// **What to call the recogniser in front of Victor** — the local model's
+    /// **What to call the recogniser in front of the original author** — the local model's
     /// weights by name, `Wispr Flow` for Wispr. Written by the source, because
     /// only the source knows, and read by exactly one thing: the envelope's
     /// `[this text dictated and transcribed in RO or EN by …]`. Distinct from
@@ -350,7 +350,7 @@ struct DictationResult {
     var asr: String? = nil
 
     /// **The recogniser's words, for a prompt** (2026-10-06) — Wispr's `asrText`
-    /// whatever was said, where `asr` is only there for the markers. Victor: *"it
+    /// whatever was said, where `asr` is only there for the markers. the original author: *"it
     /// keeps reframing my words and sometimes confuses the receiving agent … only
     /// when prompting"*: an envelope for an agent carries these instead of the
     /// formatter's rewrite; a plain sentence keeps `text`. Nil for every other source.
@@ -380,7 +380,7 @@ enum DictationDelivery {
 enum DictationEnd {
     /// A transcript came back — `didTranscribe` has already fired.
     case delivered
-    /// Nothing to deliver, and why. Shown to Victor when there is something to
+    /// Nothing to deliver, and why. Shown to the original author when there is something to
     /// say; the empty string is *nothing worth a banner* — a misfire, a chord
     /// Wispr ignored, a click released inside the minimum duration.
     case silent(String)

@@ -2,7 +2,7 @@
 //
 // Hold ⌘⇧ and the element under the cursor is outlined and named; ⌘⇧-click and
 // its selector goes to the relay, which hands it to the agent with the next thing
-// Victor says. "Make *this* button blue" becomes a sentence with the pronoun
+// the user says. "Make *this* button blue" becomes a sentence with the pronoun
 // already resolved.
 //
 // This runs in the page rather than in the macOS app on purpose. From outside,
@@ -43,7 +43,7 @@
   // The chord has to be *held*, not merely pressed.
   //
   // ⌘⇧ rather than bare ⌘ because bare ⌘-click is how a link opens in a new tab,
-  // which Victor does all day: an inspector that ate it would be worse than no
+  // which the user does all day: an inspector that ate it would be worse than no
   // inspector. ⌘⇧-click is the same thing plus "and switch to it", i.e. the same
   // family but far rarer, and two modifiers are much harder to hit by accident
   // than one.
@@ -169,7 +169,7 @@
   /// How much of an element's text rides to the agent (2026-09-13).
   ///
   /// It was 160 characters — enough to *recognise* a button by, which is all the
-  /// message ever did with it: `button.buy-button (Cumpără acum)`. Victor asked
+  /// message ever did with it: `button.buy-button (Cumpără acum)`. the user asked
   /// for what the thing actually **said**, because the element he picks is as
   /// often a paragraph, a table row or an error box as it is a button, and 160
   /// characters of one of those is a sentence cut off before it says anything.
@@ -262,7 +262,7 @@
         .picked .box { border-color: #32d74b; background: rgba(50, 215, 75, .16);
                        box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 18px rgba(50, 215, 75, .5); }
         .picked .tag b { color: #7ee89a; }
-        /* **Only the outline while it travels**, and translucent — Victor's ask:
+        /* **Only the outline while it travels**, and translucent — the user's ask:
            the box is a picture of *where the element would go*, drawn on top of
            the page it would go on, so anything filled in it hides the very thing
            the drop is being judged against. The glow goes with the fill for the
@@ -508,7 +508,7 @@
 
   /// **Dragging moves the outline and nothing else.**
   ///
-  /// Victor's ask, 2026-09-09: *"să permit drag and drop de elemente prin
+  /// the user's ask, 2026-09-09: *"să permit drag and drop de elemente prin
   /// extensie, dar să nu mut nimic în pagină … să capturăm poziția originală și
   /// coordonatele … dragul se duce translucent, doar chenarul … și când îl las,
   /// la mouse-up, comunică unde a ajuns elementul"*.
@@ -620,7 +620,7 @@
   //
   // **The ⌘⇧ invitation, drawn in the page (2026-10-07).** It was a row on the
   // chip beside the cursor — Chrome's icon and `⌘⇧`, while dictating with Chrome
-  // in front. Victor had it moved here: a pill at the bottom centre of the page,
+  // in front. the user had it moved here: a pill at the bottom centre of the page,
   // which also proves the extension is alive (a row the app drew could only
   // promise it), and leaves the chip one row lighter.
   //
@@ -629,7 +629,7 @@
   // top frame of every tab, and a page that loads mid-sentence asks for it.
   //
   // **A tab rising from the bottom-right corner, the same size at any zoom
-  // (2026-10-07).** Victor: *"a badge showing right in the … right corner of
+  // (2026-10-07).** The user: *"a badge showing right in the … right corner of
   // this screen, like a tab popping from below … a constant size, no matter the
   // zoom"*. Square at the bottom, rounded on top, it slides up when shown. Page
   // zoom (⌘+ / ⌘−) scales every CSS pixel, so the worker asks Chrome for the

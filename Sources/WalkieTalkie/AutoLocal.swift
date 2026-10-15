@@ -3,7 +3,7 @@ import Foundation
 /// **Prepare local transcript (p95)** — the Engine submenu's checkbox
 /// (2026-09-28 as *Auto fallback to local (p98)*; reshaped 2026-09-29).
 ///
-/// 2026-09-28, 22:25, Victor: *"I don't think I will ever have the patience to
+/// 2026-09-28, 22:25, the original author: *"I don't think I will ever have the patience to
 /// wait for 36 seconds. I will probably hit ⌘⌃X and use the local model
 /// fallback."* That evening a sentence over its budget was **handed to this Mac
 /// automatically** (`via: local-auto`).
@@ -17,7 +17,7 @@ import Foundation
 /// fallback automatically, only show when it is ready, and the human decides
 /// when to insert."*
 ///
-/// 2026-10-06, reversed again. Victor: *"put a countdown timer … and when the
+/// 2026-10-06, reversed again. the original author: *"put a countdown timer … and when the
 /// timer expires, the local dictation is automatically injected"* (that
 /// morning he had pressed ⌘⌃X twice, 11 s and 18 s past a 3.4 s budget, while
 /// Wispr Flow sat on a row that never finished).
@@ -56,7 +56,7 @@ enum AutoLocal {
 
     /// **The chip's ⌘⌃X row.** With a decode ahead armed for this sentence it
     /// counts down to the budget — `💻 local in 3s / ⌘⌃X ...` (2026-10-07,
-    /// Victor's wording, replacing 10-06's `⌘⌃X - 💻 fallback, auto in 3s...`;
+    /// the original author's wording, replacing 10-06's `⌘⌃X - 💻 fallback, auto in 3s...`;
     /// the 💻 is the row's glyph column, not in the text), whole seconds rounded
     /// up, `local now` at zero while the local words are still being decoded. **No engine's name** (same day:
     /// *"don't leak the name of any tool, only the icon"* — the logo on the
@@ -71,7 +71,7 @@ enum AutoLocal {
     }
 
     /// **A plain sentence on Wispr waits for Wispr's own words** (2026-10-10,
-    /// Victor: *"in dictare curata cu wispr ca motor, ia te rog varianta
+    /// the original author: *"in dictare curata cu wispr ca motor, ia te rog varianta
     /// redactata"*). That evening two clean sentences went in as the local
     /// model's unpunctuated words: Wispr took 2.4 s on a 7 s take, the p95
     /// budget was the 1.5 s floor, and its formatted row came 0.9 s after the
@@ -87,7 +87,7 @@ enum AutoLocal {
     }
 
     /// **The budget ran out: are the local words to go in now?** (2026-10-06,
-    /// Victor: *"when the timer expires, the local dictation is automatically
+    /// the original author: *"when the timer expires, the local dictation is automatically
     /// injected"* — the 2026-09-29 *offered, never inserted* reversed.) Only
     /// words in hand: a decode still running is waited for (the tick asks again),
     /// and one that gave nothing leaves the sentence to the engine.
@@ -155,7 +155,7 @@ enum AutoLocal {
     // MARK: - One line per sentence, for reading back (2026-09-29)
 
     /// **What happened to one sentence's wait**, all seconds from the mic close.
-    /// Victor: *"I want clear logging to understand the actual behaviour
+    /// the original author: *"I want clear logging to understand the actual behaviour
     /// retroactively."* One `📊 fallback:` line in `relay.log` and one JSON
     /// object in `~/.walkie-talkie/fallback.jsonl` per armed sentence, written
     /// at its outcome; `evals/fallback-report.py` reads the file.
@@ -267,7 +267,7 @@ enum AutoLocal {
     static let wisprStartingFlash = "💻 Local — Wispr Flow is starting"
 
     /// A Wispr Flow the relay launched itself counts as *starting* this long —
-    /// Victor: *"10 s startup time is killing"*. The process is up well before
+    /// the original author: *"10 s startup time is killing"*. The process is up well before
     /// its microphone answers a chord.
     /// **Since batch 4 (2026-09-29) any Wispr Flow this young counts, whoever
     /// launched it** — its process age, read from the kernel.

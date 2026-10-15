@@ -1,14 +1,14 @@
 import Foundation
 
 /// **What ElevenLabs has billed so far, kept on this Mac** (2026-09-26 —
-/// Victor: *"vreau să contorizezi costul acumulat în meniu la Engine în
+/// the original author: *"vreau să contorizezi costul acumulat în meniu la Engine în
 /// dreptul lui ElevenLabs"*). Seconds of audio, by product, since the day the
 /// counter was born; the money is those seconds at the published rates the
 /// engine rows already quote (`ElevenLabsSource.rate`, `ElevenLabsLive.rate`),
 /// so the ledger and the invoice can only disagree if the rates do — **if they
 /// disagree, the invoice is right.** Nothing here is read back from the API.
 ///
-/// **Not in the menu any more (2026-09-28)** — Victor: *"scoate $ de după
+/// **Not in the menu any more (2026-09-28)** — the original author: *"scoate $ de după
 /// nume. Îmi ajunge quota consumată."* The 🧾 quota row says what the account
 /// used; this ledger stays for `/test/state.elevenCost`, which the harness's
 /// B-cases read to prove a take was billed.

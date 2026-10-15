@@ -1,6 +1,6 @@
 import AppKit
 
-/// **🔼 → over the reply pop-up: it dissolves to the right** (2026-10-09, Victor:
+/// **🔼 → over the reply pop-up: it dissolves to the right** (2026-10-09, the original author:
 /// *"that panel should swipe to right, fade out, and then in the same time turn
 /// into pieces … something to suggest that I took my focus and send it to it"*,
 /// then, over the first build's 9-column burst: *"I don't want to make it an
@@ -14,7 +14,7 @@ import AppKit
 /// --filter ReplyBurstTests`). `sharingType = .none` and mouse-transparent, like
 /// the pop-up it replaces.
 ///
-/// **☠️ blows it up** (2026-10-14, Victor: *"when I click on the skull to kill a
+/// **☠️ blows it up** (2026-10-14, the original author: *"when I click on the skull to kill a
 /// session … the dialogue should explode … breaking down into pieces and
 /// exploding out"*) — `.explode(from:)`: the picture cracks into ~`shard`-point
 /// triangles on a jittered grid, a flash goes off at the skull, and each shard,

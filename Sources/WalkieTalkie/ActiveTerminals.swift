@@ -1,7 +1,7 @@
 import Foundation
 
 /// **The spawn menu's first row: the agents already running, one hover away**
-/// (Victor, 2026-09-23: *"In the project pop-up … when I open a new terminal, I
+/// (the original author, 2026-09-23: *"In the project pop-up … when I open a new terminal, I
 /// want the first option to be a menu that says 'Recent', or 'Active
 /// Terminals', and then when I hover over it, a submenu opens that lets me bind
 /// this prompt to that terminal."*).
@@ -45,7 +45,7 @@ enum ActiveTerminals {
         let title: String?
         /// **Working right now** — Claude Code's own `status: "busy"` in
         /// `~/.claude/sessions/<pid>.json`; drawn as a ⏳ in front of the row
-        /// (2026-10-07, Victor: *"to have a hourglass in front of them if you
+        /// (2026-10-07, the original author: *"to have a hourglass in front of them if you
         /// detect that Claude session to be active right now"*).
         var busy: Bool = false
     }
@@ -103,7 +103,7 @@ enum ActiveTerminals {
     // MARK: - Under the folder rows (2026-10-07)
 
     /// **Each session goes under the folder row it is working in; the rest stay
-    /// under *Active Terminals*.** Victor, 2026-10-07: *"to have the active
+    /// under *Active Terminals*.** the original author, 2026-10-07: *"to have the active
     /// session grouped under [the projects] … And the remaining terminals that
     /// are not bound to any, should stay in the first, other active
     /// terminals."* A session belongs to a row when its directory is the row's

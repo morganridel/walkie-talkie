@@ -4,7 +4,7 @@ import AppKit
 ///
 /// Two overlays would be actively harmful, not just untidy: both would tap the
 /// same shortcuts, both would open the microphone on the same gesture, and
-/// they would relay into different sessions' outboxes — so Victor could not tell
+/// they would relay into different sessions' outboxes — so the original author could not tell
 /// which agent was listening. The newest launch always wins, because it is the
 /// one whose session is actually watching.
 ///
@@ -77,7 +77,7 @@ enum SingleInstance {
     // asked me to go" — both arrive as the same Quit event. So the newcomer says
     // so out loud, in a file, just before knocking: a `session_end` emitted
     // during a restart would tell the watching agent to stop listening exactly
-    // when Victor wanted a fresh session.
+    // when the original author wanted a fresh session.
 
     private static var markerURL: URL {
         Outbox.home.appendingPathComponent(".replacing")

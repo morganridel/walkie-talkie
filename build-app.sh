@@ -3,7 +3,7 @@
 #
 # The .app is not cosmetic: macOS keys Accessibility / Screen Recording (TCC)
 # grants to a code-signing identity. A bare SwiftPM binary is ad-hoc signed and
-# gets a NEW identity on every rebuild, so Victor would have to re-tick the
+# gets a NEW identity on every rebuild, so the user may have to re-tick the
 # Accessibility checkbox after each change. Signing the bundle with the stable
 # local identity makes the grant stick.
 #
@@ -30,12 +30,12 @@ esac
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="Walkie Talkie"
-# **The identity macOS keys every privacy grant to.** The old name, on purpose —
-# see the comment beside `CFBundleIdentifier` in the Info.plist below. It lives in
+# **The identity macOS keys every privacy grant to.** The fork has a generic
+# identifier; keep it stable across subsequent builds. It lives in
 # a variable because three places have to agree about it: the plist, the
 # `--identifier` codesign is given, and the check that refuses to install a bundle
 # where they do not.
-BUNDLE_ID="ro.victorrentea.wispr-relay"
+BUNDLE_ID="local.walkie-talkie"
 # `WALKIE_FINAL_APP` only for exercising the swap against a scratch folder.
 FINAL_APP="${WALKIE_FINAL_APP:-/Applications/$APP_NAME.app}"
 APPS_DIR="$(dirname "$FINAL_APP")"
@@ -49,7 +49,7 @@ STAGED_APP="${WALKIE_STAGING:-${WALKIE_HOME:-$HOME/.walkie-talkie}/staging}/$APP
 # script — and what was left in /Applications was a bundle with **no Info.plist**:
 # files from both runs, a signature made halfway through the other's copying. An
 # app with no Info.plist has no bundle identifier, so TCC stopped recognising it as
-# `ro.victorrentea.wispr-relay` and attributed it to its **executable path**
+# `local.walkie-talkie` and attributed it to its **executable path**
 # instead, as a second unrelated application with none of the grants. The symptom
 # was the whole app going dead — `accessibility trusted=false eventTap=false`, no
 # hotkey, no gesture — with the Accessibility checkbox still ticked next to a row
@@ -146,7 +146,7 @@ fi
 
 echo "Building WalkieTalkie (release)…"
 cd "$DIR"
-swift build -c release
+"$DIR/tools/swift-build.sh" build -c release
 
 BIN="$DIR/.build/release/WalkieTalkie"
 [ -x "$BIN" ] || { echo "❌ build produced no binary at $BIN"; exit 1; }
@@ -172,6 +172,10 @@ cp "$DIR/helpers/recent_projects.py" "$CONTENTS/Resources/recent_projects.py"
 # The search field on `Rebind to…` runs this one, on a pause in his typing, over
 # Claude Code's session journals. Same two-place lookup as the two above.
 cp "$DIR/helpers/session_search.py" "$CONTENTS/Resources/session_search.py"
+cp "$DIR/helpers/codex_bridge.py" "$CONTENTS/Resources/codex_bridge.py"
+cp "$DIR/helpers/walkie-reply" "$CONTENTS/Resources/walkie-reply"
+cp "$DIR/helpers/walkie-codex" "$CONTENTS/Resources/walkie-codex"
+cp "$DIR/helpers/walkie-finish" "$CONTENTS/Resources/walkie-finish"
 
 # The menu bar item's two faces: the device alone at rest, the full icon with its
 # ring once the relay is pointed at a terminal. Copied rather than declared as SPM
@@ -210,7 +214,7 @@ cp -R "$DIR/assets/projectm" "$CONTENTS/Resources/projectm"
 # The Finder / Spotlight / Get Info icon, built here from the *bound* picture —
 # the device inside its orange ring. It was the idle one for two days, on the
 # argument that the ring means "bound to a terminal right now" and an app icon
-# cannot make a claim about a live state. Victor reversed it on 2026-08-28
+# cannot make a claim about a live state. The original author reversed it on 2026-08-28
 # ("iconul app sa fie cu cercul portocaliu in jur, ca originalul"), and the
 # argument does not survive the reversal: in the menu bar the two pictures sit
 # side by side and the ring is a *state*, but nothing shows the app icon beside
@@ -226,7 +230,7 @@ cp -R "$DIR/assets/projectm" "$CONTENTS/Resources/projectm"
 # the reason the padding cannot live in the artwork.
 ICONSET="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$ICONSET"
-swift "$DIR/assets/make-appicon.swift" "$DIR/assets/walkie-bound.png" "$ICONSET"
+"$DIR/tools/swift-build.sh" run "$DIR/assets/make-appicon.swift" "$DIR/assets/walkie-bound.png" "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/AppIcon.icns"
 rm -rf "$(dirname "$ICONSET")"
 
@@ -237,12 +241,9 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 <dict>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
-    <!-- **The old name, on purpose.** The app is Walkie Talkie; its identity to
-         macOS is not. TCC keys Accessibility, Screen Recording and the microphone
-         to this string plus the signing identity, so changing it costs three
-         grants re-ticked by hand in System Settings — and it is invisible
-         everywhere Victor looks. The Caches folder follows it for the same
-         reason. Do not "fix" this to match the name. -->
+    <!-- TCC keys Accessibility, Screen Recording and microphone permissions
+         to this identifier and the signing identity. Keep both stable when
+         rebuilding. This fork intentionally uses a generic local identifier. -->
     <key>CFBundleIdentifier</key>
     <string>$BUNDLE_ID</string>
     <key>CFBundleName</key>
@@ -284,8 +285,8 @@ PLIST_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$CONTENTS/In
 
 SIGNING_IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "$SIGNING_IDENTITY" ]; then
-    if security find-identity -v -p codesigning | grep -Fq "Victor Addons Local Code Signing"; then
-        SIGNING_IDENTITY="Victor Addons Local Code Signing"
+    if security find-identity -v -p codesigning | grep -Fq "Walkie Talkie Local Code Signing"; then
+        SIGNING_IDENTITY="Walkie Talkie Local Code Signing"
     fi
 fi
 

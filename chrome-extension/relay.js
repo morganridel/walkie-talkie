@@ -7,7 +7,7 @@
 
 // Several relays can be up at once — one per agent session — and each takes the
 // first free port. A pick goes to all of them: which session it belongs to is
-// decided later, by which one Victor actually dictates into.
+// decided later, by which one the user actually dictates into.
 const PORTS = [8917, 8918, 8919];
 
 // How long a probe may take before we call it dead. Generous enough for a
@@ -16,7 +16,7 @@ const PORTS = [8917, 8918, 8919];
 const PROBE_TIMEOUT_MS = 400;
 
 // A probe is asked for on every ⌘⇧ hold, which is often, so the answer is worth
-// remembering — but only briefly. It now flips every time Victor starts or stops
+// remembering — but only briefly. It now flips every time the user starts or stops
 // talking, not once a session, and a stale "live" is an arming that swallows a
 // ⌘⇧-click Chrome should have opened in a new tab.
 const PROBE_TTL_MS = 1000;
@@ -70,7 +70,7 @@ async function probe() {
   };
 
   // The toolbar icon is the only place that can say "the relay is up" without
-  // Victor having to hold a key down to find out.
+  // the user having to hold a key down to find out.
   chrome.action.setBadgeText({ text: cached.ports.length ? String(cached.ports.length) : '' });
   chrome.action.setBadgeBackgroundColor({ color: '#ff453a' });
   chrome.action.setTitle({
@@ -129,7 +129,7 @@ const MUSIC_RETRY_MINUTES = 0.5;
 let musicSocket = null;
 
 // **The music plays on for a second after the microphone opens** (2026-10-08,
-// Victor: *"mai lasă încă o secundă melodia să audă sfârșitul cuvântului care
+// The user: *"mai lasă încă o secundă melodia să audă sfârșitul cuvântului care
 // l-a întrerupt"*) — the word it was cut on gets to finish. A sentence that
 // ends inside that second never pauses anything.
 const PAUSE_LAG_MS = 1000;
@@ -150,7 +150,7 @@ function cancelPendingPause() {
 // --- the two halves of the job, injected into the page ---------------------
 
 // Pause every media element that is actually playing, and mark it, so the resume
-// can find exactly those — and not the ones Victor had already paused himself.
+// can find exactly those — and not the ones the user had already paused himself.
 function pauseAudibleMedia() {
   for (const el of document.querySelectorAll('video, audio')) {
     if (el.paused || el.ended) continue;
@@ -198,7 +198,7 @@ async function resumeWhatWePaused() {
   if (!engaged) return;
   // **All at once, unlike the pause.** Each `executeScript` is a round trip to
   // another process, and awaited one after the other they add up to a delay
-  // Victor hears as the music lagging behind him. The pause can afford to be
+  // the user hears as the music lagging behind him. The pause can afford to be
   // sequential — it is building the list it will resume from — but here the
   // list is already known, so every tab gets its call in the same tick.
   await Promise.all((pausedTabs || []).map((tabId) =>

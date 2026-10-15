@@ -3,7 +3,7 @@ import AppKit
 /// **A reminder under the pointer, after every sentence, of which keys bring
 /// it back** — `⌘⇧P`.
 ///
-/// Victor's first ask, 2026-09-22: *"după ce ai dat cancel la dictare sau după
+/// the original author's first ask, 2026-09-22: *"după ce ai dat cancel la dictare sau după
 /// ce s-a încheiat o dictare la caret … ideea că paste-ul poate [se] pierde …
 /// să apară foarte transparent, încă un hint, cu tastele pe care le apăs ca să
 /// dau paste la acel prompt. Și cumva să apară foarte faint, și apoi să crească
@@ -49,7 +49,7 @@ import AppKit
 ///
 /// Until this afternoon it was a panel of its own — `KeycapView`, `⌘⇧P` in a
 /// white rounded outline, 15 pt medium, at 80% for 2.5 s and faded over 0.5 s,
-/// re-placed under the pointer every frame. Victor: *"It looks like now it has
+/// re-placed under the pointer every frame. the original author: *"It looks like now it has
 /// a border around it, with a different font, which is wrong. I just want you
 /// to display yet another row in the mouse tooltip. Technically, it's just
 /// like, for example, transcribing Kamikaze … It should have the icon of the
@@ -70,7 +70,7 @@ import AppKit
 ///
 /// ## A keystroke keeps it up (2026-09-23, evening)
 ///
-/// Victor: *"the hint … should remain next to the mouse, whatever I press. I
+/// the original author: *"the hint … should remain next to the mouse, whatever I press. I
 /// think I pressed Command-Z, and it disappeared … They should stay there just
 /// in case I need to paste it again."* The moment the row is for is the one
 /// where he has just seen the words land wrong — and what he does first is
@@ -84,7 +84,7 @@ final class PasteHint {
 
     /// The keys, as they are written on his keyboard — the row's shortcut.
     /// **⌘V since 2026-09-28** (Q17): the clipboard always holds the finished
-    /// sentence, so the paste is the system's own key and ⌘⇧P is gone. Victor:
+    /// sentence, so the paste is the system's own key and ⌘⇧P is gone. the original author:
     /// *"Punem pentru moment Ctrl V în tooltip"* — ⌘V on this Mac.
     static let keys = "⌘V"
     /// The row's words: the sentence is on the clipboard, ⌘V pastes it again.

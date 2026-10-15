@@ -2,7 +2,7 @@ import Foundation
 
 /// **Vocea, pregătită pentru presetele care așteaptă muzică.**
 ///
-/// Presetele MilkDrop sunt desenate pentru muzică, iar Victor vorbește. Măsurat pe
+/// Presetele MilkDrop sunt desenate pentru muzică, iar the original author vorbește. Măsurat pe
 /// zece înregistrări din corpusul lui, din orele de curs (9–17, L–V, 8 s+):
 ///
 /// - **3,2%** din energia vocii stă sub 120 Hz (între 0,5% și 11%), acolo unde o tobă
@@ -20,7 +20,7 @@ import Foundation
 /// deliberat (vezi comentariul de acolo: ambele motoare sunt detectorul de beat al lui
 /// MilkDrop, care citește benzile din bini de spectru presupunând 44,1 kHz, iar ruta
 /// web îi dă lui butterchurn exact aceste eșantioane brute). Consecința: **tot ce
-/// aude motorul e urcat cu un factor de 2,756**. Fundamentala lui Victor, ~150 Hz,
+/// aude motorul e urcat cu un factor de 2,756**. Fundamentala lui the original author, ~150 Hz,
 /// ajunge la motor pe la 414 Hz, iar banda pe care motorul o numește „bass" (20–320 Hz)
 /// corespunde la 7–116 Hz reali — unde vocea lui chiar nu are nimic.
 ///
@@ -166,7 +166,7 @@ final class VoicePrep {
     // MARK: The voice gate — one threshold for every effect (2026-09-24)
 
     /// **How loud a syllable has to be before any effect hears it**, 0…0.5 —
-    /// the tuner's *Voice threshold*, one value for every halo. Victor: *"the
+    /// the tuner's *Voice threshold*, one value for every halo. the original author: *"the
     /// settings for the voice processing and the thresholds should apply to all
     /// the effects … How to process the voice should be the same, no matter the
     /// effect used, but the effects themselves might have an additional

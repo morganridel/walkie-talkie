@@ -5,12 +5,12 @@ import CoreImage
 /// Prototype "the screen was just captured, right here" effects — seven
 /// different visual answers to the same brief: converge on the pointer the
 /// way `CaptureFlash.markCursor` already does, but bigger and busier, so
-/// Victor can watch them side by side and pick one. `CaptureEffectDemo`
+/// the original author can watch them side by side and pick one. `CaptureEffectDemo`
 /// below is a standalone tryout harness triggered by an env var, for
 /// playing all of them (or a chosen one) back to back outside of any real
 /// dictation.
 ///
-/// **Two of these were also live-playtested for real** (2026-09-04, Victor's
+/// **Two of these were also live-playtested for real** (2026-09-04, the original author's
 /// ask): `CaptureFlash.announce(cycleMarker: true)` round-robined every actual
 /// dictation start between the classic reticle, `.spikes`, and `.tapRipple`, so
 /// he could compare them in day-to-day use and not just in the demo. **It ended
@@ -127,13 +127,13 @@ enum CaptureEffect: String, CaseIterable {
     /// the point, that fly straight in and vanish into it — the read is
     /// "everything on this screen just got pulled to that one pixel."
     ///
-    /// **Bigger, brighter, slower** (2026-09-04, Victor's ask): the original
+    /// **Bigger, brighter, slower** (2026-09-04, the original author's ask): the original
     /// darts were thin enough and quick enough to read as a flicker rather
     /// than shapes flying in. Wider, longer, fully opaque, outlined and
     /// glowing so they hold up over any background, and given almost a full
     /// second so the flight itself is watchable rather than guessed at.
     ///
-    /// **Scattered, not ringed** (2026-09-04, Victor's ask): they used to
+    /// **Scattered, not ringed** (2026-09-04, the original author's ask): they used to
     /// stand in a ring just past every edge, arriving from "outside" the
     /// screen. Starting them at random points *on* the screen instead reads
     /// as "the whole desktop is being pulled in," not "something flew in
@@ -141,7 +141,7 @@ enum CaptureEffect: String, CaseIterable {
     /// actually starts rather than assigned to it.
     private static func playSpikes(into root: CALayer, target: CGPoint, size: CGSize, speed: Double = 1.0) {
         let count = 52
-        // (2026-09-04, Victor's ask) 1.2x faster than the previous baseline —
+        // (2026-09-04, the original author's ask) 1.2x faster than the previous baseline —
         // the caller's `speed` multiplier still applies on top of that.
         let duration: CFTimeInterval = (0.95 / 1.2) * speed
         let jitter: Double = (0.25 / 1.2) * speed
@@ -168,7 +168,7 @@ enum CaptureEffect: String, CaseIterable {
             dart.fillColor = NSColor.captureAccent.cgColor
             dart.strokeColor = NSColor.white.withAlphaComponent(0.9).cgColor
             dart.lineWidth = 2
-            // (2026-09-04, Victor's ask) No glow — a flat fill/stroke only.
+            // (2026-09-04, the original author's ask) No glow — a flat fill/stroke only.
             // Also start fully invisible so the dart never sits there
             // statically before its (jittered) animation begins; it should
             // only ever be seen while already converging.
@@ -197,7 +197,7 @@ enum CaptureEffect: String, CaseIterable {
             shrink.fromValue = 1.0
             shrink.toValue = 0.1
 
-            // (2026-09-04, Victor's ask) Starts fully invisible (0%) and
+            // (2026-09-04, the original author's ask) Starts fully invisible (0%) and
             // brightens to 50% so the dart is only ever seen while it's
             // already moving — never sitting there statically first — then
             // holds at 50% for most of the flight and dims out at the end.
@@ -261,7 +261,7 @@ enum CaptureEffect: String, CaseIterable {
 
     // MARK: - 3. Undulating wave
 
-    /// **Actually ripples the desktop** (2026-09-04, Victor's ask): the
+    /// **Actually ripples the desktop** (2026-09-04, the original author's ask): the
     /// previous version drew rings *over* the screen; this grabs one real
     /// frame of it and pushes its own pixels through a pinch/bulge filter
     /// that oscillates and decays at the point, so what moves is the
@@ -615,7 +615,7 @@ enum CaptureEffect: String, CaseIterable {
     /// than gathering the screen toward it), added on request purely to
     /// compare against them.
     ///
-    /// **It stops where the lightning ring starts** (2026-09-19, Victor's
+    /// **It stops where the lightning ring starts** (2026-09-19, the original author's
     /// ask): the disc used to bloom 100pt → 250pt, and `CaretHalo`'s ink
     /// begins 35.7pt out from the same point — so for most of its life the
     /// bubble was sitting under, and then out past, the very filaments it
@@ -689,7 +689,7 @@ enum CaptureEffectDemo {
     /// exactly the "replay #1, 3 times, 1.5x slower" kind of ask.
     ///
     /// Each rep converges on wherever the mouse **is when that rep fires**,
-    /// not on one point captured before the first — Victor can move the
+    /// not on one point captured before the first — the original author can move the
     /// pointer between reps and watch each one chase it there.
     static func runOne(_ only: CaptureEffect?, reps: Int, speed: Double) {
         let effects = only.map { [$0] } ?? Array(CaptureEffect.allCases)

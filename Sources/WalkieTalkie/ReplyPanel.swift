@@ -3,7 +3,7 @@ import AppKit
 /// **The agent's short answer to a question he dictated, beside the pointer**
 /// (2026-10-07).
 ///
-/// Victor: *"sometimes I'm asking questions, direct questions, not telling what
+/// the original author: *"sometimes I'm asking questions, direct questions, not telling what
 /// to do … there should be a way that the agent is able to reach me back … a
 /// bit of a panel that appears next to the mouse carrying the response of the
 /// model … I'm going to answer by just dictating more … it's super important to
@@ -17,7 +17,7 @@ import AppKit
 /// have to manually dismiss it"*). An answer that went away on a timer while he
 /// was looking at the terminal is one he never got.
 ///
-/// **Answers queue, one on screen at a time** (2026-10-08, Victor: *"să nu apară
+/// **Answers queue, one on screen at a time** (2026-10-08, the original author: *"să nu apară
 /// una peste alta, să apară doar după ce am închis una … pe rând, stau la
 /// coadă"*). A newer answer waits behind the open one and comes up, at the
 /// pointer, when that one is closed (✕ or its link).
@@ -26,10 +26,10 @@ import AppKit
 /// it is read, and clicked once. **It zooms in out of the pointer, fading in**
 /// (`zoom`; a toast rising from the screen's bottom until the same afternoon),
 /// centred on the pointer's x, its top edge `belowPointer` under the pointer
-/// (2026-10-08, Victor: *"marginea de sus a panelului … un pic sub mouse"*).
+/// (2026-10-08, the original author: *"marginea de sus a panelului … un pic sub mouse"*).
 ///
 /// **Shared in a Teams/Zoom screen share, absent from the shutter's frames**
-/// (2026-10-12, Victor: *"When I share with teams, this overlay … is not
+/// (2026-10-12, the original author: *"When I share with teams, this overlay … is not
 /// displayed. Fix."*). It was `sharingType = .none`, which hid it from every
 /// capture — the room's included. It is `.readOnly` now, and `outOfShot` drops
 /// it to `.none` only for the length of the shutter's own `screencapture`, so
@@ -45,7 +45,7 @@ enum ReplyPanel {
     /// read whole, so only a runaway one is cut.
     static let maxChars = 4000
     private static let width: CGFloat = 380
-    /// **Every corner resizes it** (2026-10-09, Victor: *"make the dialog window
+    /// **Every corner resizes it** (2026-10-09, the original author: *"make the dialog window
     /// … resizable by the right or left bottom corner? Actually all the corners
     /// … in case there's a longer response"*). The size he dragged it to, kept
     /// while it is open (a streaming ⚡ answer included); nil = fitted to the words.
@@ -97,7 +97,7 @@ enum ReplyPanel {
         return tty
     }
 
-    /// **The 📍 binds that terminal** (2026-10-08, Victor: *"the new icon … next
+    /// **The 📍 binds that terminal** (2026-10-08, the original author: *"the new icon … next
     /// to the death face … would rebind me, but it only displays if I'm not
     /// already bound to that terminal … the [pin] that shows caret"*) —
     /// `AppDelegate.rebindFromMenu`, with the border flying into the chip.
@@ -106,25 +106,25 @@ enum ReplyPanel {
     /// Is Walkie bound to this tty right now — decides whether the 📍 is drawn.
     static var isBound: ((String) -> Bool)?
     /// **A click on the terminal's name brings it in front, where it is**
-    /// (2026-10-08, Victor: *"if I click the name of it, it's not rebind … it
+    /// (2026-10-08, the original author: *"if I click the name of it, it's not rebind … it
     /// brings in front the wrong terminal"*) — nothing is bound; the 📍 binds.
     static var onRaise: ((String) -> Void)?
 
     /// **A click on the walkie puts that terminal in front, centred on the
-    /// Retina, at once** (2026-10-08, Victor: *"if I click on the Walkie Talkie
+    /// Retina, at once** (2026-10-08, the original author: *"if I click on the Walkie Talkie
     /// icon … that terminal should pop in front … on the retina in the center of
     /// the screen … with no animation"*) — to read more, or ask more, there.
     /// Nothing is bound; the name is the link that binds.
     static var onPresent: ((String) -> Void)?
 
     /// **The ☠️ left of the ✕ sends that session `kamikaze`** (2026-10-08,
-    /// Victor: *"to the left of the X … an emoji with a skull … with a click, it
+    /// the original author: *"to the left of the X … an emoji with a skull … with a click, it
     /// sends kamikaze back to the session that sent this message"*) — the
     /// answer was the last thing he needed from it. The panel explodes from the
     /// skull (`ReplyBurst.Style.explode`, 2026-10-14).
     static var onKamikaze: ((String) -> Void)?
 
-    /// **A ☠️ that cannot kill: red, as if already pressed** (2026-10-13, Victor:
+    /// **A ☠️ that cannot kill: red, as if already pressed** (2026-10-13, the original author:
     /// *"if I fire the question, or if it's a Kamikaze session, the skull should
     /// show up red … so that I can't really kill an already killed session … from
     /// a Claude session that has ended by now … the skull should show it's dead"*).
@@ -215,7 +215,7 @@ enum ReplyPanel {
     /// newest 100.
     static func keep(_ paths: [String]) -> [URL] {
         let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ro.victorrentea.wispr-relay/replies", isDirectory: true)
+            .appendingPathComponent("local.walkie-talkie/replies", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let stamp = Int(Date().timeIntervalSince1970 * 1000)
         var kept: [URL] = []
@@ -245,7 +245,7 @@ enum ReplyPanel {
     private static let thumbHeight: CGFloat = 72
     private static let thumbGap: CGFloat = 6
 
-    /// A click opens it in Preview, full size (Victor: *"small, but when
+    /// A click opens it in Preview, full size (the original author: *"small, but when
     /// clicked, opened up"*). The pop-up stays.
     /// The `+N` one opens itself and every picture that did not fit.
     static func open(_ urls: [URL]) {
@@ -409,7 +409,7 @@ enum ReplyPanel {
     static func plain(_ text: String) -> String { parseLinks(text).plain.replacingOccurrences(of: dots, with: "…") }
 
     /// **Three dots, one lit at a time, for a step still running** (2026-10-10,
-    /// Victor: *"o mică animație subtilă … niște punctulețe"*): `🧐 reviewing` +
+    /// the original author: *"o mică animație subtilă … niște punctulețe"*): `🧐 reviewing` +
     /// this. Always three, so the line does not move as they pulse; repainted
     /// by `dotTimer` while the ⚡ pop-up is being written.
     static let dots = "\u{4}"
@@ -475,9 +475,9 @@ enum ReplyPanel {
         let pad: CGFloat = 12
         let width = max(minWidth, size?.width ?? Self.width)
         let inner = width - 2 * pad
-        // **The walkie, not 💬** (Victor: *"change the 💬 icon with the one of
+        // **The walkie, not 💬** (the original author: *"change the 💬 icon with the one of
         // walkie"*) — `walkie-bound.png`, the menu bar's own picture.
-        // **As large as the answer, cut with … at the end** (Victor, 2026-10-08:
+        // **As large as the answer, cut with … at the end** (the original author, 2026-10-08:
         // *"increase the font of the title to be the same as the response,
         // possibly doing ellipsis at the end"*).
         let header = LinkLabel(labelWithString: label ?? "agent")
@@ -485,7 +485,7 @@ enum ReplyPanel {
         header.cell?.truncatesLastVisibleLine = true
         header.font = NSFont.systemFont(ofSize: font.pointSize, weight: .semibold)
         header.textColor = NSColor.white.withAlphaComponent(0.6)
-        // **The click is the answer read: the pop-up goes** (Victor, 2026-10-08:
+        // **The click is the answer read: the pop-up goes** (the original author, 2026-10-08:
         // *"I clicked on the title … and it did not close the window. Should
         // have."*), and that terminal comes in front — bound by the 📍 only.
         if let tty = tty {
@@ -496,7 +496,7 @@ enum ReplyPanel {
             }
         }
         // **Not selectable; a press on the words drags the panel** (2026-10-08,
-        // Victor: *"I should be able to drag the little window … by clicking
+        // the original author: *"I should be able to drag the little window … by clicking
         // on the text and the text shouldn't be selectable"*) — the label
         // passes the click through to `ReplyRoot`.
         // **With links, a text view** — it knows where each word is laid out,
@@ -610,7 +610,7 @@ enum ReplyPanel {
             root.addSubview(thumb)
             thumbs.append(thumb.frame)
         }
-        // **The ✕ as large as the walkie** (2026-10-08, Victor: *"X-ul … aceeași
+        // **The ✕ as large as the walkie** (2026-10-08, the original author: *"X-ul … aceeași
         // mărime ca și simbolul Walkie Talkie"*).
         let x = ReplyCloseButton(frame: NSRect(x: width - pad - iconSide, y: height - pad - headerH, width: iconSide, height: iconSide))
         x.onClick = { Log.info("💬 answer dismissed (✕)"); close() }
@@ -762,7 +762,7 @@ enum ReplyPanel {
     }
 
     /// **It grows out of the pointer, small to full, fading in** (2026-10-08,
-    /// Victor: *"should not swipe in from the bottom, but zoom in … from small to
+    /// the original author: *"should not swipe in from the bottom, but zoom in … from small to
     /// its final size, by also increasing in opacity. To be less disturbed of
     /// transition in the brain"*) — it was a toast rising from the screen's
     /// bottom edge that morning. Scale `zoomFrom` → 1 on an ease-out cubic, no
@@ -808,12 +808,12 @@ private func CGSSetConnectionProperty(_ cid: Int32, _ target: Int32, _ key: CFSt
 
 /// **The panel's own surface: an arrow, and a press drags it** (2026-10-08).
 /// The arrow because the window server keeps the frontmost app's cursor —
-/// Victor saw Chrome's under the panel (*"the mouse has the icon from what's
+/// the original author saw Chrome's under the panel (*"the mouse has the icon from what's
 /// underneath"*); `hot` are the clickable rects, where the hand is theirs.
 private final class ReplyRoot: NSView {
     var hot: [NSRect] = []
     /// **The name is clicked through here, not through its label** (2026-10-08,
-    /// Victor: *"even if I drag on the title, it should still be draggable"* —
+    /// the original author: *"even if I drag on the title, it should still be draggable"* —
     /// the `NSTextField` never moved the panel): a press on `link` that does not
     /// move is the name's click, one that moves drags.
     var link: (rect: NSRect, click: () -> Void)?
@@ -822,7 +822,7 @@ private final class ReplyRoot: NSView {
     var bodyLink: ((NSPoint) -> (url: URL, rect: NSRect)?)?
     /// The pressed link in the words, opened on a release that did not drag.
     private var pressedURL: URL?
-    /// **Its URL under it on hover** (Victor: *"la hover pe acela să apară
+    /// **Its URL under it on hover** (the original author: *"la hover pe acela să apară
     /// URL-ul complet"*) — drawn here: AppKit's tool tips do not show for an
     /// app that is not frontmost, and this one never is.
     private var tip: NSTextField?
@@ -975,7 +975,7 @@ private final class ReplyRoot: NSView {
 }
 
 /// **A press on a clickable that moves is a drag, not a click** (2026-10-08,
-/// Victor: *"I should be able to drag not only on the text but anything as long
+/// the original author: *"I should be able to drag not only on the text but anything as long
 /// as I don't click it but drag it"*). Past `slop` the panel follows the
 /// pointer and the release clicks nothing.
 private struct PressOrDrag {
@@ -1228,7 +1228,7 @@ private final class LinkLabel: NSTextField {
         addTrackingArea(NSTrackingArea(rect: fit, options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways],
                                        owner: self))
     }
-    // **The hand on enter and on every move, not only `cursorUpdate`** (Victor,
+    // **The hand on enter and on every move, not only `cursorUpdate`** (the original author,
     // 2026-10-08: *"the mouse should turn into a hand once I hover the title"*
     // — the underline came, the hand did not): the panel never becomes key, so
     // the frontmost terminal's I-beam won the cursor back.

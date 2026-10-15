@@ -1,6 +1,5 @@
 import AppKit
 import ImageIO
-import VictorMacKit
 
 /// Screenshots the display under the cursor into `~/Library/Caches/…/shots`.
 ///
@@ -23,7 +22,7 @@ enum ScreenCapture {
     /// was pointing at when he pressed.
     ///
     /// `offset` is **where in the dictation** this shot was taken, in seconds
-    /// from the moment Victor started talking — `0` for the automatic context
+    /// from the moment the original author started talking — `0` for the automatic context
     /// capture, which he took by starting to talk. nil for a shot with no
     /// dictation around it (bare F3), where there is no clock for it to be an
     /// offset into and the name falls back to a timestamp.
@@ -122,7 +121,7 @@ enum ScreenCapture {
     /// place is the size, which is the one fact about a crop that is not
     /// obvious from looking at it.
     /// **The whole screen, with the region he dragged written into the name**
-    /// (2026-09-14). Victor: *"să se trimită nu doar decupată poza, ci poza e
+    /// (2026-09-14). the original author: *"să se trimită nu doar decupată poza, ci poza e
     /// ecranul integral, dar cu coordonate ce zonă am selectat … nu doar decupez
     /// o bucată, ci arăt: în zona aia vreau să dispară, să apară ceva"*.
     ///
@@ -164,7 +163,7 @@ enum ScreenCapture {
         }
         let px = areaPixels(rect, on: screen, of: file)
         writeHandoverCopy(of: file)
-        // **And the region itself, cut out, unscaled** (2026-09-19, Victor:
+        // **And the region itself, cut out, unscaled** (2026-09-19, the original author:
         // *"trimite atât ecranul original + 800px ca până acum, dar și selecția
         // originală decupată (nescalată)"*). The frame answers *where*, this one
         // answers *what it says there* — measured in `evals/pointing-proof/`: with
@@ -277,7 +276,7 @@ enum ScreenCapture {
     /// when the name became `screenshot-3` and stopped saying anything).
     static func isArea(_ path: String) -> Bool { zoom(for: path) != nil }
 
-    /// The width of the copy the **agent** is given. Victor still gets the retina
+    /// The width of the copy the **agent** is given. the original author still gets the retina
     /// frame; this is the one that travels.
     ///
     /// Measured, not guessed. A read of an image costs about `width × height / 750`
@@ -306,7 +305,7 @@ enum ScreenCapture {
     ///   and one run duly returned the first two shots swapped. Sequence is the
     ///   thing these messages are made of.
     /// - **Dropping the automatic context frame** scored 0.93, and the reason is
-    ///   worth keeping: it is not a spare. Victor starts talking about the thing
+    ///   worth keeping: it is not a spare. the original author starts talking about the thing
     ///   already on his screen, so the context frame is routinely *picture one*
     ///   of the enumeration — in the Gmail dictation it is the first of the seven
     ///   senders. It is offered cheaply, not withheld.
@@ -324,7 +323,7 @@ enum ScreenCapture {
     /// 700 is what the evidence points at (-51% instead of -36%) and 500 is where
     /// the pictures stop mattering at all, but three repeats a cell is thin, both
     /// fixtures now score 1.00 at every width they used to discriminate, and the
-    /// frames are also read by Victor when he opens the folder. Taking the whole
+    /// frames are also read by the original author when he opens the folder. Taking the whole
     /// measured saving on a saturated suite is how a cliff gets found in
     /// production instead of in `evals/`.
     /// Not private: `AppDelegate.shotsClause` tells the agent how wide these are,
@@ -334,7 +333,7 @@ enum ScreenCapture {
 
     /// Write `<name>-small.jpg` beside the frame, downscaled.
     ///
-    /// **The retina frame stays.** It is what Victor opens when he wants to see
+    /// **The retina frame stays.** It is what the original author opens when he wants to see
     /// what he photographed, on a display that has the pixels for it, and a
     /// staging folder that had thrown the original away would be answering a
     /// token bill by degrading his own copy. The small one is ~170 KB against
@@ -375,7 +374,7 @@ enum ScreenCapture {
 
     /// `…-original.jpg` → `…<suffix>.jpg`, and `…<suffix>` alone when the suffix
     /// is empty — the cut-out is `screenshot-3.jpg` beside
-    /// `screenshot-3-original.jpg`, which is Victor's naming and not a style.
+    /// `screenshot-3-original.jpg`, which is the original author's naming and not a style.
     private static func sibling(of path: String, _ suffix: String) -> String {
         let url = URL(fileURLWithPath: path)
         var stem = url.deletingPathExtension().lastPathComponent
@@ -397,13 +396,13 @@ enum ScreenCapture {
     ///
     /// NB the colon is legal in a POSIX filename on APFS and everything that
     /// handles these paths is POSIX — but **the Finder renders it as `/`**
-    /// (`shot-00/00(…)`), the old HFS separator swap, so a folder Victor opens
+    /// (`shot-00/00(…)`), the old HFS separator swap, so a folder the original author opens
     /// by hand will read slightly differently from what the agent sees.
     ///
     /// **The index goes in front of the offset** (2026-09-14). `shot-1-00:08(…)`
     /// rather than `shot-00:08(…)`, so the `[shot 1]` sitting in the middle of
     /// his sentence names a file by itself and the envelope needs no legend
-    /// explaining the correspondence — Victor: *"it should be obvious"*. The
+    /// explaining the correspondence — the original author: *"it should be obvious"*. The
     /// offset stays because it is the thing that locates a frame for a human
     /// scrolling the folder; the index is what an agent resolves. Nil for a
     /// frame outside a dictation, which has no index to have.
@@ -412,7 +411,7 @@ enum ScreenCapture {
     /// neither.
     private static func stem(_ offset: TimeInterval?, _ index: Int? = nil) -> String {
         // **`screenshot-3`, and the number is the only thing in it** (2026-09-19,
-        // Victor's template). Everything the name used to carry — the offset, the
+        // the original author's template). Everything the name used to carry — the offset, the
         // pointer, the dragged rectangle — is a token inside the sentence now
         // (`[📸3✂️900,345→2594,574]`), said once where he said it instead of twice
         // in two notations. What is left is the digit the token names, so the
@@ -436,7 +435,7 @@ enum ScreenCapture {
     /// real case — but "almost" is doing work there: dictate twice without moving
     /// the mouse and both context shots are `shot-00:00(mouse-at-800x900px)`.
     /// Overwriting would destroy a picture an outbox line still points at, which
-    /// is the same trap `ScreenshotManager.uniqueURL` exists for in Victor Addons.
+    /// is the same trap `ScreenshotManager.uniqueURL` exists for in the original author Addons.
     private static func unique(_ url: URL) -> URL {
         guard FileManager.default.fileExists(atPath: url.path) else { return url }
         let stem = url.deletingPathExtension().lastPathComponent
@@ -506,7 +505,7 @@ enum ScreenCapture {
                        y: clamp((frame.maxY - mouse.y) / frame.height))
     }
 
-    /// One screenshot per dictation adds up fast — Victor dictates all day, and
+    /// One screenshot per dictation adds up fast — the original author dictates all day, and
     /// each retina JPG is a megabyte or two. Keep the most recent `keepNewest`
     /// and drop the rest, so the folder can't quietly eat the disk.
     ///

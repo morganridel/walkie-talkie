@@ -2,8 +2,8 @@ import AppKit
 import Foundation
 
 /// 🧾 **How much of the ElevenLabs plan is left** — the last row under `Engine`
-/// (2026-09-28). Victor: *"Eleven labs should show remaining/total and reset
-/// date"*, first built into Victor Addons and moved here the same morning —
+/// (2026-09-28). the original author: *"Eleven labs should show remaining/total and reset
+/// date"*, first built into the original author Addons and moved here the same morning —
 /// *"quota lui 11labs are sens doar in walkie - addons nu foloseste eleven labs
 /// de loc."* The plan runs out silently; the first sign used to be a dictation
 /// that came back empty.
@@ -125,7 +125,7 @@ enum ElevenLabsQuotaPolicy {
         return f.string(from: date)
     }
 
-    /// Compact on purpose (Victor: *"33 / 10k / Oct 30"*): **used** / total /
+    /// Compact on purpose (the original author: *"33 / 10k / Oct 30"*): **used** / total /
     /// reset — used, not remaining, since 2026-09-28 08:50 (*"afișează
     /// consumat, nu rămas înainte de /"*). The words live in the tooltip.
     static func title(_ s: Snapshot?, error: String?, timeZone: TimeZone = .current) -> String {

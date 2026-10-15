@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search Claude Code's session journals for the words Victor remembers saying.
+"""Search Claude Code's session journals for the words the user remembers saying.
 
 **The question it answers is the one the terminal cannot.** `Rebind to…` lists
 the destinations the relay has spoken to, newest first, and that list is right
@@ -61,7 +61,7 @@ BEFORE, AFTER = 60, 140
 # --- what counts as a visible message ---------------------------------------
 
 def visible_text(rec):
-    """The text this record put on Victor's screen, or None.
+    """The text this record put on the user's screen, or None.
 
     Returns `(role, text)` with role in `me` / `claude`.
     """

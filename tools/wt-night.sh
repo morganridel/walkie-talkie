@@ -1,14 +1,10 @@
 #!/bin/bash
-# **The weekly night run in the lab** (2026-09-27). Victor: *"vreau sa configurezi suita de teste de
-# walkie sa ruleze in fiecare seara cand ai hdd extern conectat, dar max 1/sapt automat. sa fie rulata
-# si de claude intr-o sesiune interactiva pornita noaptea la 2:00 si sa repari ce defecte gasesti,
-# daca pica ceva. + trimite o rulare exploratorie sa se joace cu app. totul in VM."*
+# Optional Claude-based weekly test run in the Tart lab VM.
 #
-# **On demand only since 2026-09-29** (Victor: *"I will only run it on demand … it's a bit abusive"*
-# — a scheduler must not hit external APIs): the LaunchAgent is unloaded and parked in
-# `~/Library/LaunchAgents.disabled/`. Run `WT_NIGHT_FORCE=1 tools/wt-night.sh start` when he asks.
+# On demand only: a scheduler must not trigger external APIs. The example LaunchAgent is not
+# installed. Run `WT_NIGHT_FORCE=1 tools/wt-night.sh start` when an operator requests it.
 #
-# As built: the LaunchAgent `tools/ro.victorrentea.wt-night.plist` called `start` every night at 02:00. `start`
+# The optional LaunchAgent example calls `start` at 02:00. `start`
 # opens an interactive Claude Code session in a detached tmux (`wt-night`) whose brief is
 # `evals/plan/vm/night/PROMPT.md`: VM up, deploy, the whole suite in the guest, fix, re-run,
 # exploratory run, report, VM down. Docs: docs/vm-lab.md, section *Nightly*.
@@ -26,7 +22,7 @@
 # 2026-09-29 — the weekly gate no longer depends on the external disk Vic being mounted).
 set -euo pipefail
 
-REPO=/Users/victorrentea/workspace/walkie-talkie
+REPO="${WT_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export TART_HOME="${TART_HOME:-$HOME/tart}"
 STAMP="$TART_HOME/night/last-run"
 SESSION=wt-night
@@ -156,7 +152,7 @@ cmd_status() {
   if [ -n "$age" ]; then echo "tmux:     '$SESSION' alive, $((age / 60)) min old — tmux attach -t $SESSION"
   else echo "tmux:     no '$SESSION' session"; fi
   tmux ls 2>/dev/null | grep "^$SESSION-" | sed 's/^/          kept: /' || true
-  echo "launchd:  $(launchctl print "gui/$(id -u)/ro.victorrentea.wt-night" 2>/dev/null | grep -m1 -E '^\s*state =' | xargs || echo 'ro.victorrentea.wt-night not loaded')"
+  echo "launchd:  $(launchctl print "gui/$(id -u)/local.walkie-talkie.night" 2>/dev/null | grep -m1 -E '^\s*state =' | xargs || echo 'local.walkie-talkie.night not loaded')"
   local rep
   rep="$(ls -1d "$REPO"/evals/plan/vm/night/20*/report.md 2>/dev/null | tail -1 || true)"
   echo "report:   ${rep:-none yet (the 26/27 Sep run is evals/plan/vm/night/report-vm-night.md)}"

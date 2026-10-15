@@ -9,7 +9,7 @@ import ApplicationServices
 ///     most Electron/Chrome text fields.
 ///  2. **Simulated Cmd+C** — the fallback for apps that don't expose selected
 ///     text over AX (a lot of web content). The clipboard is snapshotted and
-///     restored afterwards, so Victor's real clipboard survives the probe.
+///     restored afterwards, so the original author's real clipboard survives the probe.
 enum SelectionCapture {
 
     /// Runs on a background thread: strategy 2 blocks briefly polling the pasteboard.
@@ -22,7 +22,7 @@ enum SelectionCapture {
     /// actually uses it: a highlight in a Chrome *page* is exactly the case AX
     /// does not see, so every shot taken over one recorded nothing, silently.
     /// A shutter press is a deliberate act with a deliberate subject; the ⌘C is
-    /// a price Victor asked to pay, and with nothing selected the probe is a
+    /// a price the original author asked to pay, and with nothing selected the probe is a
     /// no-op the app never notices.
     static func read() -> String? {
         if let ax = readViaAccessibility(), !ax.isEmpty { return ax }
@@ -37,7 +37,7 @@ enum SelectionCapture {
     /// on 2026-08-31 is the argument for it here. It was taken out because the
     /// **shutter** used it: a deliberate press with a deliberate subject, where
     /// stopping at AX meant a highlight in a Chrome page recorded nothing at
-    /// all, silently, and the ⌘C was a price Victor asked to pay for it. Nothing
+    /// all, silently, and the ⌘C was a price the original author asked to pay for it. Nothing
     /// about that transfers to a poll. A synthetic ⌘C posted into whatever app
     /// is under his hand *once per second, all sentence*, is not a price
     /// anybody would pay: it would fight his own copying, spend 400ms of a
@@ -140,7 +140,7 @@ enum KeySimulator {
     /// What was wrong is what it left behind. `CGEventSource.flagsState` reports
     /// **whatever the last event's flags said**, and the `keyUp` here carried
     /// `.maskCommand` — so after every probe the session believed ⌘ was held,
-    /// indefinitely, until Victor's next real keystroke healed it. That is the
+    /// indefinitely, until the original author's next real keystroke healed it. That is the
     /// stale-⌘ bug `area-crop.md` documents for `TerminalBinding.tap(key:command:)`
     /// and which was fixed there on 2026-09-10; this poster never got the fix,
     /// and the rule is the same one: **release the modifier with a `flagsChanged`
@@ -157,7 +157,7 @@ enum KeySimulator {
     ///
     /// **Stamped**, too: `keyboardEventSource: nil` gave the event pid 0 and no
     /// `userData`, so this app's own probe reached its own tap looking exactly
-    /// like a key Victor had pressed. Every other poster in this repo carries
+    /// like a key the original author had pressed. Every other poster in this repo carries
     /// `backButtonStamp` for that reason, and `WT_KEY_TRACE` now reads it.
     static func simulateKeyPress(keyCode: CGKeyCode, flags: CGEventFlags = []) {
         let source = CGEventSource(stateID: .hidSystemState)

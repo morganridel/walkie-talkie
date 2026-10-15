@@ -1,15 +1,15 @@
 import Foundation
 
-/// **Hold Victor Addons' desktop effects still while a crop is being drawn.**
+/// **Hold the original author Addons' desktop effects still while a crop is being drawn.**
 ///
 /// The wheel-held crop is the one capture in this rig that takes *seconds*
-/// rather than a millisecond: Victor frames the box while still talking, and the
+/// rather than a millisecond: the original author frames the box while still talking, and the
 /// room keeps tapping ☕ reactions at him the whole time. Whatever is floating
 /// over the desktop when he lets go lands in the picture. Every other capture
 /// here is instantaneous and needs none of this.
 ///
 /// `GET /effect/suspend/<seconds>` clears the screen and keeps it clear;
-/// `GET /effect/resume` lifts it. Both go to **55123**, Victor Addons' port —
+/// `GET /effect/resume` lifts it. Both go to **55123**, the original author Addons' port —
 /// it proxies `/effect/*` verbatim to the effects app, so this side never needs
 /// to know that there are two apps over there, or which one is up.
 ///
@@ -39,7 +39,7 @@ enum DesktopEffects {
         URLSession.shared.dataTask(with: req) { _, _, error in
             if let error = error {
                 // "The effects app is not running" is the normal state on any Mac
-                // but Victor's, and a crop that still worked has nothing to
+                // but the original author's, and a crop that still worked has nothing to
                 // report — so this is the log, not the overlay.
                 Log.info("🎆 \(path) unanswered: \(error.localizedDescription)")
             }

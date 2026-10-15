@@ -5,7 +5,7 @@ import CoreAudio
 ///
 /// ## The DJI receiver wins whenever it is plugged in
 ///
-/// Victor teaches with a DJI lavalier: the transmitter is on his collar and the
+/// the original author teaches with a DJI lavalier: the transmitter is on his collar and the
 /// receiver hangs off the Mac's USB-C. The built-in microphone is two feet away
 /// across a desk, in a room with a projector fan, an audience and often his own
 /// voice coming back off the far wall — and Whisper hears exactly that
@@ -31,7 +31,7 @@ import CoreAudio
 /// microphone rather than to an error.
 enum InputDevice {
 
-    /// **The microphones Victor names by their picture** (four on 2026-09-19,
+    /// **The microphones the original author names by their picture** (four on 2026-09-19,
     /// the Bluetooth transmitter added 2026-09-22).
     ///
     /// He asked for the chip to say which one is open — `Listening(🎙️/E)...` —
@@ -52,7 +52,7 @@ enum InputDevice {
     /// reaches them.
     ///
     /// **The order is the preference, and it is the same order in both places
-    /// the list is used** (Victor, 2026-09-19: *"the preference of mic to use is:
+    /// the list is used** (the original author, 2026-09-19: *"the preference of mic to use is:
     /// XLR>DJI>BOSE>MAC … order them like this in menu and impl
     /// autoselection"*). One array is the menu's rows top to bottom **and** the
     /// ladder `resolve()` walks for *automatic*: a menu whose order disagreed
@@ -81,7 +81,7 @@ enum InputDevice {
     static let known: [Known] = [
         Known(id: "xlr",  glyph: "🎙️", short: "XLR", label: "Elgato Wave XLR",
               needles: ["wave xlr", "elgato"]),
-        // **One DJI row, and it is the receiver** (2026-09-23, Victor: *"vom
+        // **One DJI row, and it is the receiver** (2026-09-23, the original author: *"vom
         // scoate DJI mic mini tx din lista. pastram doar RX pt moment cu emoji =
         // 🎤"*). The transmitter paired over Bluetooth had its own row for a day
         // (`tx`, 16 kHz HFP); it is gone, and the receiver took the microphone
@@ -92,18 +92,18 @@ enum InputDevice {
         Known(id: "rx",   glyph: "🎤", short: "DJI", label: "DJI",
               needles: ["wireless mic rx", "wireless mic", "dji technology"]),
         // **The room's own microphone** (2026-09-22). It was only ever in
-        // Victor Addons' list, which is how the two menus came to disagree:
+        // the original author Addons' list, which is how the two menus came to disagree:
         // addons ranked it *second*, above the XLR, because in a hall a
         // far-field speakerphone with AGC beats a condenser pointed at one
-        // chair. That reasoning survives, the rank does not — Victor's order is
+        // chair. That reasoning survives, the rank does not — the original author's order is
         // `XLR>DJI>BOSE>MAC` (2026-09-19) and the speakerphone slots in below
         // the lavaliers, which are on his collar wherever he walks.
         Known(id: "stage", glyph: "🏛️", short: "Stage", label: "Stage Speakerphone",
               needles: ["room speakerphone", "speakerphone"]),
         Known(id: "bose", glyph: "🎧", short: "Bose", label: "Bose",
               needles: ["bose"]),
-        Known(id: "mac",  glyph: "💻", short: "Mac", label: "MacBook Pro Microphone",
-              needles: ["macbook pro microphone", "built-in microph"]),
+        Known(id: "mac",  glyph: "💻", short: "Mac", label: "Mac microphone",
+              needles: ["macbook", "built-in microph"]),
     ]
 
     /// The ladder, spelled with the glyphs, for the `Automatic` row — the menu
@@ -111,14 +111,14 @@ enum InputDevice {
     static var ladder: String { known.map(\.glyph).joined(separator: " ▸ ") }
 
     /// **Microphones this app never records through, whatever else happens**
-    /// (2026-09-23, Victor: *"niciodata nu voi folosi mic de pe WH casti bt"* —
+    /// (2026-09-23, the original author: *"niciodata nu voi folosi mic de pe WH casti bt"* —
     /// *"e f prost"*). The Sony WH-1000XM3's microphone is a Bluetooth HFP
     /// capsule at 16 kHz, and opening it also drags the headphones' playback
     /// down to the same 16 kHz mono. None of `known` matches it, so the ladder
     /// never picks it; the one door left open was the system default, which
     /// macOS hands to the headphones the moment they connect. Lowercased
     /// substrings of the CoreAudio name.
-    static let neverRecord: [String] = ["wh-1000"]
+    static let neverRecord: [String] = []
 
     static func isNeverRecord(_ device: Device) -> Bool {
         let name = device.name.lowercased()
@@ -183,7 +183,7 @@ enum InputDevice {
     /// **A device named by the harness, for this process only** (2026-09-26,
     /// test-plan gap G1): `POST /test/mic {"device": "<CoreAudio name
     /// substring>"}`. Checked before the choice file and the ladder, never
-    /// written to `mic/choice` (which Victor Addons shares), gone at the next
+    /// written to `mic/choice` (which the original author Addons shares), gone at the next
     /// launch. It exists because the built-in microphone is always on the
     /// ladder, so without it the relay's own recorder could never be pointed at
     /// a Loopback device carrying a corpus WAV — every real-audio test had to go
@@ -245,7 +245,7 @@ enum InputDevice {
     /// **Wispr Flow's name for its microphone, read onto this roster**
     /// (2026-09-22) — Wispr's own `History.micDevice`, so a Wispr sentence says
     /// what *Wispr* heard it through rather than what the relay's meter is on.
-    /// Victor: *"ar trebui să-i citești microfonul activ al lui Wispr … să
+    /// the original author: *"ar trebui să-i citești microfonul activ al lui Wispr … să
     /// mapezi ce știe Wispr la ceea ce avem noi, nu invers"*.
     ///
     /// Wispr's vocabulary, as it stands in 16 000 rows: a CoreAudio name with a

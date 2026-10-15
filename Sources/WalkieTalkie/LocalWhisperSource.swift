@@ -11,7 +11,7 @@ import Foundation
 ///
 /// ## It is retired, not deleted (2026-09-12)
 ///
-/// No gesture starts this any more — Victor's decision is that Wispr Flow is
+/// No gesture starts this any more — the original author's decision is that Wispr Flow is
 /// the microphone for everything, and the weights are no longer loaded at
 /// launch. It stays selectable — `WT_SOURCE=whisper`, and since 2026-09-14 the
 /// menu's **Engine** row, which brings the weights up as it picks — for three
@@ -79,7 +79,7 @@ final class LocalWhisperSource: DictationSource {
     private(set) var phase: DictationPhase = .idle
 
     /// **The WAV is ours, so the microphone may open before the weights are up**
-    /// (2026-09-26, Victor: *"eu nu trebuie să am nicio întârziere vizibilă în
+    /// (2026-09-26, the original author: *"eu nu trebuie să am nicio întârziere vizibilă în
     /// vorbă; trebuie să pot vorbi direct; le bufferizezi tu"*). The same answer
     /// the cloud engine gives, for the same reason — `AppDelegate`'s start gate
     /// is `isReady || recordsOwnAudio`. It is never offered to the local
@@ -98,7 +98,7 @@ final class LocalWhisperSource: DictationSource {
     ///
     /// The row read `Local Whisper` whenever the weights were down — which is
     /// most of the time, since they are only brought up by a gesture that asks
-    /// for them — and Victor's answer to that was *"în loc de local wispr trece
+    /// for them — and the original author's answer to that was *"în loc de local wispr trece
     /// numele modelului: mlx…"*. A row whose whole job is to name what he is
     /// dictating with may not fall back to naming a *category*.
     ///
@@ -140,7 +140,7 @@ final class LocalWhisperSource: DictationSource {
     /// It was an empty body for as long as the local model was retired — nothing
     /// started it, so loading it at launch was 2 GB spent on a recogniser nobody
     /// was going to use. Since the `Engine` row put it back within one click, and
-    /// Victor went back to it (*"we'll keep on using the local model for a
+    /// the original author went back to it (*"we'll keep on using the local model for a
     /// while"*), the cost has reversed: every restart left the first ⌘⌃D
     /// answering *the local model is still loading*, and a dictation helper whose
     /// first sentence of the session is refused is one he has to think about.
@@ -258,12 +258,12 @@ final class LocalWhisperSource: DictationSource {
 
     /// Open, stop and cancel all go through it, in order — a close queued
     /// behind an open cannot overtake it.
-    private let audioQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.local-mic")
+    private let audioQueue = DispatchQueue(label: "local.walkie-talkie.local-mic")
 
     func stop() {
         guard isRecording else { return }
         // **First**: a window still decoding is killed before the final decode
-        // is even asked for (Victor: *"instantaneu anulezi orice"*).
+        // is even asked for (the original author: *"instantaneu anulezi orice"*).
         live.end()
         liveOpen = false
         isRecording = false
@@ -438,11 +438,11 @@ final class LocalWhisperSource: DictationSource {
     /// `avg_logprob` sees; a loop is the model certain and stuck, which it
     /// cannot see and `compression_ratio` can. Neither is allowed to swallow the
     /// dictation — there is one reading of this audio and the alternative to a
-    /// shaky transcript is silence, the one outcome Victor cannot notice and
+    /// shaky transcript is silence, the one outcome the original author cannot notice and
     /// correct — so both come back as a note under the words.
     /// ` · 3 segments over 31.0 of 35.4 s, longest gap 2.6 s at 8.6 s` — the
     /// numbers that tell a transcript missing its middle from one that is only
-    /// short (2026-09-29: Victor saw a middle go missing; nothing logged where
+    /// short (2026-09-29: the original author saw a middle go missing; nothing logged where
     /// the words came from). `(retried without the prompt)` when a loop was redone.
     static func coverageNote(_ c: [String: Any]?) -> String {
         guard let c, let dur = c["duration"] as? Double else { return "" }

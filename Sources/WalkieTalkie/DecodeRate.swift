@@ -233,7 +233,7 @@ enum DecodeRate {
 
     /// **Every sample, appended forever, one JSON object per line.** The window
     /// the estimate uses is the tail of this file; the rest of it is the record
-    /// Victor asked for, which is what makes a better rule derivable later
+    /// the original author asked for, which is what makes a better rule derivable later
     /// rather than guessable now — and what made both of the 2026-09-16
     /// measurements above possible at all. One line per dictation is a few
     /// kilobytes a day, and it sits beside the outbox for the outbox's reason: a
@@ -445,7 +445,7 @@ enum DecodeRate {
     // MARK: - The auto fallback's budget (2026-09-28; p95 since 2026-09-29)
 
     /// **How long a sentence may wait on a cloud engine before this Mac takes
-    /// it** — `AppDelegate`'s auto fallback. Victor, 2026-09-28 22:25: *"I don't
+    /// it** — `AppDelegate`'s auto fallback. the original author, 2026-09-28 22:25: *"I don't
     /// think I will ever have the patience to wait for 36 seconds. I will
     /// probably hit ⌘⌃X … gate the Wispr engine to its p98 … Allowing a p99
     /// time based on the clip duration. The goal is that ElevenLabs or Wispr
@@ -579,7 +579,7 @@ enum DecodeRate {
 
     // MARK: - On disk
 
-    /// **Kept across launches.** The window is fifty dictations and Victor
+    /// **Kept across launches.** The window is fifty dictations and the original author
     /// restarts this app several times a day, so an in-memory window would spend
     /// most of its life below `minimumSamples` and the learning would never
     /// take.

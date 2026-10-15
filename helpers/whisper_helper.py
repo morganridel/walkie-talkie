@@ -4,7 +4,7 @@
 **It is a daemon and not a script because of one measurement**: importing
 `mlx_whisper` costs 7.4s and the first transcription pays another 2.8s to load
 the weights, while a second one takes 1.3s. Shelling out per dictation would put
-ten seconds between Victor finishing a sentence and the agent seeing it — so the
+ten seconds between the original author finishing a sentence and the agent seeing it — so the
 process starts once, warms up once, and then answers in about a tenth of the
 audio's length.
 
@@ -34,7 +34,7 @@ without it the first tqdm bar corrupts the stream and the relay sees garbage.
 
 Three decode settings here were measured rather than guessed — the language
 pin, the vocabulary prompt and `condition_on_previous_text`. See
-`evals/short-clip-lid.md` for the first two (803 of Victor's own clips, four
+`evals/short-clip-lid.md` for the first two (803 of the original author's own clips, four
 configs, 3212 decodes).
 
 `condition_on_previous_text=False` is the oldest of them. Left at its default (True), 3 of 20
@@ -53,19 +53,20 @@ import tempfile
 import sys
 import time
 
+# Packaged helpers must never add bytecode files to the signed app bundle.
+sys.dont_write_bytecode = True
+
 
 MODEL = os.environ.get("RELAY_WHISPER_MODEL", "mlx-community/whisper-large-v3-turbo")
 
-# Victor speaks these two and no others. Whisper picks a language off its 30s
-# window *before* it decodes a word, and with three seconds of speech and
-# twenty-seven of padding in that window the pick is a guess — a guess that does
-# not produce a wrong word but a fluent sentence in a language nobody spoke.
-# Measured over 803 clips: 50% of those under 2s, 28% at 2-3s and 19% at 3-4s
-# came back in neither of these. Restricting the argmax to the two takes that to
-# **0% in every bucket**, and it is free — `transcribe(language=None)` already
-# runs this exact encoder pass internally, so pinning only relocates it (paired
-# cost: -22ms).
-LANGUAGES = tuple(os.environ.get("RELAY_WHISPER_LANGUAGES", "ro,en").split(","))
+# By default let Whisper detect any supported language. A comma-separated
+# RELAY_WHISPER_LANGUAGES value can still limit language ID for a known user or
+# workflow, but the app must not inherit one user's language preset globally.
+def parse_languages(value):
+    return tuple(part.strip() for part in value.split(",") if part.strip())
+
+
+LANGUAGES = parse_languages(os.environ.get("RELAY_WHISPER_LANGUAGES", ""))
 
 # **The words he says that a general model has never heard him say.**
 #
@@ -88,9 +89,9 @@ LANGUAGES = tuple(os.environ.get("RELAY_WHISPER_LANGUAGES", "ro,en").split(","))
 # none of them by the `avg_logprob` floor, because a loop is *confidently*
 # wrong.
 VOCABULARY = os.environ.get("RELAY_WHISPER_VOCABULARY", (
-    "Claude Code, CLAUDE.md, Copilot, subagent, subagenți, MCP, skill, hook, "
+    "Codex, AGENTS.md, Copilot, subagent, MCP, skill, hook, Swift, Python, TypeScript, "
     "prompt, commit, push, backend, frontend, IntelliJ, JetBrains, "
-    "Walkie Talkie, Wispr Flow, petclinic, agentic."
+    "Walkie Talkie, Quiet Journal, VS Code, Wispr Flow, Git, GitHub."
 ))
 
 # **The prompt is chosen by the language, because the two languages fail
@@ -98,7 +99,7 @@ VOCABULARY = os.environ.get("RELAY_WHISPER_VOCABULARY", (
 # all, the top English errors are the terms above (`claude` -> `cloud`, `md` ->
 # `cloudmd`); the top *Romanian* errors are not vocabulary at all, they are
 # **diacritics** — `să` -> `sa` (10), `în` -> `in` (6), `și` -> `si` (4),
-# `compară` -> `compara` — the model writing Victor's language flat. A glossary
+# `compară` -> `compara` — the model writing the original author's language flat. A glossary
 # of English product names buys nothing against that, and the measurement says
 # so: on Romanian clips the list above moves WER 23.8% -> 24.1%, i.e. nowhere.
 #
@@ -142,9 +143,9 @@ VOCABULARY = os.environ.get("RELAY_WHISPER_VOCABULARY", (
 VOCABULARY_RO = os.environ.get("RELAY_WHISPER_VOCABULARY_RO", (
     "să, și, în, întâi, îți, îmi, această, când, făcut, ștergem, trebuie, "
     "aș, două, când, până, mâine, așa, început, terminăm, încearcă, "
-    "schimbă, vezi, adaugă, românește, Claude Code, CLAUDE.md, Copilot, MCP, "
+    "schimbă, vezi, adaugă, românește, Codex, AGENTS.md, Copilot, MCP, "
     "subagent, subagenți, skill, hook, prompt, commit, push, backend, "
-    "frontend, IntelliJ, petclinic, Walkie Talkie, Wispr Flow, agentic, "
+    "frontend, IntelliJ, Walkie Talkie, Quiet Journal, Wispr Flow, Git, "
     "sesiune, dictare, agent."
 ))
 
@@ -156,7 +157,7 @@ def _finite(obj):
     Swift's `JSONSerialization` rejects the **whole reply**, and the relay
     reported "the local model gave no answer" and dropped the sentence. A
     1-1.4 s near-silent take can decode with `avg_logprob: NaN` — three of
-    Victor's dictations were lost that way on 2026-09-29 (09:48, 09:59).
+    the original author's dictations were lost that way on 2026-09-29 (09:48, 09:59).
     """
     if isinstance(obj, float):
         return obj if math.isfinite(obj) else None
@@ -299,18 +300,20 @@ def memory_stats():
 
 
 def pick_language(samples):
-    """The model's own language ID, argmax'd over `LANGUAGES` alone.
+    """Use an optional language allowlist before decoding.
 
-    `detect_language` already returns the full distribution over all 99 codes,
-    so restricting it needs no second pass and no tokenizer surgery — the whole
-    change is which keys the max is taken over. `ModelHolder` is the same cache
-    `transcribe` uses, and float16 matches what it runs at, so this shares the
-    resident weights rather than loading a second copy.
+    With no configured allowlist, return None and let Whisper perform its normal
+    unrestricted language detection. When configured, `detect_language`
+    already returns all 99 codes, so restricting it needs no second pass or
+    tokenizer surgery. `ModelHolder` shares the resident weights with
+    `transcribe` rather than loading a second copy.
 
     Returns None on anything unexpected, which falls the caller back to
     Whisper's own unrestricted pick — the old behaviour, and the right failure
     for a helper whose job is to answer rather than to be right.
     """
+    if not LANGUAGES:
+        return None
     try:
         model = ModelHolder.get_model(MODEL, mx.float16)
         mel = A.log_mel_spectrogram(samples[:A.N_SAMPLES],
@@ -382,7 +385,7 @@ def _install_ladder():
 # **What still loops is cut out of the words** (2026-10-04): a run of four or
 # more copies of the same stretch (1–40 characters, at least one letter in it)
 # keeps its first copy. "AM AM AM…" ×669 → "AM"; "们"×223 → "们". Four, because
-# Victor does say "nu, nu, nu" and "de exemplu, de exemplu". Done on each looped
+# the original author does say "nu, nu, nu" and "de exemplu, de exemplu". Done on each looped
 # segment's words, so the timed words and the text still join back into each other.
 _REPEAT = re.compile(r"([^\n]{1,40}?)\1{3,}")
 _LETTER = re.compile(r"[^\W\d_]")
@@ -506,7 +509,7 @@ def coverage(res):
     }
 
 
-# Warm up on a second of silence so the weights are resident before Victor's
+# Warm up on a second of silence so the weights are resident before the original author's
 # first sentence, rather than his first sentence paying for them. Same reason
 # victor-macos-addons warms up before its GUI starts.
 #

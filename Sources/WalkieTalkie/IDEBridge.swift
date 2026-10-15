@@ -22,7 +22,7 @@ import Foundation
 /// into `OwnerRestController.java`; the backend hot-compiled it and the endpoint
 /// answered 500 until someone read the file.
 ///
-/// So the relay stops guessing. Victor's own editor extensions — `victor-vsc`
+/// So the relay stops guessing. the original author's own editor extensions — `victor-vsc`
 /// and the `live-coding` IntelliJ plugin — each open a loopback listener and
 /// publish it; the relay asks *them* which terminal is active and hands them the
 /// line, and they call `sendText` on that exact terminal. No focus moves, no
@@ -77,7 +77,7 @@ enum IDEBridge {
         /// folder is the one thing the pid was wanted for on screen, and the
         /// widget knows it without any of that.
         ///
-        /// Captured at bind and refreshed from `/state`, because Victor `cd`s
+        /// Captured at bind and refreshed from `/state`, because the original author `cd`s
         /// between repos inside one session.
         let cwd: String?
 
@@ -119,7 +119,7 @@ enum IDEBridge {
         }
     }
 
-    /// The window Victor is actually looking at.
+    /// The window the original author is actually looking at.
     ///
     /// Two VS Code windows are two extension hosts and two listeners, and the
     /// only one that can be the window he pressed the key in front of is the
@@ -143,7 +143,7 @@ enum IDEBridge {
     /// What asking an editor to bind its terminal came back with.
     ///
     /// **The two failures are not the same failure**, and collapsing them into
-    /// `nil` is what put a dictation into Victor's open file. `noExtension` means
+    /// `nil` is what put a dictation into the original author's open file. `noExtension` means
     /// nobody answered — an editor without the extension, or one that has not
     /// loaded it yet — and pasting at the caret is a fair last resort there,
     /// because it is that or nothing. `noTerminal` means the extension answered

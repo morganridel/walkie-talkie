@@ -1,7 +1,7 @@
 import AppKit
 
 /// **The sound of the microphone opening.** It was a falling "womp" for one
-/// morning (2026-10-01); Victor then asked for it out — *"înlocuiește-l cu un
+/// morning (2026-10-01); the original author then asked for it out — *"înlocuiește-l cu un
 /// hârâit ca de transmisie (white noise scurt), debifat by default în meniu"* —
 /// and it plays only while the `Radio Squelch` row is ticked. Synthesised white
 /// noise until 2026-10-05, when he picked a real one from youtu.be/nt71N59hydQ

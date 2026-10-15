@@ -4,12 +4,12 @@ import Foundation
 /// actually been working in.**
 ///
 /// `SpawnFolderMenu` used to name six folders hardcoded in Swift — the projects
-/// Victor happened to be working on the afternoon it was written. That list is
+/// the original author happened to be working on the afternoon it was written. That list is
 /// wrong the week after and wrong *silently*: a project missing from it costs
 /// the first sentence of every session started in it, spoken out loud to tell
 /// the agent where it is, which is the exact cost the menu exists to remove.
 ///
-/// Victor's ask, 2026-09-08: *"să determin care sunt proiectele în care am
+/// the original author's ask, 2026-09-08: *"să determin care sunt proiectele în care am
 /// lucrat … să le adaugi sub o linie separatoare … pe lângă cele fixate de sus"*.
 /// So the menu has two halves now, and this file is where each of them comes
 /// from:
@@ -30,7 +30,7 @@ import Foundation
 /// `helpers/recent_projects.py` and left on disk for this app to read.
 ///
 /// **Nothing here does the measuring.** That is deliberate and it is the whole
-/// performance story Victor asked for — *"nu vreau să mănânci token ca să
+/// performance story the original author asked for — *"nu vreau să mănânci token ca să
 /// evaluezi unde s-au petrecut mulți token … dar nici să execuți asta la fiecare
 /// click. Vreau ceva performant, regulat"*. Opening the menu reads one small
 /// JSON file. The scan that produced it is a separate process that runs at most
@@ -51,7 +51,7 @@ enum RecentProjects {
     /// the menu comes up with no recents at all until tomorrow.
     static var url: URL { Outbox.home.appendingPathComponent("recent-projects.json") }
 
-    /// How many recents the menu shows. Victor's number: *"m-ar interesa să-mi
+    /// How many recents the menu shows. the original author's number: *"m-ar interesa să-mi
     /// faci un top 5"*.
     static let count = 5
 
@@ -199,9 +199,7 @@ enum PinnedProjects {
     /// this list is the folders the menu has named for days, and the first
     /// spawn after an update should show him the menu he knows, with a star
     /// beside each row explaining how it got that way.
-    private static let seed = ["victor-macos-addons", "training-assistant",
-                              "walkie-talkie", "victor-vsc", "petclinic", "human-review",
-                              "victor-effects"]
+    private static let seed = ["walkie-talkie", "quiet-journal"]
 
     private static var cached: [String]?
 
@@ -217,7 +215,7 @@ enum PinnedProjects {
         } else {
             stored = seed.map {
                 FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent("workspace").appendingPathComponent($0).path
+                    .appendingPathComponent("syncthing/projects").appendingPathComponent($0).path
             }
         }
         // A folder that is gone is dropped on the way out but left in the file:

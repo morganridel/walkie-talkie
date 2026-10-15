@@ -21,7 +21,7 @@ import SQLite3
 /// time. Every other signal was tried and is dead: Wispr's unified log is
 /// silent, its pill's window frame and AX tree never change, `config.json` has
 /// no insertion-method setting to pin it to ⌘V. The row is the one place the
-/// answer is written, and Victor asked for it to be read: *"let's run a bunch
+/// answer is written, and the original author asked for it to be read: *"let's run a bunch
 /// of experiments … including looking into its own files on disk (or perhaps
 /// where else stuff gets saved in the database)"* — then *"ok. build"*.
 ///
@@ -94,7 +94,7 @@ enum WisprHistory {
     /// **One row by its rowid**, which `newest()` stops being able to answer the
     /// moment a second dictation starts (2026-09-14).
     ///
-    /// A sentence Victor cancelled during the settle keeps a claim on the
+    /// A sentence the original author cancelled during the settle keeps a claim on the
     /// swallow until Wispr has finished with it, and a new gesture may open the
     /// next dictation on top of that — so *is the cancelled row done yet* has to
     /// be asked about **that** row and not about whatever is on top now, which

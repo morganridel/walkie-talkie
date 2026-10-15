@@ -5,7 +5,7 @@ import ObjCTry
 /// **The relay carries his voice to Wispr, instead of standing beside it**
 /// (2026-09-14).
 ///
-/// Victor: *"intermediaza tu sunetul din microfonul fizic pana la wisprflow,
+/// the original author: *"intermediaza tu sunetul din microfonul fizic pana la wisprflow,
 /// pentru a avea control complet pe insertii audio / start/ end"*.
 ///
 /// ## Why it exists: mixing is not inserting
@@ -40,7 +40,7 @@ import ObjCTry
 /// `🎓 TO Wispr`**, leaving Pass-Thru alone — otherwise his voice reaches Wispr
 /// twice, once live and once through here a fraction of a second later, which is
 /// worse than anything this fixes. That is a change in Loopback's own window and
-/// **only Victor can make it**: Loopback ships no `.sdef` and no
+/// **only the original author can make it**: Loopback ships no `.sdef` and no
 /// `NSAppleScriptEnabled`, so nothing here can read or set it.
 ///
 /// Hence `WT_BRIDGE=1` — until From Walkie, below.
@@ -57,7 +57,7 @@ import ObjCTry
 ///
 /// ## From Walkie: the bridge is the only way in (2026-09-29)
 ///
-/// Victor: *"I need this so I have a single source to select the input
+/// the original author: *"I need this so I have a single source to select the input
 /// microphone … and not have Wispr Flow pick a different device than I picked in
 /// walkie-talkie"*, and *"not miss the first half a second or a full second of
 /// speech"*. The Loopback caveat above is gone with the Loopback device: **From
@@ -86,7 +86,7 @@ final class AudioBridge {
         ProcessInfo.processInfo.environment["WT_BRIDGE_DEVICE"] ?? "From Walkie"
     }
 
-    /// **From Walkie has no output since 2026-10-02** — Victor saw it offered as a
+    /// **From Walkie has no output since 2026-10-02** — the original author saw it offered as a
     /// *speaker* in Zoom: *"să fie doar microfon selectabil, nu și boxă"*. Its
     /// input is fed through the driver's hidden, output-only twin "From Walkie
     /// Mirror" (same BlackHole ring buffer), reachable only by UID. The needle is
@@ -125,7 +125,7 @@ final class AudioBridge {
     /// Serial: `AVAudioEngine` setup is not thread-safe, and the buffers arrive
     /// on the recorder's audio thread while `start`/`stop` come from the source's
     /// own queue. Every buffer is judged, held or played here, in arrival order.
-    private let queue = DispatchQueue(label: "ro.victorrentea.wispr-relay.audio-bridge")
+    private let queue = DispatchQueue(label: "local.walkie-talkie.audio-bridge")
     private var engine: AVAudioEngine?
     private var player: AVAudioPlayerNode?
     private var pitch: AVAudioUnitTimePitch?
@@ -384,7 +384,7 @@ final class AudioBridge {
     /// **This buffer is a marker** — call before it is handed to the recorder
     /// (`MicRecorder.insert`) or to `schedule`.
     ///
-    /// Victor, 2026-09-30: *"Because the clip gets longer you might need to speed
+    /// the original author, 2026-09-30: *"Because the clip gets longer you might need to speed
     /// up the resulting wav so you catch up with the current real live voice …
     /// every time you insert a bit of a clip, you speed up a bit."* Nothing new
     /// does the speeding up: a marker's 1.5–2 s lands in `queued` like any

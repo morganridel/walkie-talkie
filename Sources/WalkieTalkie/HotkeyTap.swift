@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import CoreGraphics
 import Security
-import VictorMacKit
+import WalkieMacKit
 
 private let tapCallback: CGEventTapCallBack = { _, type, event, userInfo in
     guard let ptr = userInfo else { return Unmanaged.passUnretained(event) }
@@ -78,8 +78,8 @@ final class HotkeyTap {
 
     /// **⌘⌃X — the local model, now** (2026-09-28): the take being recorded, or
     /// the one whose words are still on their way, is transcribed on this Mac
-    /// instead of waiting for the cloud. X for *exit* — Victor's *"quick exit"*;
-    /// ⌘⌃L (for *local*) is Victor Addons' Google Calendar and ⌘⌃W is Wispr
+    /// instead of waiting for the cloud. X for *exit* — the original author's *"quick exit"*;
+    /// ⌘⌃L (for *local*) is the original author Addons' Google Calendar and ⌘⌃W is Wispr
     /// Flow's *paste last transcript*.
     var onLocalNow: (() -> Void)?
 
@@ -107,7 +107,7 @@ final class HotkeyTap {
     /// gesture, seen on the wire, ahead of any microphone opening.
     ///
     /// `WisprWatch`'s CoreAudio edge is the *truth* and stays the thing the ring
-    /// is confirmed on, but it is not the *first* thing: between Victor's finger
+    /// is confirmed on, but it is not the *first* thing: between the original author's finger
     /// and `kAudioProcessPropertyIsRunningInput` sits Electron waking up, an
     /// overlay window and a device open, and he can see the gap. The keystroke
     /// that asks for it is the earliest observable moment there is, and this app
@@ -141,7 +141,7 @@ final class HotkeyTap {
     /// branch, which **deliberately ignores this app's own posts**
     /// (`backButtonStamp`, 2026-09-13 — otherwise `postWisprHandsFree` hands the
     /// source its own start back as a stop a millisecond later). The consequence
-    /// nobody had noticed until Victor asked for the ring: a 🔽 → dictation is
+    /// nobody had noticed until the original author asked for the ring: a 🔽 → dictation is
     /// invisible to `WisprState`. There is no chord, so the row poll never runs,
     /// so the machine never reaches `listening`, so `hearingChanged` never fires
     /// — and with the Engine on anything but Wispr, the only other witness (this
@@ -170,7 +170,7 @@ final class HotkeyTap {
     }
 
     /// **🔽 ended a plain dictation, and the words are to be submitted**
-    /// (2026-09-23 on 🔽 →; on the back click since 2026-09-28 — Victor: *"The
+    /// (2026-09-23 on 🔽 →; on the back click since 2026-09-28 — the original author: *"The
     /// back key should result in an Enter key being pressed"*). The click stops
     /// 🔽 →'s clean sentence exactly as a second 🔽 → would, and this tells
     /// `AppDelegate` to press Return once the clean words have landed at the
@@ -179,7 +179,7 @@ final class HotkeyTap {
     var onBackSubmit: (() -> Void)?
 
     /// **The back click's clean sentence on the Engine, when the Engine is not
-    /// Wispr** (2026-09-25). Victor: *"changing the transcription engine from
+    /// Wispr** (2026-09-25). the original author: *"changing the transcription engine from
     /// wispr to elevenlabs should change it as well for «clean dictation» =
     /// back button click."* Until today the click posted Wispr's hands-free
     /// chord whatever the Engine said, so a clean sentence was always Wispr's
@@ -214,7 +214,7 @@ final class HotkeyTap {
     private var ownCleanSentenceFlag = false
 
     /// **Held right ⌘⌥ on the Engine, when the Engine is not Wispr** (2026-09-25).
-    /// Victor: *"If I hold down the right command and the right option, that
+    /// the original author: *"If I hold down the right command and the right option, that
     /// should enable the clean dictation for as long as I hold the two
     /// buttons."* The back click's clean sentence (`onCleanToggle`) as a hold:
     /// `.press` starts it, `.release` ends it, `.shortcut` — a real key pressed
@@ -248,7 +248,7 @@ final class HotkeyTap {
     /// `relayPromptOpen`. `cleanSentenceOpen` used to know a Wispr plain sentence
     /// only through `backStopsWispr`, whose arm goes at 12 s when Wispr never
     /// opens its microphone; the sentence stayed open, and the back click took
-    /// two pictures into it (2026-10-08, Victor: *"I should not be able to take
+    /// two pictures into it (2026-10-08, the original author: *"I should not be able to take
     /// the photo or drag during the dictation process"*).
     var relayPlainOpen: Bool {
         get { stateLock.lock(); defer { stateLock.unlock() }; return relayPlainOpenFlag }
@@ -288,7 +288,7 @@ final class HotkeyTap {
         var isConfident: Bool { true }
     }
 
-    /// **Wispr Flow's dismiss chord, typed by Victor** — `53+59`, ⌃Escape —
+    /// **Wispr Flow's dismiss chord, typed by the original author** — `53+59`, ⌃Escape —
     /// seen on the wire (2026-09-12). A dictation he throws away from Wispr's
     /// side pastes nothing, and until this the relay only found that out by
     /// waiting `settleTimeout` for a ⌘V that was never coming, with the ring's
@@ -339,7 +339,7 @@ final class HotkeyTap {
         stateLock.unlock()
     }
 
-    // ── Victor's own keys, while another app's window has stolen the focus ───
+    // ── the original author's own keys, while another app's window has stolen the focus ───
 
     /// **Send real keystrokes to the app he is looking at**, for as long as
     /// Wispr's Scratchpad window is up.
@@ -349,7 +349,7 @@ final class HotkeyTap {
     /// said TextEdit for the whole run; a `z` typed 1.5 s after the stop gesture
     /// went into Wispr's note, was picked up as part of the newly added portion,
     /// and was delivered to the bound agent **inside the sentence** — while the
-    /// document Victor was looking at stayed empty. That is his exact worry, and
+    /// document the original author was looking at stayed empty. That is his exact worry, and
     /// it is not a theoretical one.
     ///
     /// So for the few hundred milliseconds the window is up, a key that came
@@ -499,7 +499,7 @@ final class HotkeyTap {
     /// showing `NO FOCUSED ELEMENT` — so the element the insert went to was one
     /// the application had already let go of, and AX said yes to writing into it.
     /// A delivery route that cannot tell a success from a silent loss is not one
-    /// to leave armed over Victor's typing, whatever it manages in the easy case.
+    /// to leave armed over the original author's typing, whatever it manages in the easy case.
     /// `WT_SCRATCHPAD_AX_INSERT=1`, or `POST /test/ax-insert`.
     ///
     /// The crash that made this look impossible for three runs was **not** the
@@ -599,7 +599,7 @@ final class HotkeyTap {
     /// 0x20100000`, ⌘ stamped on the key **and on its release**, with no
     /// `flagsChanged` behind it; with a tap running, `clearCommandAfterWisprPaste`
     /// puts it back, and with no tap running there is nobody to. It self-heals on
-    /// Victor's next real keystroke, which is exactly why it survives a relaunch
+    /// the original author's next real keystroke, which is exactly why it survives a relaunch
     /// unnoticed — and until it does, every gesture gated on `bare` refuses and
     /// every *wait for a bare wire* loop spins its full allowance.
     ///
@@ -715,7 +715,7 @@ final class HotkeyTap {
     /// **Put ⌘ back down after Wispr's paste.** Announced on the ⌘ key's own
     /// keycode, because a `flagsChanged` is a modifier transition and one
     /// carrying the letter is not one — the lesson of the fifth occurrence.
-    /// Stamped, so this app's own tap does not read it as Victor's, and posted
+    /// Stamped, so this app's own tap does not read it as the original author's, and posted
     /// off the tap thread because nothing that can wait belongs there.
     private func clearCommandAfterWisprPaste() {
         DispatchQueue.global(qos: .userInitiated).async {
@@ -765,7 +765,7 @@ final class HotkeyTap {
     /// keycode through the layout (pure, no AX), swallow — and the insertion
     /// happens here. Serial, so his characters arrive in the order he typed
     /// them; `.userInteractive`, because this *is* his typing.
-    private static let axQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.wispr-keys",
+    private static let axQueue = DispatchQueue(label: "local.walkie-talkie.wispr-keys",
                                                qos: .userInteractive)
 
     /// **Two hundred milliseconds per character, and then it is lost.**
@@ -950,7 +950,7 @@ final class HotkeyTap {
     var onGestureBind: (() -> Bool)?
 
     /// **⬅️ held + forward button flicked right — bind, and start dictating at
-    /// what was just bound** (2026-09-14). Victor: *"click butonul principal de
+    /// what was just bound** (2026-09-14). the original author: *"click butonul principal de
     /// mouse stânga și apoi forward și drag în dreapta, să facă bind și să și
     /// înceapă transcrierea"*.
     ///
@@ -980,7 +980,7 @@ final class HotkeyTap {
     // switch away rather than a `git revert` away.
 
     /// **The wheel pressed at rest, bound: start a dictation — and defer its
-    /// context shot to the release** (Victor, 2026-09-04). Distinct from
+    /// context shot to the release** (the original author, 2026-09-04). Distinct from
     /// `onLocalToggle` because the bare wheel's press is only half a verdict:
     /// a second click on its heels turns the dictation into a spawn, and the
     /// picture is of the screen his finger left, not of the one it landed on.
@@ -989,7 +989,7 @@ final class HotkeyTap {
     /// **The wheel clicked twice** — turn the dictation the first click started
     /// into a spawn: same words being recorded, but the destination becomes a
     /// session that does not exist yet, and the folder menu opens on the second
-    /// click. Victor's design, 2026-09-05, replacing the 2s wheel hold of the
+    /// click. the original author's design, 2026-09-05, replacing the 2s wheel hold of the
     /// day before, which never fired (see `spawnDoubleSeconds`).
     var onWheelDoubleSpawn: (() -> Void)?
     /// The same double click made **with nothing bound**, where there is no
@@ -1063,7 +1063,7 @@ final class HotkeyTap {
     /// the left and right buttons are chord modifiers, and the side buttons are
     /// read as buttons 4 and 5.
     ///
-    /// **Both paths are live code, not one path and a comment.** Victor asked for
+    /// **Both paths are live code, not one path and a comment.** the original author asked for
     /// the old one kept rather than deleted, and a gesture set that only exists
     /// in a diff cannot be switched back to at a workshop when the Options+
     /// profile is missing on a machine — which is the case this flag is for.
@@ -1080,7 +1080,7 @@ final class HotkeyTap {
     /// ⌘⌃D before that: D is now the key that dictates.
     ///
     /// Owned here since 2026-08-26; it used to live in
-    /// Victor Addons, which had to launch this app before it could ask it to
+    /// the original author Addons, which had to launch this app before it could ask it to
     /// bind. Now that the relay starts at login there is nothing to launch, and
     /// the key belongs to the app it acts on.
     var onBindHotkey: (() -> Void)?
@@ -1098,7 +1098,7 @@ final class HotkeyTap {
     /// A prompt is on screen with its clock running — the only window in which
     /// Return is the overlay's. It is a **short** window (3–5s, and only after a
     /// dictation), which is what makes taking a key as ordinary as Return
-    /// affordable at all: outside it the key is untouched, and inside it Victor
+    /// affordable at all: outside it the key is untouched, and inside it the original author
     /// is reading a panel, not typing into a terminal.
     var promptHeld: Bool {
         get { stateLock.lock(); defer { stateLock.unlock() }; return promptHeldFlag }
@@ -1126,7 +1126,7 @@ final class HotkeyTap {
     /// It exists because 🔽 → posts Wispr's chord **raw, in every engine**. With
     /// the Engine on the local model or on ElevenLabs, that flick starts Wispr's
     /// microphone while the relay's own is already open — two recognisers on one
-    /// voice, two transcripts, and a sentence split between them. Victor,
+    /// voice, two transcripts, and a sentence split between them. the original author,
     /// 2026-09-18: *"E absurd să pornesc două motoare de transcriere simultan.
     /// Trebuie exclusiv, ba unu, ba altu."*
     ///
@@ -1230,7 +1230,7 @@ final class HotkeyTap {
     /// **When 🔽 → last opened a Wispr dictation** (2026-09-17), and zero when
     /// the back button is nobody's but Return's.
     ///
-    /// Victor: *"butonul de Back trebuie să se transforme în a opri Wispr Flow
+    /// the original author: *"butonul de Back trebuie să se transforme în a opri Wispr Flow
     /// din dictare. Să nu mai fie necesar să fac, încă o dată, gestul de Back cu
     /// dreapta."* The gesture that starts that dictation is made with the back
     /// button held, so ending it meant making the whole flick a second time. For
@@ -1428,7 +1428,7 @@ final class HotkeyTap {
     /// **The left button was released after a drag, during a dictation** — which
     /// is what selecting text with a mouse looks like from here (2026-09-14).
     ///
-    /// Victor: *"Am selectat text în IntelliJ, nu merge. Am selectat text în
+    /// the original author: *"Am selectat text în IntelliJ, nu merge. Am selectat text în
     /// WhatsApp, nimic."* The watcher polls Accessibility once a second and
     /// `AXSelectedText` is simply not answered by IntelliJ's editor or by
     /// WhatsApp — the ⌘C fallback that does reach them belongs to the shutter,
@@ -1492,7 +1492,7 @@ final class HotkeyTap {
     ///
     /// **And the window server is asked as well as our own bookkeeping.** A
     /// press this tap never saw — re-enabled after a timeout mid-gesture, or a
-    /// menu tracking loop in the way, which is what Victor guessed was happening
+    /// menu tracking loop in the way, which is what the original author guessed was happening
     /// — leaves `rightDownAt` at zero while the finger is very much down, and
     /// that is the same failure wearing a different hat.
     private var rightIsHeld: Bool {
@@ -1523,7 +1523,7 @@ final class HotkeyTap {
     private var wheelLeftChord = false
     private var wheelHold: DispatchWorkItem?
 
-    /// **When ⌃⌥⌘F10 (🔼 →) last fired for real** (2026-09-16). Victor: *"fac
+    /// **When ⌃⌥⌘F10 (🔼 →) last fired for real** (2026-09-16). the original author: *"fac
     /// gestul de forward-dreapta și cumva cred că-l fac de două ori, pentru că
     /// se și pornește și se și închide dictarea instant"* — one flick toggling
     /// the microphone open and immediately shut. The autorepeat guard above
@@ -1637,7 +1637,7 @@ final class HotkeyTap {
     }
 
     /// **A sentence younger than this cannot be ended by 🔼 →** (2026-09-18) —
-    /// Victor's own fallback for the same report: *"or at least just put a two
+    /// the original author's own fallback for the same report: *"or at least just put a two
     /// seconds minimum threshold between stopping after starting"*.
     ///
     /// It is the belt to `gestureRetriggerSeconds`' braces, and it is worth
@@ -1683,7 +1683,7 @@ final class HotkeyTap {
     /// it, with an editor tab stuck to the pointer.
     private var areaPressPassed = false
     /// **Logi mode, a prompt open: the wheel press is held back** (2026-10-08,
-    /// Victor: *"when I click down the wheel and start dragging, the
+    /// the original author: *"when I click down the wheel and start dragging, the
     /// application behind receives the event of wheel click … If I start
     /// dragging the mouse, then there should be no event of click the wheel
     /// sent"*). Until then the press went straight out and only the release of
@@ -1715,7 +1715,7 @@ final class HotkeyTap {
 
     /// **How far the hand has to travel before a middle click stops being one.**
     ///
-    /// Victor's rule for this gesture, and it is the whole of it: *"ar trebui să
+    /// the original author's rule for this gesture, and it is the whole of it: *"ar trebui să
     /// ignori click/dublu-click de wheel — doar drag ne interesează."* A click
     /// is never perfectly still, and a double click is two of them in quick
     /// succession over whatever he happens to be reading, so the number has to
@@ -1729,7 +1729,7 @@ final class HotkeyTap {
     private static let areaDragThreshold: CGFloat = 12
 
     /// **How close the wheel's second click has to land** for the dictation the
-    /// first one started to become a spawn (Victor, 2026-09-05).
+    /// first one started to become a spawn (the original author, 2026-09-05).
     ///
     /// This replaced a 2s *hold*, which lasted one day and never once fired.
     /// `relay.log` says why: the hold's timer guarded on `dictating`, a flag the
@@ -1779,7 +1779,7 @@ final class HotkeyTap {
     /// modes, before either of them decides anything else about the wheel, and
     /// it is written to be inert in every state but the one it is for.
     ///
-    /// The shape of it is Victor's answer to the one thing this gesture costs:
+    /// The shape of it is the original author's answer to the one thing this gesture costs:
     /// the press is **passed through**, so a middle click that never becomes a
     /// drag still closes a Chrome tab, and only the release of a press that
     /// *did* become one is swallowed. The app underneath is then holding a
@@ -1935,7 +1935,7 @@ final class HotkeyTap {
 
     /// **A right click while the wheel drags a box locks it** (2026-10-07).
     ///
-    /// Victor: *"să nu fie nevoie să apas Shift … dacă în timp ce trag de bilă
+    /// the original author: *"să nu fie nevoie să apas Shift … dacă în timp ce trag de bilă
     /// apas butonul din dreapta, click-ul să nu se întâmple în aplicația de
     /// dedesubt, dar el să intre în modul de drag"*. ⇧ still works; this is the
     /// same lock without taking a hand off the mouse. One click is enough —
@@ -1951,6 +1951,11 @@ final class HotkeyTap {
     private func areaRight(_ type: CGEventType) -> Bool {
         switch type {
         case .rightMouseDown:
+            if areaAwaitingDestination {
+                Log.info("✂️ right click while parked — cancelling the crop")
+                DispatchQueue.main.async { CropSelectionOverlay.cancel() }
+                return true
+            }
             guard areaCropping, !areaDrawingDestination else { return false }
             areaRightTaken = true
             Log.info("✂️ right click with the wheel down — locking/unlocking the box")
@@ -1980,7 +1985,7 @@ final class HotkeyTap {
     /// One notch: `+1` for up (the next halo), `−1` for down (the previous).
     /// Delivered on the main queue.
     var onHaloDial: ((Int) -> Void)?
-    /// **fn + F7 / fn + F9 step the halo** (Victor, 2026-09-20 late: *"F7 și F9 să
+    /// **fn + F7 / fn + F9 step the halo** (the original author, 2026-09-20 late: *"F7 și F9 să
     /// schimbe efectul curent"*; **fn only since Q10, 2026-09-26**: *"fn+f7/f9"*
     /// — bare F7/F9 pass through, IntelliJ's Step Into / Resume are back).
     /// F9 forward, F7 back, outside a dictation too. **⌘F7 / ⌘F9 as well**
@@ -2010,7 +2015,7 @@ final class HotkeyTap {
     private static let haloDialDebounce: CFTimeInterval = 0.12
 
     /// **Middle button held, wheel turned, ring up: the next (or previous)
-    /// halo.** Victor, 2026-09-20: a way to change the effect without opening
+    /// halo.** the original author, 2026-09-20: a way to change the effect without opening
     /// a menu, *only while dictating*. Outside that state — or with the middle
     /// button up — every scroll passes through untouched, because this is a
     /// global tap on his everyday machine and a swallowed middle-scroll in
@@ -2101,7 +2106,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
 
     // **The side buttons, arriving as keys.** Logi Options+ holds a custom
     // gesture per direction on each of the two side buttons and emits one of
-    // these with ⌃⌥⌘ held. The numbers are Victor's, chosen in the Options+ UI
+    // these with ⌃⌥⌘ held. The numbers are the original author's, chosen in the Options+ UI
     // on 2026-09-09, and the two halves must not drift: change one here and the
     // gesture goes to whatever app claims that chord instead. They are written
     // down in CLAUDE.md under *The side buttons speak in function keys*.
@@ -2337,7 +2342,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// hour; the tap, on its own thread, kept deciding. Wispr formatted a
     /// 61-word sentence at 17:13:29 on the built-in mic and the firewall dropped
     /// its ⌘V — the relay that would have delivered the row was the frozen
-    /// thread. Victor: *"No matter what happens with the application, I should
+    /// thread. the original author: *"No matter what happens with the application, I should
     /// always be able to fall back on the Wispr Flow to dictate."*
     ///
     /// So the main thread proves it is alive every tenth of a second (common modes, so
@@ -2488,7 +2493,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// the keyboard's F5 / 🎤 — **start the plain dictation, or stop the one open**
     /// (see the `VK_F5` case for the why of each guard). `gesture` names the
     /// trigger in the log and the trace. **A stop here inserts the words and
-    /// nothing else** (2026-10-07) — Victor: *"when I dictate cleanly with back
+    /// nothing else** (2026-10-07) — the original author: *"when I dictate cleanly with back
     /// mouse and swipe to right, that shortcut should just insert the text, not
     /// hit the enter. The same with the back mouse and drag the mouse down"*. The
     /// Return after the words is the bare 🔽's alone (`case VK_F6`,
@@ -2548,7 +2553,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // **Never a second microphone over the first** (2026-09-18):
         // with the Engine on the local model or ElevenLabs the relay's
         // own may be recording. Only the opening half is refused — a stop
-        // must never be. Victor: *"E absurd să pornesc două motoare de
+        // must never be. the original author: *"E absurd să pornesc două motoare de
         // transcriere simultan. Trebuie exclusiv, ba unu, ba altu."*
         if !closing, ownDictation {
             if let ended = keyboardEndsOpenPrompt(who, gesture, type, event, at: f5Now) { return ended }
@@ -2610,6 +2615,15 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 return nil
             }
             return Unmanaged.passUnretained(event)
+        }
+
+        // The crop overlay is nonactivating and another app remains frontmost,
+        // so its local key monitor cannot reliably receive Escape. The tap is
+        // already watching this key and can cancel the active selection directly.
+        if type == .keyDown,
+           event.getIntegerValueField(.keyboardEventKeycode) == 53,
+           CropSelectionOverlay.escapePressed() {
+            return nil
         }
 
         // **The wheel turned: the halo dial, in both modes, or nothing.** Judged
@@ -2715,7 +2729,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // see an orphan release to act on.
                 //
                 // At rest the button is nobody's again — LinearMouse's Return. The
-                // 0.6s hold-to-spawn it carried for an afternoon is gone (Victor,
+                // 0.6s hold-to-spawn it carried for an afternoon is gone (the original author,
                 // 2026-09-04): the same doubt that killed it on the forward button
                 // never got answered here either, and the wheel grew the hold
                 // instead — see the bare-wheel branch below.
@@ -2731,7 +2745,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // **Replace Wispr: the forward button opens the microphone.**
                 //
                 // The mode exists because dictating into an agent and dictating into
-                // *the machine* are two different jobs, and Victor already had a tool
+                // *the machine* are two different jobs, and the original author already had a tool
                 // for the second one. This is that job, on this app's recogniser: press
                 // to start, press to stop, and the words appear at the caret.
                 //
@@ -2745,7 +2759,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // which is the one thing this mode is not about; and the two cannot be
                 // told apart at the press anyway — a first click that had to wait out
                 // the double-click interval before opening the microphone is exactly
-                // the wait Victor had removed from the wheel. `lastMouse5DownAt` is
+                // the wait the original author had removed from the wheel. `lastMouse5DownAt` is
                 // zeroed so a second press is a second dictation rather than half a
                 // bind.
                 //
@@ -2775,7 +2789,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                         Log.info("🖱️ mouse 5 down — bare=\(bare) pid \(pid) remapper=\(isRemapper(pid)) physical=\(Self.mouse5IsPhysicallyDown())")
                     } else {
                         // **The duration was the whole diagnosis, and it answered.**
-                        // Measured 2026-09-04, on a press Victor was deliberately
+                        // Measured 2026-09-04, on a press the original author was deliberately
                         // holding: **18ms**. The button does not reach this tap as a
                         // press and a release — it reaches it as an instantaneous
                         // pair, so a threshold of any length can never be met. See
@@ -2791,7 +2805,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // double click.** The 0.6s hold it carried for a day moved to the
                 // back button: this one arrives as an ~20ms down-and-up pair however
                 // long it is held — and `CGEventSourceButtonState` agrees — so a
-                // hold of it can never be judged. Measured 2026-09-04 on Victor's
+                // hold of it can never be judged. Measured 2026-09-04 on the original author's
                 // deliberate holds; Wispr Flow's push-to-talk, which lives on this
                 // button, is the suspect. The swallow-and-judge machinery went with
                 // the gesture, so a plain click no longer pays the replay's latency.
@@ -2850,7 +2864,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // **Starting used to cost a one-second hold and now costs a tap.**
                 // The hold was buying one thing: a bare middle click could still be
                 // handed back to whatever was underneath, so Chrome went on opening
-                // links in new tabs while a terminal was bound. Victor gave that up
+                // links in new tabs while a terminal was bound. the original author gave that up
                 // deliberately — the gesture he makes dozens of times a day should
                 // not be the one with a wait in it. So while something is bound the
                 // wheel is the relay's, and middle-click in a browser is not
@@ -2885,12 +2899,12 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // so the click stays available to whatever is underneath.
                 //
                 // **Held, it used to open a session instead of closing one**, and
-                // that second reading is gone (Victor, 2026-09-06). The spawn keeps
+                // that second reading is gone (the original author, 2026-09-06). The spawn keeps
                 // the two routes that do not need this chord — the bare wheel
                 // clicked twice, and the menu's **Start dictation to new claude** — so what
                 // the hold bought was a third way in, at the price of the chord
                 // having to be *told apart from itself*: the disconnect could not
-                // fire until the finger came up, and a tap that Victor made in a
+                // fire until the finger came up, and a tap that the original author made in a
                 // hurry was one timer away from opening a session he did not ask
                 // for.
                 //
@@ -2966,7 +2980,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                     wheelHold?.cancel()
                     wheelHold = nil
                     // A press that started a dictation takes its context shot
-                    // **now**, at the release, per Victor 2026-09-04 (see
+                    // **now**, at the release, per the original author 2026-09-04 (see
                     // `onWheelDictate`).
                     let contextAtRelease = wheelHeldFromPress
                     wheelHeldFromPress = false
@@ -3056,7 +3070,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 //
                 // **⌘ + the wheel used to ride this same branch** and mean "and open
                 // somewhere to put it" — the spawn, without the keyboard-free chord.
-                // Removed at Victor's ask 2026-09-03: the modifier belonged to this
+                // Removed at the original author's ask 2026-09-03: the modifier belonged to this
                 // app for as long as it was running, bound or not, which cost every
                 // ⌘-middle-click everywhere else on the machine. The spawn itself
                 // came back a day later as the bare wheel *clicked twice* (below),
@@ -3068,7 +3082,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                     wheelLeftChord = false
 
                     // **The second click of a double click, judged before anything
-                    // else** (Victor, 2026-09-05): the dictation the first click
+                    // else** (the original author, 2026-09-05): the dictation the first click
                     // opened becomes a spawn — same recording, new destination, a
                     // session that does not exist yet, with the folder menu opening
                     // right here.
@@ -3090,13 +3104,13 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                         wheelArmed = true
                         wheelDown = false
                         wheelHeldFromPress = false
-                        Log.info("🎙️✨ wheel double-clicked — this dictation opens a new Claude Code")
+                        Log.info("🎙️✨ wheel double-clicked — this dictation opens a new Codex session")
                         DispatchQueue.global().async { [weak self] in self?.onWheelDoubleSpawn?() }
                         return nil
                     }
 
                     // **Idle it fires on the press, not on the release.** Waiting for
-                    // the lift cost the one thing this gesture has to give: Victor
+                    // the lift cost the one thing this gesture has to give: the original author
                     // could not tell whether the microphone had opened until he let
                     // go, so he kept holding the button "for a second" to be sure —
                     // the wait the tap was supposed to have removed, put back by hand
@@ -3151,7 +3165,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // nobody"* (`syncLocalCapture`). A double click is the one wheel
                 // gesture that gate cannot apply to: it **brings its own
                 // destination**, a Claude Code session that does not exist yet, so
-                // the premise the gate rests on is false for it. Reported by Victor
+                // the premise the gate rests on is false for it. Reported by the original author
                 // 2026-09-06 — at rest, the gesture did nothing at all, and the log
                 // stayed empty because the tap was not even claiming the button.
                 //
@@ -3182,7 +3196,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                         // click gets, except here the shot rides the second click,
                         // the first having gone to the app underneath.
                         wheelHeldFromPress = true
-                        Log.info("🎙️✨ wheel double-clicked at rest — dictating at a new Claude Code")
+                        Log.info("🎙️✨ wheel double-clicked at rest — dictating at a new Codex session")
                         DispatchQueue.global().async { [weak self] in self?.onWheelIdleDoubleSpawn?() }
                         return nil
                     }
@@ -3216,7 +3230,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // ~0.25 s into a hold — the sentence cancelled as "too short". Only
             // unstamped events move the pair.
             let ownPost = event.getIntegerValueField(.eventSourceUserData) == Self.backButtonStamp
-            // **Right ⌥ twice, alone, quickly = F5** (2026-10-02, Victor: *"să pot
+            // **Right ⌥ twice, alone, quickly = F5** (2026-10-02, the original author: *"să pot
             // să apăs și de două ori repede tasta Option din partea dreaptă, ca să
             // tot comute dictarea on și off"*). Only the right ⌥ with nothing else
             // held counts; any other modifier, a key in between (keyDown below) or
@@ -3288,7 +3302,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // the ⌃Escape branch below has always been. It was harmless while the
         // report was guarded by `!isRecording` on the far side; it stopped being
         // harmless the day the chord became a **toggle** there — a hands-free
-        // chord seen while a dictation is open is now read as Victor ending it,
+        // chord seen while a dictation is open is now read as the original author ending it,
         // and `postWisprHandsFree` would otherwise hand the source its own start
         // back as a stop, a millisecond after it.
         if type == .keyDown,
@@ -3324,7 +3338,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         if type == .keyDown || type == .keyUp {
             let target = redirectTargetNow()
             // **Anyone's key but ours and Wispr's.** It was `pid == 0` — real
-            // hardware only — and that is the right *description* of Victor's
+            // hardware only — and that is the right *description* of the original author's
             // keystrokes and the wrong *rule*: it also makes the behaviour
             // untestable, because every probe the loop can post carries a pid.
             if target != 0,
@@ -3385,7 +3399,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         if type == .keyDown || type == .keyUp {
             let pid = pid_t(event.getIntegerValueField(.eventSourceUnixProcessID))
             let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-            // **pid 0 is a key Victor pressed.** Real hardware carries no
+            // **pid 0 is a key the original author pressed.** Real hardware carries no
             // process, so his own ⌘V can never match this branch — which is the
             // whole reason a swallow here is safe at all. The stamp is this
             // app's own keystrokes, which must never be eaten either.
@@ -3413,7 +3427,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                         DispatchQueue.global().async { [weak self] in self?.onInjectedPaste?(who) }
                     }
                     // **The firewall: Wispr's ⌘V never reaches an application
-                    // while this app runs** (2026-09-22; Victor: *"vreau
+                    // while this app runs** (2026-09-22; the original author: *"vreau
                     // wisprflow să NU mai fie lăsat să insereze text el"*).
                     // Stateless on purpose — the armed gate below is the
                     // ordering bet that leaked 5/5 on 2026-09-13, a paste
@@ -3435,7 +3449,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // release** — and it posts no `flagsChanged` after it. Since
         // `CGEventSource.flagsState` reports whatever the last event's flags
         // said, the whole session believes ⌘ is held from that moment until
-        // Victor's next real keystroke: every gesture gated on `bare` refuses,
+        // the original author's next real keystroke: every gesture gated on `bare` refuses,
         // and every *wait for a bare wire* loop in this file spins its full
         // allowance.
         //
@@ -3551,14 +3565,14 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // The remapper taps the event stream **upstream of this one**, so the
             // remap happens before a session tap can ever see a mouse button: what
             // reaches us is already a Return. The branch above therefore never fires
-            // on Victor's Mac, and is kept only because it is the correct handling if
+            // on the original author's Mac, and is kept only because it is the correct handling if
             // the order is ever the other way round.
             //
             // Telling this Return from the one he types is the whole trick, and the
             // discriminator has two forms, because the remapper changed identity on
             // 2026-09-07:
             //
-            // - **The stamp**, which is the live one. Victor Addons took the button
+            // - **The stamp**, which is the live one. the original author Addons took the button
             //   over when LinearMouse was uninstalled, and it is not a remapper — it
             //   is a general-purpose app that also posts Returns for its own reasons
             //   (`KeySimulator`), and those mean Enter and must be left alone. So the
@@ -3574,7 +3588,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // Why this was worth a fix rather than a note: for a day the answer was
             // "neither", and the failure is silent — no shot, and the Enter it would
             // have been lands in whatever is in front. See *Tap order is what makes
-            // this work* in CLAUDE.md: the order flipped because Victor Addons is
+            // this work* in CLAUDE.md: the order flipped because the original author Addons is
             // rebuilt and restarted after every change to it, i.e. routinely later
             // than the relay.
             if (keyCode == VK_RETURN || keyCode == VK_KEYPAD_ENTER) && dictating
@@ -3603,7 +3617,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // **fn + F7 / F9 steps the halo; bare F7 / F9 pass** (Q10, 2026-09-26) — see
         // `onHaloStep` for why the fn key is tracked rather than read off the event.
         if !flags.contains(.maskSecondaryFn), event.getIntegerValueField(.eventSourceUnixProcessID) == 0 { fnKeyHeld = false }
-        // **⌘F7 / ⌘F9 too** (2026-10-10, Victor: *"să meargă și cmd+f7 și cmd+f9 pt
+        // **⌘F7 / ⌘F9 too** (2026-10-10, the original author: *"să meargă și cmd+f7 și cmd+f9 pt
         // ciclarea prin efecte"*): ⌘ alone, so ⌃⌥⌘ stays Options+'s.
         if (keyCode == VK_F7 || keyCode == VK_F9) && (fnKeyHeld != cmd) && !ctrl && !opt && !flags.contains(.maskShift) {
             let chord = cmd ? "⌘F7/F9" : "fn+F7/F9"
@@ -3623,7 +3637,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // it is the same toggle, and a dictation started with the key can be
         // ended with the wheel and the other way round.
         //
-        // Not ⌘⌃⌥D — that one is Victor Addons' dark-mode toggle, and the two are
+        // Not ⌘⌃⌥D — that one is the original author Addons' dark-mode toggle, and the two are
         // told apart by ⌥ alone. It shadows the system-wide ⌘⌃D "look up in
         // dictionary", which it inherited from the bind it replaced.
         //
@@ -3680,7 +3694,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         // ten had no re-fire guard at all (`lastFlickAt`); F10 and F5 keep
         // their own, which also feed their dwell and settle checks.
         // **F5 on the keyboard, bare — the plain dictation's toggle** (2026-10-02,
-        // Victor: *"la f5 să facă toggle la dictare curată (adică să rămână
+        // the original author: *"la f5 să facă toggle la dictare curată (adică să rămână
         // pornită până apăs iarăși pe f5)"*). Arrives as key 96 with only the
         // function-key flag (trace, 08:55). Same start/stop as 🔽 →, guards and
         // all; the right ⌘⌥ pair stays the hold-to-talk one.
@@ -3729,7 +3743,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // the same fix: a re-fire slow enough to clear the window above
                 // is still the flick that started the dictation, and the only
                 // thing it could do here is undo it.
-                // **Only a sentence this gesture opened** (2026-10-08, Victor:
+                // **Only a sentence this gesture opened** (2026-10-08, the original author:
                 // *"once I start dictating with caret, I need to do the gesture
                 // forward swipe right twice to enter in the bound mode"* — 09:15:17,
                 // a 🔼-click sentence 1.3 s old, the flip dropped): a re-fire can
@@ -3752,7 +3766,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 DispatchQueue.global().async { [weak self] in self?.onLocalCancel?() }
                 return swallow(gesture, type, event)
 
-            // 🔽 ← — **Return, at any moment** (2026-10-05). Victor: *"If I do
+            // 🔽 ← — **Return, at any moment** (2026-10-05). the original author: *"If I do
             // the gesture for back and swipe to the left at any point, this
             // means an Enter. Hitting an Enter in the terminal, for example, to
             // submit a prompt or enter in a text file."* Until then it threw a
@@ -3781,7 +3795,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // (2026-09-18).
             //
             // **A free side-button row rather than the wheel**, and that is the
-            // whole design decision. Victor asked for a three-second hold on the
+            // whole design decision. the original author asked for a three-second hold on the
             // wheel with a countdown; the wheel cannot carry it, twice over. In
             // Logi mode the middle press is *passed through* to the app
             // underneath, so a hold only recognisable after three seconds lands
@@ -3798,7 +3812,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             //
             // **Ungated here.** Whether a recording may start is a question about
             // the dictation, and the tap's `dictating` is `hasDestination &&
-            // listening` — too narrow, because Victor's rule is that a film can
+            // listening` — too narrow, because the original author's rule is that a film can
             // be made *whenever a dictation is open*, bound, unbound or headed
             // for a folder that does not exist yet. `AppDelegate` holds that
             // state whole and answers it.
@@ -3806,7 +3820,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 DispatchQueue.global().async { [weak self] in self?.onGestureFilm?() }
                 return swallow(gesture, type, event)
 
-            // 🔼 ↓ — **kamikaze** (2026-09-23). Victor: *"în timp cât dictez,
+            // 🔼 ↓ — **kamikaze** (2026-09-23). the original author: *"în timp cât dictez,
             // trag gest cu butonul de forward și trag de mouse în jos. Asta să
             // adauge automat la promptul respectiv cuvântul «kamikaze», ceea ce
             // înseamnă că e ceva mic."* The word is the agent's cue to close its
@@ -3817,7 +3831,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
 
             // ⬇️ on the **back** button — **during a plain dictation, its stop:
             // the words alone, no Return** (2026-10-07, 🔽 →'s own stop through
-            // `plainToggle`). Victor: *"The same with the back mouse and drag the
+            // `plainToggle`). the original author: *"The same with the back mouse and drag the
             // mouse down at the same time. That gesture should just insert the
             // text without hitting the enter."* A plain sentence whose words are
             // already in flight has nothing left to stop — swallowed, so the flick
@@ -3837,7 +3851,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                     return swallow(gesture, type, event)
                 }
                 // **A prompt recording: type a few letters into it** (2026-10-07,
-                // Victor: *"the back button moved to the bottom … would open up a
+                // the original author: *"the back button moved to the bottom … would open up a
                 // very tiny input text right next to the cursor … submitted by
                 // hitting enter … annotated and inserted into the dictation"*).
                 // The relay's own engine only — a Wispr sentence has no clock to
@@ -3855,7 +3869,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             //
             // **⬅️ held, then the forward button: bind** (2026-09-09). It was
             // 🔼 ↓ — the forward button held while the mouse moved down — and
-            // Victor replaced it with the chord for what the hand is already
+            // the original author replaced it with the chord for what the hand is already
             // doing: *"it's more natural, click to focus the thing and then grab
             // it"*. Pointing at a terminal starts with a click into it, so the
             // button that says *this window* is already down when the gesture is
@@ -3873,7 +3887,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // gated on Replace Wispr: ticked, this app's microphone at the
             // caret; unticked, the raw Wispr chord — which opened a dictation
             // the relay then routed *by state*, i.e. to the bound terminal.
-            // Victor, testing the wrap: *"apăsând butonul forward, click
+            // the original author, testing the wrap: *"apăsând butonul forward, click
             // normal, el tot dictează legat de fereastră … butonul forward
             // pornește dictare la caret (indiferent dacă e legat ceva)"*. So the
             // click goes through `startDictation(paste:)` like every other
@@ -3896,7 +3910,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 return swallow(gesture, type, event)
 
             // **The back button's two gestures, swapped back** (2026-09-28).
-            // Victor: *"The plain transcription, the simple dictation with no
+            // the original author: *"The plain transcription, the simple dictation with no
             // prompting, should be started on the gesture with back key and move
             // the mouse to the right, not just by pressing back key. The back key
             // should result in an Enter key being pressed, unless I'm doing a
@@ -3927,7 +3941,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 return plainToggle(gesture, type, event)
 
             // The back button **clicked** — **at rest, the plain dictation's
-            // start** (2026-10-05; Return from 2026-09-28 until then — Victor:
+            // start** (2026-10-05; Return from 2026-09-28 until then — the original author:
             // *"butonul de back de pe mouse, gestul de back simplu, ar trebui să
             // pornească dictarea curată. Nu doar gestul de back cu swipe la
             // dreapta"*) — the same `plainToggle` as 🔽 →, with two exceptions
@@ -3950,7 +3964,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 let f6Now = CACurrentMediaTime()
                 // **A plain sentence turned into a prompt (🔼 →, 🔼 ↑) is a
                 // prompt from then on** (2026-10-08): this button is its shutter,
-                // and 🔼 its stop — Victor: *"I can switch into the prompting
+                // and 🔼 its stop — the original author: *"I can switch into the prompting
                 // mode … then I have any of these attached"*.
                 let promoted = relayPromptOpen
                 let wisprSentence = !promoted && (backStopsWispr || (wisprMicIsOpen?() == true && !ownDictation))
@@ -4006,7 +4020,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
 
         // ⌃⌥P is not this app's (2026-09-29): it was the +1 shot, and it
         // swallowed the 🪂 that victor-macos-addons types on the same chord.
-        // The shutter lives on the mouse's back button, which is where Victor
+        // The shutter lives on the mouse's back button, which is where the original author
         // reaches for it.
         trace("passed", type, event)
         return Unmanaged.passUnretained(event)
@@ -4019,7 +4033,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// Posted at `.cghidEventTap` so it enters the stream at the same depth a
     /// key press does and reaches whatever has focus, and stamped with
     /// `backButtonStamp` so this tap's own branches can tell it from a Return
-    /// Victor typed — the stamp is why the event does not come back round and
+    /// the original author typed — the stamp is why the event does not come back round and
     /// get read as a gesture.
     ///
     /// **It waits for ⌃⌥⌘ to come up first, and without that it is not a Return
@@ -4027,7 +4041,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// i.e. at the one instant Options+ is *holding* all three modifiers — and a
     /// key posted then reaches the front app as ⌃⌥⌘Return, which Terminal gives
     /// Claude Code as ⌥⏎: a newline in the prompt instead of the send. That is
-    /// the symptom Victor reported ("nu-ți trimite promptul, ci dă spații
+    /// the symptom the original author reported ("nu-ți trimite promptul, ci dă spații
     /// goale").
     ///
     /// **Clearing the event's own flags does not do it**, which is the part
@@ -4052,7 +4066,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// the tap. `settleForOptionsPlus` is that gap with room over it.
     ///
     /// The poll is kept *after* the sleep for the other case — real modifiers
-    /// Victor is physically holding — and is capped, posting anyway when the cap
+    /// the original author is physically holding — and is capped, posting anyway when the cap
     /// runs out: if he is really leaning on ⌘ the button still has to do
     /// something, and a late Return beats none.
     static func postReturn() {
@@ -4113,7 +4127,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// ends a Wispr dictation without leaving words behind.
     ///
     /// Everything that makes `postWisprHandsFree` correct is needed here for the
-    /// same reasons and so is shared: the Options+ settle, the wait for Victor's
+    /// same reasons and so is shared: the Options+ settle, the wait for the original author's
     /// own modifiers to come off the wire (a ⌘ or ⌥ still held would make this
     /// ⌘Escape, which is something else entirely in half the apps he dictates
     /// into), the `hidSystemState` source and the `backButtonStamp` so this
@@ -4164,9 +4178,9 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     // MARK: - Wispr's Scratchpad, and the one chord this app has to *hold*
 
     /// **`open_scratchpad`, held** — the candidate wrap that does not touch
-    /// Victor's focus and does not touch Wispr's permissions (2026-09-13).
+    /// the original author's focus and does not touch Wispr's permissions (2026-09-13).
     ///
-    /// Two candidates were tried and both were rejected by Victor the same
+    /// Two candidates were tried and both were rejected by the original author the same
     /// evening. The **sink** works (measured 3/3: Wispr picks its insertion
     /// target at the *end*, and a window that takes the keyboard 1–5 ms after the
     /// stop chord gets the text) but it steals the focus during every dictation,
@@ -4183,12 +4197,12 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// a `History` row whose `app` is `com.electron.wispr-flow` — **without
     /// inserting anything into the front app and without moving the focus**. If
     /// that holds, the wrap is *hold the chord for the length of the sentence and
-    /// read the row*, and nothing in Victor's day changes.
+    /// read the row*, and nothing in the original author's day changes.
     ///
     /// ## Why it reads the chord rather than carrying it
     ///
     /// `prefs.user.shortcuts` in Wispr's own `config.json` maps keycodes joined
-    /// with `+` to an action name, and the *action* is the stable thing: Victor's
+    /// with `+` to an action name, and the *action* is the stable thing: the original author's
     /// is `"35+54+61": "open_scratchpad"` (P + right ⌘ + right ⌥) and the day he
     /// rebinds it, a hard-coded chord posts a keystroke into whatever now owns
     /// it. Read at call time, with his current value as the fallback — the same
@@ -4279,7 +4293,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// question `WrapMode` asks before it decides to hold one.
     ///
     /// Deliberately *not* `scratchpadChord()` — that one always answers, because
-    /// a poster with nothing to post is useless. This one distinguishes *Victor
+    /// a poster with nothing to post is useless. This one distinguishes *the original author
     /// has bound it* from *we are guessing F18*, and the wrap falls back to the
     /// sink rather than holding a key nobody asked for.
     static var scratchpadIsConfigured: Bool {
@@ -4305,7 +4319,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// **A single `F18`, and the single key is the point.** It shipped as
     /// `35+54+61` (P + right ⌘ + right ⌥) and moves to keycode **79** for a
     /// reason that is not tidiness: this chord is *held for the length of a
-    /// sentence*, and a held ⌘⌥ hijacks every key Victor presses for that whole
+    /// sentence*, and a held ⌘⌥ hijacks every key the original author presses for that whole
     /// minute. F18 is a key nothing on this desk sends by itself, so holding it
     /// costs him nothing.
     private static let scratchpadFallback: [CGKeyCode] = [79]
@@ -4315,7 +4329,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     private static let scratchpadLock = NSLock()
     private static var scratchpadDeadMan: DispatchWorkItem?
     /// The chord that is actually down, so the release cannot post a *different*
-    /// one after Victor has rebound it mid-sentence.
+    /// one after the original author has rebound it mid-sentence.
     private static var scratchpadDownCodes: [CGKeyCode] = []
     /// Far past any sentence, and the only thing standing between a missed
     /// release and a Mac with right ⌘ stuck down.
@@ -4344,7 +4358,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// A serial queue rather than `.global()`, because a press and a release
     /// that can overtake each other are a key stuck down.
     private static let scratchpadQueue =
-        DispatchQueue(label: "ro.victorrentea.wispr-relay.wispr-scratchpad")
+        DispatchQueue(label: "local.walkie-talkie.wispr-scratchpad")
 
     /// - Parameter forDictation: whether this press belongs to a **dictation's
     ///   hold**, which a dictation that has since ended may cancel. The close's
@@ -4683,7 +4697,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
 
     /// **One name per side-button gesture, and the chord Options+ makes for it.**
     ///
-    /// The vocabulary is Victor's own (`🔼` forward, `🔽` back, plus a direction)
+    /// The vocabulary is the original author's own (`🔼` forward, `🔽` back, plus a direction)
     /// written out in words a shell can type. The keycodes are the *instance*
     /// `VK_F*` above — not a second copy — which is the whole reason
     /// `postGesture` is an instance method where `postWisprHandsFree` is static:
@@ -4823,7 +4837,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     // ── Wispr left alone (Q9, 2026-09-26; step 2 2026-09-28) ──────────────
 
     /// **Wispr Flow is left alone for the sentences it starts itself** (Q9,
-    /// 2026-09-26, Victor: *"să rămână întotdeauna neinfluențat de nimic"*). A
+    /// 2026-09-26, the original author: *"să rămână întotdeauna neinfluențat de nimic"*). A
     /// Wispr sentence the relay did not start is not adopted, its ⌘V is not
     /// dropped and its words are not delivered by the relay; right ⌘⌥ held is
     /// Walkie's clean dictation only. It was a flag (`WT_WISPR_STANDALONE`,
@@ -5165,7 +5179,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     ///
     /// Matched by process name and nothing else. Swallowing a Return is only
     /// acceptable because it is provably not a keystroke: any *other* process
-    /// posting one (a script, an automation, Victor Addons' own key simulator)
+    /// posting one (a script, an automation, the original author Addons' own key simulator)
     /// meant it as an Enter and must be left alone.
     ///
     /// Answers are cached per pid: this runs on the event tap, once per Return
@@ -5188,7 +5202,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     /// `~/.config/linearmouse/linearmouse.json` is where the button → Return
     /// mapping lives; this is the process that acts on it.
     ///
-    /// **Uninstalled on 2026-09-07** — Victor Addons does this natively now, and
+    /// **Uninstalled on 2026-09-07** — the original author Addons does this natively now, and
     /// is recognised by `backButtonStamp` instead, since a name cannot separate
     /// its disguised button from the Returns it posts for other reasons. Kept so
     /// that a reinstall keeps working, and because it costs one string.
@@ -5196,15 +5210,15 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
     private var remapperPids: [pid_t: Bool] = [:]
 
     /// The mark this app puts on the Return it posts for the back button's
-    /// click, so its own tap can tell that Return from one Victor typed.
+    /// click, so its own tap can tell that Return from one the original author typed.
     ///
-    /// It began life in Victor Addons' `BackButtonEnter.swift`, which used to
+    /// It began life in the original author Addons' `BackButtonEnter.swift`, which used to
     /// make the Return; the value is kept rather than reinvented so that a
     /// version of that app still running against the old wiring is recognised
     /// rather than fought.
     /// Internal rather than private since 2026-09-14: `KeySimulator`'s ⌘C probe
     /// posts into the same event stream this tap reads, and an unstamped probe
-    /// arrives looking exactly like a key Victor pressed.
+    /// arrives looking exactly like a key the original author pressed.
     static let backButtonStamp: Int64 = 0x7774_4241_434B_0000
 
     /// How long `postReturn` lets the ⌃⌥⌘ that Options+ stamped on the chord

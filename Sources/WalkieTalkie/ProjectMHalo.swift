@@ -39,7 +39,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
     /// **The engine renders off the main thread** — its own serial queue, where
     /// the CGL context is made current for each frame; the main thread only
     /// receives the finished surface. The tap and the chip never wait on a frame.
-    private let renderQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.projectm", qos: .userInteractive)
+    private let renderQueue = DispatchQueue(label: "local.walkie-talkie.projectm", qos: .userInteractive)
     private var timer: DispatchSourceTimer?
     private var configured = false
     private var failed = false
@@ -90,7 +90,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
     /// has always rendered at the backing scale (2 on every Retina here). So on
     /// the built-in display every native preset was drawn at **half** the web
     /// route's resolution and stretched back up by the `CALayer`, and on
-    /// 2026-09-21 Victor saw it: *"mozaic, care e pixelat cumva"*.
+    /// 2026-09-21 the original author saw it: *"mozaic, care e pixelat cumva"*.
     ///
     /// Mosaic showed it first and worst because that preset lays its tile
     /// lattice out in **texture pixels** rather than canvas fractions
@@ -132,7 +132,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
         // structures are drawn in *texture* pixels and twice the resolution
         // spreads them over half the screen area. Measured paired, same display,
         // 18 frames a side: **0.55× the mean luminance and 0.58× the lit area**
-        // at 2× — and Victor saw it within the hour (*"efectul de tunel
+        // at 2× — and the original author saw it within the hour (*"efectul de tunel
         // într-adevăr e abia vizibil"*). Shrinking the canvas 30 % took it from
         // 4.89 back to 7.05 on its own (a smaller canvas is fewer engine pixels,
         // so the structures are thicker relative to it); the gain carries the
@@ -375,7 +375,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
     }
 
     /// **App Nap opreste ceasul cadrelor, si el se vede exact asa cum l-a descris
-    /// Victor** (2026-09-22: *"lagul apare pe la jumatatea animatiei, si se
+    /// the original author** (2026-09-22: *"lagul apare pe la jumatatea animatiei, si se
     /// amelioreaza daca mut mouse-ul"*). macOS coaleseaza temporizatoarele unui
     /// proces fara input de la utilizator si il pune in App Nap dupa cateva
     /// secunde; `DispatchSource` cu `leeway` intra direct sub topor, iar orice
@@ -492,7 +492,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
 
     /// **The frames nobody sees, run before the first one somebody does.**
     ///
-    /// Victor, 2026-09-26: *"Tunelul pleacă ca o linie inițială, care apoi curge
+    /// the original author, 2026-09-26: *"Tunelul pleacă ca o linie inițială, care apoi curge
     /// și se mărește. În loc să văd linia, vreau să văd urmele lungi deja
     /// construite, ca și cum ar fi trecut 100–200 ms."* A ring raised again on
     /// the same engine picked up from the frozen last frame of the sentence
@@ -637,7 +637,7 @@ final class ProjectMHalo: NSView, HaloWebHost {
         VoicePrep.shared.process(&tail)
         // **Cat de tare aude ACEST preset.** Linia care decide forma lui Tunnel e
         // chiar forma de unda: cu semnalul la maximum se indoaie in trifoi, cu
-        // adancituri care intra in centru (Victor, 2026-09-22: *"inainte era prea
+        // adancituri care intra in centru (the original author, 2026-09-22: *"inainte era prea
         // «inerta», acum e un pic prea «activa» ... ocupa prea mult din centrul
         // formei"*). Nu e o problema de luminozitate (`gain`) si nici de rotatie
         // (`rot`) — e amplitudinea semnalului, si ea se dozeaza per preset.

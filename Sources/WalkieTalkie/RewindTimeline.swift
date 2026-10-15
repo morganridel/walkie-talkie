@@ -2,7 +2,7 @@ import Foundation
 
 /// **How far Reverse tunnel has come in, as a function of the clock** (2026-09-23).
 ///
-/// Victor: *"The reverse tunnel effect sometimes takes too long, and the
+/// the original author: *"The reverse tunnel effect sometimes takes too long, and the
 /// transcription finishes earlier than the animation completes … start the
 /// reverse tunnel effect as early as the beginning of the transcription process,
 /// and fit it to the expected duration of the transcription."* It was running
@@ -29,7 +29,7 @@ import Foundation
 /// the same week, kept for the record: the approach ended at 1.2 × the
 /// prediction (`1 − (1 − u)^1.5`), at rest and held there.
 ///
-/// **Never quite arrives** (2026-09-28; superseded 2026-10-01, below). Victor: *"The reverse tunnel animation
+/// **Never quite arrives** (2026-09-28; superseded 2026-10-01, below). the original author: *"The reverse tunnel animation
 /// that shows during the dictation should be logarithmically decreasing so that
 /// we rarely hit the final size, and the final size should be 60 % of what it's
 /// currently at … It should appear more time to be collapsing, although on a
@@ -46,7 +46,7 @@ import Foundation
 /// - **The opacity keeps the prediction's clock** (`Pose.time`), as before.
 ///
 /// **Comes in slowly, at rest only at twice the prediction, then keeps
-/// shrinking** (2026-10-01) — supersedes the hyperbola. Victor: *"să fie mai
+/// shrinking** (2026-10-01) — supersedes the hyperbola. the original author: *"să fie mai
 /// lent și să se micșoreze în jurul țintei mult mai lent … să continue
 /// logaritmic să scadă în dimensiune, să nu se oprească … să ajungă la
 /// dimensiunea finală abia la dublu față de cât ar trebui estimat"*, then *"mai
@@ -115,7 +115,7 @@ enum RewindTimeline {
                     shown: min(since / fadeIn, 1))
     }
 
-    /// **The whole tunnel 30 % smaller** (Victor, 2026-09-23: *"reduce the
+    /// **The whole tunnel 30 % smaller** (the original author, 2026-09-23: *"reduce the
     /// reverse tunnel's default size during transcription by 30%"*), then **60 %
     /// of that** (2026-09-28: *"the final size should be 60 % of what it's
     /// currently at"*): 0.7 × 0.6 = 0.42, a factor on every size of the run —
@@ -129,7 +129,7 @@ enum RewindTimeline {
     /// second shrinks it by the same ratio; the opacity rises ahead of it
     /// (t^0.6), so the tunnel is there, huge and faint, from the first frames.
     ///
-    /// **Already 20 % opaque the moment it can be seen** (2026-10-04, Victor:
+    /// **Already 20 % opaque the moment it can be seen** (2026-10-04, the original author:
     /// *"un reverse tunnel vizibil deja trebuie să apară, dar … douăzeci la sută
     /// opac"*) — it rose from nothing, so the first second of the wait showed no
     /// tunnel at all. `startAlpha` is the floor, reached over `fadeIn` so it
@@ -143,14 +143,14 @@ enum RewindTimeline {
     static let fadeIn: TimeInterval = 0.15
 
     /// **`from` such that the ring starts as tall as the screen** (2026-10-04,
-    /// Victor: *"de diametru egal cu înălțimea ecranului"*): the ring's diameter
+    /// the original author: *"de diametru egal cu înălțimea ecranului"*): the ring's diameter
     /// is `restRing × sizeFactor × from` of the long side at the start.
     static func from(screenHeight: Double, longSide: Double, restRing: Double) -> Double {
         max(1.01, screenHeight / max(longSide, 1) / (restRing * sizeFactor))
     }
 
     /// **On the window at half the predicted transcription** (2026-10-04,
-    /// Victor: *"din loc în care era mouse-ul … începe să se ducă spre aplicația
+    /// the original author: *"din loc în care era mouse-ul … începe să se ducă spre aplicația
     /// receptor, urmând să se centreze pe centrul ei progresiv, ca să ajungă
     /// acolo … la jumătatea duratei estimate a transcrierii, urmând ca apoi să se
     /// micșoreze"*). On the clock rather than on the ring's size (2026-10-02 to
@@ -158,7 +158,7 @@ enum RewindTimeline {
     /// way): `elapsed` from the close, eased in and out so it leaves the pointer
     /// and settles on the window gently. The shrink is untouched.
     ///
-    /// **It leaves the pointer only once it can be seen** (2026-10-05, Victor:
+    /// **It leaves the pointer only once it can be seen** (2026-10-05, the original author:
     /// *"trebuia să apară … în jurul mouse-ului cu opacitate 20% și … cât timp
     /// transcrie, să se deplaseze spre centrul ferestrei țintă"*). The clock
     /// started at the close, so with the tunnel hidden for its warm-up (~0.77 s)
@@ -178,7 +178,7 @@ enum RewindTimeline {
     static let arriveShare = 0.5
 
     /// **A bound sentence's own effect flies from the pointer to the terminal**
-    /// (2026-10-08, Victor: *"instead of the reverse tunnel that goes towards the
+    /// (2026-10-08, the original author: *"instead of the reverse tunnel that goes towards the
     /// receiving terminal … that effect from around the mouse to move from where
     /// it was currently towards that terminal by replaying the sound recorded up
     /// to that point backwards … condensed to fit the time estimated for the
@@ -196,7 +196,7 @@ enum RewindTimeline {
     }
 
     /// **A straight flyer shrinks on its way, down to a fifth** (2026-10-08,
-    /// Victor: *"when the tendrils move to the target window, it should be
+    /// the original author: *"when the tendrils move to the target window, it should be
     /// decreasing in size down to twenty percent of its original size … on its
     /// way, it should keep animating"*). On `flight`'s clock, so it is at
     /// `flightEndScale` as it lands and stays there; the picture keeps running —
@@ -209,7 +209,7 @@ enum RewindTimeline {
     static let flightEndScale = 0.2
 
     /// **The dust flies straight to the nearest point of its ring** (2026-10-09,
-    /// Victor: *"the trajectory should be from the mouse to the closest point on
+    /// the original author: *"the trajectory should be from the mouse to the closest point on
     /// a circle around the center of that window. And once it gets to that
     /// point, start circling uniformly"*, then, having watched it: *"oscillating
     /// until one point on the circumference, and then going exactly backwards …
@@ -233,7 +233,7 @@ enum RewindTimeline {
     /// turn every `orbitPeriod`, starting at `angle` — where the flight landed
     /// (`orbitEntry`, `entryAngle`). `since` is the time since it landed.
     ///
-    /// **Round the window, not round a point** (2026-10-08, Victor: *"circle …
+    /// **Round the window, not round a point** (2026-10-08, the original author: *"circle …
     /// the target window on a circle with the diameter equals to two thirds of
     /// its smallest axis, leaving dust in a circle form"*): `r` is
     /// `orbitRadius(for:)` of the receiving window. Until then it was 50 pt,
@@ -261,7 +261,7 @@ enum RewindTimeline {
     static let orbitPeriod: TimeInterval = 1.2
 
     /// **The dust circles where the words will land, not the caret itself**
-    /// (2026-10-14, Victor: *"the target of the dust shouldn't be exactly the
+    /// (2026-10-14, the original author: *"the target of the dust shouldn't be exactly the
     /// cursor, but cursor plus twenty percent … of the width of the screen to
     /// the right should be oscillating in that area. That's where the text will
     /// usually land"*). An ellipse from the caret to `laneShare` of the caret's
@@ -300,7 +300,7 @@ enum RewindTimeline {
         return CGPoint(x: lane.centre.x + lane.rx * CGFloat(cos(angle)), y: lane.centre.y + lane.ry * CGFloat(sin(angle)))
     }
 
-    /// **Sparks shrinks at the tunnel's own rate** (2026-10-02, Victor: *"dacă
+    /// **Sparks shrinks at the tunnel's own rate** (2026-10-02, the original author: *"dacă
     /// … Stars se micșorează în același stil în care se micșorează și Reverse
     /// Tunnel … în loc să rămână activ pe tot ecranul, să se micșoreze în timp
     /// ce redă animația"*). The tunnel's stamp is `sizeFactor × from^(1 − progress)`,

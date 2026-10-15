@@ -37,12 +37,12 @@ import Foundation
 ///
 /// ## The audio is sent off this Mac, and that is the whole of what is new
 ///
-/// Nothing else in this app has ever put Victor's voice on a wire. Two things
+/// Nothing else in this app has ever put the original author's voice on a wire. Two things
 /// follow and both are enforced below: the engine is **never** the default
 /// (`AppDelegate.source` picks Wispr unless a preference says otherwise, and
 /// this one has to be chosen by hand), and a dictation that could not be
 /// uploaded **keeps its WAV and says where it is** rather than disappearing —
-/// a lost sentence is the one failure Victor cannot see and correct.
+/// a lost sentence is the one failure the original author cannot see and correct.
 final class ElevenLabsSource: DictationSource {
 
     var name: String { live ? "ElevenLabs Scribe + Live" : "ElevenLabs Scribe" }
@@ -92,13 +92,13 @@ final class ElevenLabsSource: DictationSource {
     /// documented for 90+ languages rather than 99, with no per-language figures
     /// out for it. Picking the one with the measurement behind it is the same
     /// rule the rest of this repo runs on — and `WT_ELEVEN_MODEL=scribe_v2` is
-    /// how the two get compared on Victor's own corpus rather than on a blog.
+    /// how the two get compared on the original author's own corpus rather than on a blog.
     static var model: String {
         ProcessInfo.processInfo.environment["WT_ELEVEN_MODEL"]
             ?? config["WT_ELEVEN_MODEL"] ?? "scribe_v1"
     }
 
-    /// **The language is not pinned, on purpose.** Victor dictates Romanian with
+    /// **The language is not pinned, on purpose.** the original author dictates Romanian with
     /// English technical words inside it — *"fac un commit pe branch-ul de
     /// test"* — and `language_code: "ro"` tells the recogniser those words are
     /// Romanian too. Auto-detection is what keeps `git rebase` spelled the way
@@ -218,7 +218,7 @@ final class ElevenLabsSource: DictationSource {
     /// it out loud, and it is called when the engine is chosen.
     ///
     /// Re-reading rather than caching from launch is the whole point: the key is
-    /// a file Victor creates while the app is running, and a menu that went on
+    /// a file the original author creates while the app is running, and a menu that went on
     /// saying *no API key* after he had put one there would send him looking for
     /// a bug in the wrong place.
     @discardableResult
@@ -289,7 +289,7 @@ final class ElevenLabsSource: DictationSource {
     /// **The ring does not wait for it**, and never did: this repo's own rule is
     /// that a dictation opens on the *gesture*, the microphone only confirms it
     /// (`speculativeGrace`). So `start()` still answers immediately.
-    private let audioQueue = DispatchQueue(label: "ro.victorrentea.wispr-relay.eleven-mic")
+    private let audioQueue = DispatchQueue(label: "local.walkie-talkie.eleven-mic")
 
     /// Written on `audioQueue` only — the stop queued behind an open cannot
     /// overtake it, which is the same reason `WisprFlowSource.recording` lives
@@ -301,7 +301,7 @@ final class ElevenLabsSource: DictationSource {
         guard !isRecording else { return nil }
         // **No key is no longer a refusal** (2026-09-25): the sentence is
         // recorded anyway and `finishRecording` fails it with the WAV in hand,
-        // which `AppDelegate` hands to the local model — Victor: *"fallback to
+        // which `AppDelegate` hands to the local model — the original author: *"fallback to
         // the local model, rather than giving up on the transcription"*.
         if apiKey == nil {
             Log.error("🎙️ ElevenLabs: no API key — recording anyway, the local model will transcribe it")
@@ -443,7 +443,7 @@ final class ElevenLabsSource: DictationSource {
     /// model only when the meter counted at least this much voiced audio in the
     /// take (`MicRecorder.voicedSeconds`); below it the WAV waits for Recover.
     ///
-    /// **1.5 s since Q13** (2026-09-27, 09:20, Victor: *"Q13: mergem pe
+    /// **1.5 s since Q13** (2026-09-27, 09:20, the original author: *"Q13: mergem pe
     /// recomandarea ta."*), down from 2.0 — together with the meter no longer
     /// dropping the tail of every buffer (`VoicedMeter`): a ten-word 3.5 s
     /// clip counted 1.1–1.9 s through Loopback's 1365-frame buffers and was
@@ -550,7 +550,7 @@ final class ElevenLabsSource: DictationSource {
             // Only a take under `MicRecorder.minimumDuration` is dropped
             // (`.silent("")`).
             //
-            // **Q8 (2026-09-26, 18:40, Victor — "mijloc"): the local model
+            // **Q8 (2026-09-26, 18:40, the original author — "mijloc"): the local model
             // stands in only when the take had real speech** — at least
             // `fallbackVoicedFloor` voiced seconds by the meter. On
             // speech, Scribe's empty answer is the failure the fallback
@@ -713,7 +713,7 @@ final class ElevenLabsSource: DictationSource {
     /// Dictation* can re-read it through whichever engine is live by then. That
     /// recovery path already existed, already has a menu row, and already knows
     /// how long to hold the file; what it did not have was a way to be reached
-    /// by something other than Victor's own cancel.
+    /// by something other than the original author's own cancel.
     /// The caption ends with the microphone: the words after this point are the
     /// batch transcript's to say.
     private func closeStream() {
@@ -723,7 +723,7 @@ final class ElevenLabsSource: DictationSource {
     }
 
     /// **Q8 on every failure, not only the empty answer** (2026-09-27, batch 7).
-    /// Victor's rule is *local fallback only with real speech*, and it is about
+    /// the original author's rule is *local fallback only with real speech*, and it is about
     /// the local model, not about why Scribe did not answer: a 401 (the quota
     /// ran out on 27 Sep), a 429, a 5xx, a timeout or a dead network on a take
     /// of room tone would hand the same near-silence to Whisper, which invents

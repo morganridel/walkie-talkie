@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Mail Victor what the corpus has grown into, and how far it still has to go.
+"""Preview or explicitly email a report on the voice corpus.
 
-Runs daily and almost always decides to do nothing: a report goes out only when
-`REPORT_EVERY_DAYS` have passed since the last one. A fortnightly cadence made of
-a daily job that checks a date survives a closed lid, a reboot and a week in
-another country, where a fortnightly timer just silently misses its slot.
+The default is a local preview. Email is opt-in with `--send`, and requires an
+explicit recipient and inbox in `~/.walkie-talkie/report.env` or the environment.
 
 No model is called here either. The numbers are SQL and the prose is a format
 string.
@@ -21,7 +19,7 @@ microphones, a vocabulary that is mostly Romanian software-engineering shop talk
 The caveat in `label_quality` is the part that actually matters, and it is why
 the report leads with it rather than burying it. Almost every label in this
 corpus is *Wispr's own transcript*. Training on it is distillation: it can teach
-a smaller local model to imitate Wispr on Victor's voice — genuinely useful, that
+a smaller local model to imitate Wispr on the speaker's voice — genuinely useful, that
 is the offline, free, private recogniser — but it cannot beat Wispr, because a
 student never outgrows a teacher it is only ever shown agreeing with. Going past
 Wispr needs labels Wispr did not write: the `editedText` column, where he fixed
@@ -42,11 +40,11 @@ HOME = os.path.expanduser("~")
 CORPUS = os.environ.get("VOICE_CORPUS_DIR", os.path.join(HOME, ".walkie-talkie/voice-corpus"))
 CORPUS_DB = os.path.join(CORPUS, "corpus.db")
 BASELINE = os.path.join(CORPUS, "baseline.json")
-ENV_FILE = os.path.join(HOME, ".claude/agentmail.env")
+ENV_FILE = os.path.join(HOME, ".walkie-talkie/report.env")
 
 REPORT_EVERY_DAYS = 14
-TO = "victorrentea@gmail.com"
-INBOX = "victor.flux@agentmail.to"
+TO_KEY = "CORPUS_REPORT_TO"
+INBOX_KEY = "CORPUS_REPORT_INBOX"
 
 # Hours of (audio, transcript) pairs, and what each buys for a single-speaker
 # fine-tune. `target` marks the one the progress bar is drawn against.
@@ -61,14 +59,22 @@ TARGET_HOURS = 10.0
 
 
 def env(key):
+    """Environment wins; otherwise read a simple KEY=value config file."""
+    value = os.environ.get(key)
+    if value:
+        return value
     try:
         with open(ENV_FILE) as fh:
             for line in fh:
-                if line.startswith(key + "="):
-                    return line.split("=", 1)[1].strip()
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                name, value = line.split("=", 1)
+                if name.strip() == key:
+                    return value.strip().strip("\"'")
     except OSError:
         pass
-    return os.environ.get(key)
+    return None
 
 
 def recognition_quality():
@@ -229,7 +235,7 @@ def build(db):
              % (lq["n"], total["n"], fmt_hm(lq["seconds"])))
     L.append("  Everything else is labelled with Wispr's own transcript, which")
     L.append("  makes this a distillation set: it can teach a local model to")
-    L.append("  match Wispr on your voice — offline, free, private — but it")
+    L.append("  match Wispr on the speaker's voice — offline, free, private — but it")
     L.append("  cannot teach it to beat Wispr. For that the labels have to come")
     L.append("  from somewhere Wispr isn't: the text you fixed by hand, or a")
     L.append("  deliberate correction pass over a held-out hour.")
@@ -243,8 +249,12 @@ def send(subject, body):
     key = env("AGENTMAIL_API_KEY")
     if not key:
         raise RuntimeError("AGENTMAIL_API_KEY not found in %s" % ENV_FILE)
+    recipient = env(TO_KEY)
+    inbox = env(INBOX_KEY)
+    if not recipient or not inbox:
+        raise RuntimeError("%s and %s must be set in %s or the environment" % (TO_KEY, INBOX_KEY, ENV_FILE))
     payload = json.dumps({
-        "to": [TO],
+        "to": [recipient],
         "subject": subject,
         "text": body,
         "html": "<pre style=\"font:13px ui-monospace,SFMono-Regular,Menlo,monospace;"
@@ -252,7 +262,7 @@ def send(subject, body):
                 % body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"),
     }).encode("utf-8")
     req = urllib.request.Request(
-        "https://api.agentmail.to/v0/inboxes/%s/messages/send" % INBOX,
+        "https://api.agentmail.to/v0/inboxes/%s/messages/send" % inbox,
         data=payload, method="POST",
         headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=45, context=ssl.create_default_context()) as r:
@@ -260,9 +270,11 @@ def send(subject, body):
 
 
 def main():
-    argv = sys.argv[1:]
-    force = "--force" in argv
-    dry = "--dry-run" in argv
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--send", action="store_true", help="send email (requires configured recipient and inbox)")
+    parser.add_argument("--force", action="store_true", help="ignore the report cadence when sending")
+    args = parser.parse_args()
 
     if not os.path.exists(CORPUS_DB):
         print("no corpus database yet at %s" % CORPUS_DB)
@@ -272,7 +284,7 @@ def main():
 
     now = datetime.now(timezone.utc)
     row = db.execute("SELECT value FROM state WHERE key='last_report_at'").fetchone()
-    if row and not force and not dry:
+    if args.send and row and not args.force:
         try:
             last = datetime.fromisoformat(row[0])
             age = (now - last).total_seconds() / 86400.0
@@ -283,21 +295,24 @@ def main():
             pass
 
     subject, body = build(db)
-    if dry:
+    if not args.send:
         print(subject)
         print()
         print(body)
+        db.close()
         return 0
     try:
         send(subject, body)
     except (urllib.error.URLError, RuntimeError) as exc:
         # Leave the watermark alone so the next daily run tries again.
-        print("send failed, will retry tomorrow: %s" % exc)
+        print("send failed: %s" % exc)
+        db.close()
         return 1
     db.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('last_report_at', ?)",
                (now.isoformat(),))
     db.commit()
-    print("report sent to %s" % TO)
+    print("report sent to %s" % env(TO_KEY))
+    db.close()
     return 0
 
 

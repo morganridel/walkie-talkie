@@ -2,7 +2,7 @@ import AppKit
 
 /// **The gestures that work right now, bottom right of the screen** (2026-09-29).
 ///
-/// Victor: *"during dictation, show a small hint bar in the bottom right of the
+/// the original author: *"during dictation, show a small hint bar in the bottom right of the
 /// screen with the key combos available at that stage (eg 🔽↑ stop video,
 /// 🔼 end dictation...)"*. The chip by the pointer says what the sentence *is*;
 /// this says what he can *do* to it, and changes with the stage: a prompt
@@ -16,19 +16,19 @@ import AppKit
 /// 🔼 → has no box at all: mid-sentence it flips bound ⇄ caret (2026-10-05),
 /// which the chip's destination row already shows.
 ///
-/// **Off the Retina, against its edge** (2026-09-30, Victor: *"displayed on any
+/// **Off the Retina, against its edge** (2026-09-30, the original author: *"displayed on any
 /// secondary monitor if there are any, otherwise on the Retina. Prefer the monitor
 /// to the right of Retina. Keep them small and close to the edge which is adjoined
 /// to Retina"*). The Retina is where he works; the bar sits just across the seam,
 /// bottom of that seam, so a glance sideways finds it. See `placement`.
 ///
-/// **Three times bigger off the Retina** (2026-10-01, Victor: *"when the shortcuts
+/// **Three times bigger off the Retina** (2026-10-01, the original author: *"when the shortcuts
 /// appear on the secondary screen, make them twice as big. Even three times. Plenty
 /// of room, so I see them easily. If it's not on the Retina."*). A glance sideways
 /// at a farther, low-density screen needs the size; on the Retina it stays small.
 ///
 /// **Opaque across the seam; when the pointer follows it there, it flees back**
-/// (2026-10-01, Victor: *"when the hints appear on the other screen, fully opaque.
+/// (2026-10-01, the original author: *"when the hints appear on the other screen, fully opaque.
 /// My mouse goes there, but they should come back to the other screen, even on the
 /// side if needed. But there extremely transparent, flee from the screen the mouse
 /// is on"*). Off the Retina nothing is underneath that he is looking at, so it is
@@ -54,7 +54,7 @@ final class GestureHintBar {
         /// The sentence already opens a new session — 🔼 ↑ has nothing left to do.
         var spawn = false
         /// Right ⌘⌥ is held for it: his hand is on the keyboard, not the mouse,
-        /// so there is nothing to show (2026-09-30, Victor: *"no need to display
+        /// so there is nothing to show (2026-09-30, the original author: *"no need to display
         /// those shortcuts while cmd-opt pressed down dictation"*).
         var held = false
         /// A wheel crop is on screen: the bar draws the mouse instead of the two
@@ -68,7 +68,7 @@ final class GestureHintBar {
     /// Where the wheel crop is — `CropSelectionOverlay.Phase`, without `done`.
     enum CropPhase: Equatable { case selecting, locked, parked, drawing }
 
-    /// **The mouse, drawn, for the length of a crop** (2026-10-07). Victor, on
+    /// **The mouse, drawn, for the length of a crop** (2026-10-07). the original author, on
     /// the right click that now locks the box: *"aș vrea să poți să reprezinți
     /// chestia asta cumva vizual … pe acele hint-uri"*. Same rules as a cross:
     /// `""` is an empty gray box (the button does nothing right now).
@@ -115,12 +115,12 @@ final class GestureHintBar {
             front.click = "🏁 end"
             front.up = s.spawn ? "" : "✨ new"
             // Kamikaze is its emoji alone, crossed out once it is on (2026-09-30,
-            // Victor: *"instead of 'no kamikaze', kamikaze crossed out"*).
+            // the original author: *"instead of 'no kamikaze', kamikaze crossed out"*).
             front.down = s.kamikaze ? Self.struck + "☠️" : "☠️"
             back.click = "📸 shot"
             // Stop is ⏹️, never the word (2026-09-30).
             back.up = s.filming ? "⏹️ video" : "🔴 video"
-            // The typing box (2026-10-08, Victor: *"nu-l văd nici în sugestia
+            // The typing box (2026-10-08, the original author: *"nu-l văd nici în sugestia
             // de taste din colț"*) — `HotkeyTap.onTypeIn`.
             back.down = "⌨️ type"
         } else if s.quick {
@@ -151,7 +151,7 @@ final class GestureHintBar {
     /// Between the 🔼 cross and the 🔽 one: a row's worth, as in the sketch —
     /// widened 2026-09-30 so the two read as two buttons.
     fileprivate static let crossGap: CGFloat = 24
-    /// The Retina alone: see-through (2026-09-30, Victor: *"should be semi-transparent"*),
+    /// The Retina alone: see-through (2026-09-30, the original author: *"should be semi-transparent"*),
     /// it sits over whatever he is working on in that corner.
     static let aloneOpacity: CGFloat = 0.6
     /// Across the seam nothing he reads is under it: solid (2026-10-01).
@@ -160,7 +160,7 @@ final class GestureHintBar {
     static let fledOpacity: CGFloat = 0.3
     static let margin: CGFloat = 16
     /// **The pointer this close to a bar with nowhere to flee hides it**
-    /// (2026-10-08, Victor: *"when the mouse goes towards the area where the
+    /// (2026-10-08, the original author: *"when the mouse goes towards the area where the
     /// tooltips are on a single monitor setup, those should disappear when my
     /// mouse gets there because they get in the way"*). It fades back once the
     /// pointer is this far away again.
@@ -494,7 +494,7 @@ final class GestureHintBar {
             let text = struck ? String(label.dropFirst(GestureHintBar.struck.count)) : label
             let empty = text.isEmpty
             let path = given ?? NSBezierPath(roundedRect: r.insetBy(dx: 0.5, dy: 0.5), xRadius: 4, yRadius: 4)
-            // An unused gesture is a plain gray box (2026-09-30, Victor: *"place
+            // An unused gesture is a plain gray box (2026-09-30, the original author: *"place
             // gray boxes on all unused gestures"*) — seen, and plainly not a label.
             let solid = opacity >= 1
             (empty ? NSColor(white: 0.5, alpha: solid ? 1 : 0.55)

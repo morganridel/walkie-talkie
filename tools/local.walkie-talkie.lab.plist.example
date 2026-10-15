@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  EXAMPLE ONLY — not installed. Optional Tart VM launcher for the Claude-specific
+  development harness; it is not required by the app. Replace @REPO@, @HOME@ and
+  @TART_HOME@ before use, and review VM lifecycle behavior first.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.walkie-talkie.lab</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>@REPO@/tools/vm-lab.sh</string>
+    <string>up</string>
+  </array>
+  <key>WorkingDirectory</key><string>@REPO@</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>@HOME@/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>TART_HOME</key><string>@TART_HOME@</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>StartOnMount</key><true/>
+  <key>AbandonProcessGroup</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>@HOME@/.walkie-talkie/lab/launchagent.log</string>
+  <key>StandardErrorPath</key><string>@HOME@/.walkie-talkie/lab/launchagent.log</string>
+</dict>
+</plist>

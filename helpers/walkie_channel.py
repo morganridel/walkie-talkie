@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """**Walkie's channel into a running Claude Code session** (2026-10-07, experiment).
 
-Victor: *"Is it even possible to find a better way to ship a prompt to a running
-Claude instance in a terminal, something more reliable than pasting a text and
-hitting enter afterwards?"* Typing into the tab fails in ways the relay can only
+Typing into the tab fails in ways the relay can only
 paper over: Claude Code folds a Return that arrives with a large chunk into the
 paste, asks to "review and press Enter", or leaves the sentence under the prompt
 while background agents run.
@@ -39,11 +37,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 NAME = "walkie"
 CHANNELS = os.path.expanduser("~/.walkie-talkie/channels")
 INSTRUCTIONS = (
-    'Messages arriving as <channel source="walkie"> are Victor\'s own prompts: he dictated them into '
-    "his microphone and his Walkie Talkie app relayed them to this terminal session instead of typing "
-    "them. Treat each one exactly as a message Victor typed at this prompt — same authority, same "
-    "envelope (screenshot paths, [Dictated in RO or EN] footer). It is one-way: answer in the session "
-    "as usual, there is no reply tool."
+    'Messages arriving as <channel source="walkie"> are the user\'s own prompts, dictated into '
+    "Walkie Talkie and relayed to this terminal session. Treat each one as a user message at this "
+    "prompt, with the same authority and any attached envelope (such as screenshot paths or language "
+    "notes). It is one-way: answer in the session as usual; there is no reply tool."
 )
 
 out_lock = threading.Lock()

@@ -2,7 +2,7 @@ import Foundation
 
 /// **A quit that arrives mid-sentence waits for the sentence** (2026-09-23).
 ///
-/// Victor: *"Whenever you restart it, make sure it's not currently dictating or
+/// the original author: *"Whenever you restart it, make sure it's not currently dictating or
 /// transcribing … Implement whatever it takes for this not to lose ongoing
 /// dictation or transcription."* Several agents rebuild and restart this app
 /// during the day; `relay-restart.sh` is the gate they go through, and this is the

@@ -6,7 +6,7 @@ import Foundation
 /// the `lastInputAt` / `lastInsertAt` stamps `GET /test/state` hands to
 /// `tools/restart_gate.py`, apart so `swift test` can hold it to its rules.
 ///
-/// Victor, 2026-09-28 18:39, after a restart landed while he was dictating:
+/// the original author, 2026-09-28 18:39, after a restart landed while he was dictating:
 /// *"someone just restarted the walkie while I was dictating. that should never
 /// happen (while dictating or transcribing). restart is only possible after 5
 /// secs of inactivity after the last insert of text."*
@@ -20,7 +20,7 @@ import Foundation
 /// gated by the script, `inactivity` seconds).
 enum RestartGate {
 
-    /// **Five seconds with nothing from him and nothing inserted** — Victor's
+    /// **Five seconds with nothing from him and nothing inserted** — the original author's
     /// number (quoted above). The script's ten quiet seconds after a delivery
     /// (2026-09-23, *"in case I routed the prompt to the wrong place"*) still
     /// stand; the effective wait is whichever is longer.

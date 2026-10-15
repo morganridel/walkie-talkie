@@ -3,7 +3,7 @@ import AppKit
 /// The two marks the chip draws for itself: a map pin and a folder.
 ///
 /// **Drawn, not typed.** The obvious versions of both are emoji — 📍 and 📁 —
-/// and neither is the thing Victor asked for. 📍 is `ROUND PUSHPIN`, which Apple
+/// and neither is the thing the original author asked for. 📍 is `ROUND PUSHPIN`, which Apple
 /// renders as a pin stuck into a surface at an angle, not the teardrop marker
 /// everyone means by "a pin on a map"; and an emoji is whatever the installed
 /// font decides, at whatever weight and hue it likes, with a baseline that
@@ -17,7 +17,7 @@ import AppKit
 /// Chrome's icon as an `NSImageView` rather than inline. So a glyph in one of
 /// these rows is an image in a box of its own, and these are that image.
 ///
-/// Both are traced from references Victor supplied, by their proportions rather
+/// Both are traced from references the original author supplied, by their proportions rather
 /// than by eye, so they can be re-derived if the size changes.
 enum Glyphs {
 
@@ -215,7 +215,7 @@ extension Glyphs {
     /// that one*, which is now a gesture the app has. A drawing can: two buttons
     /// red at once is the same picture with one more region filled.
     ///
-    /// **Traced from the wireframe Victor supplied**, not drawn by eye. The
+    /// **Traced from the wireframe the original author supplied**, not drawn by eye. The
     /// outline below is 33 rows sampled off that PNG by a one-off program —
     /// left and right edge per row, normalised — which is why the silhouette is
     /// the real **Logitech Signature M650 L** on his desk
@@ -271,7 +271,7 @@ extension Glyphs {
             // Drawn a shade wider than the trace (0.456…0.548) and a shade
             // longer. The wireframe's wheel is a tenth of the body's width, which
             // is honest and, filled red at icon size, is a mark two pixels across
-            // that reads as a smudge. Victor's words: *abia se vede că e roșu*.
+            // that reads as a smudge. the original author's words: *abia se vede că e roșu*.
             let wheel = stadium(0.437, 0.125, 0.567, 0.310)
 
             // A wash inside the outline. The wireframe itself is pure line art,
@@ -377,7 +377,7 @@ extension Glyphs {
     /// button being named, because at 16pt two extra marks on every mouse in
     /// the card are texture rather than information. That is the honest
     /// rendering of a button the viewpoint cannot see — and it is no use at all
-    /// on a page whose job is *which button is this*. Victor asked for the
+    /// on a page whose job is *which button is this*. the original author asked for the
     /// picture that answers it: *"caută o schiță în care să se vadă și butoanele
     /// laterale."*
     ///
@@ -575,7 +575,7 @@ extension Glyphs {
     /// **One picture with every button on it** — the M650 L seen from above and
     /// in front of its left shoulder (2026-09-22).
     ///
-    /// Victor, having looked at the two views this replaces: *"1 singură poză,
+    /// the original author, having looked at the two views this replaces: *"1 singură poză,
     /// din diagonală cumva să se vadă toate butoanele."* And he is right that
     /// two drawings was a workaround. `mouse(height:)` sees the deck and the
     /// wheel but meets the thumb buttons edge-on; `mouseSide(height:)` sees the
@@ -587,7 +587,7 @@ extension Glyphs {
     /// **The three-quarter is the only projection where all five are at once**,
     /// and it is the angle Logitech themselves shoot the product at: this is
     /// traced from their `m650-graphite-large-3qtr-front-angle` gallery render
-    /// (3000×2592, transparent), which Victor picked out of the candidates.
+    /// (3000×2592, transparent), which the original author picked out of the candidates.
     ///
     /// **The silhouette is machine-exact.** The render has a real alpha channel,
     /// so the outline is not sampled off ink the way the other two were — it is
@@ -847,7 +847,7 @@ extension Glyphs {
 extension Glyphs {
 
     /// **Which recogniser is listening, as its own logo rather than as a
-    /// letter** — Victor, 2026-09-22: *"în loc de litera care urmează, aș vrea
+    /// letter** — the original author, 2026-09-22: *"în loc de litera care urmează, aș vrea
     /// să am logo-ul lor stilizat cu gri. Exact culoarea fontului."*
     ///
     /// The mark was `(W)` / `(E)` / `(L)` from 2026-09-18, and a letter is a
@@ -867,7 +867,7 @@ extension Glyphs {
     /// existing `ch.isASCII` test in `applyEngineText` already routes them to a
     /// picture.
     enum Engine: Character, CaseIterable {
-        /// **ElevenLabs** — the two bars of its wordmark, in a ring. Victor
+        /// **ElevenLabs** — the two bars of its wordmark, in a ring. the original author
         /// described it as *"acel semn cu o pauză într-o bulină"*, which is the
         /// mark as it is worn on their icon rather than the bare `11`; the ring
         /// also keeps it from reading as a second slash beside the one in front
@@ -882,14 +882,14 @@ extension Glyphs {
         case mac = "\u{E013}"
     }
 
-    /// **The small `v` after the local model's mark: the weights are Victor's
+    /// **The small `v` after the local model's mark: the weights are the original author's
     /// LoRA** (2026-10-04) — **a subscript** (*"pune V-ul acela ca indice"*;
     /// it was the raised `ᵛ` for an hour). Small and lowered in the font itself;
     /// the chip draws it as a letter of the row, not a picture, filling with
     /// the bar like the words round it.
     static let loraMark: Character = "\u{1D65}"
 
-    /// **A thin space before a row's three dots** (2026-10-04, Victor: *"pune
+    /// **A thin space before a row's three dots** (2026-10-04, the original author: *"pune
     /// un mic spațiu înainte de cele trei puncte finale"*) — the dots used to
     /// sit flush against the recogniser's logo. A letter of the row like the
     /// `v`, so it counts as one step of the bar.
@@ -899,7 +899,7 @@ extension Glyphs {
     /// form the chip calls, because the chip is handed a string and never an
     /// engine.
     ///
-    /// - Parameter colour: *exactly the ink of the row it sits in* (Victor:
+    /// - Parameter colour: *exactly the ink of the row it sits in* (the original author:
     ///   *"exact culoarea fontului"*). These are line drawings on a row that is
     ///   sometimes white on a halo and sometimes `secondaryLabelColor`, so the
     ///   colour cannot be baked in the way `hqBadge`'s blue is — that badge is a
@@ -920,7 +920,7 @@ extension Glyphs {
         // returns a square of exactly the size every other glyph on the row
         // gets, which is what makes the lot line up.
         //
-        // **A laptop, not the apple, since 2026-10-04** (Victor: *"în loc de măr
+        // **A laptop, not the apple, since 2026-10-04** (the original author: *"în loc de măr
         // pune laptop ca să se înțeleagă local"*) — the apple named a vendor,
         // the laptop says *this machine*. A colour emoji, so it ignores the ink;
         // the ramp draws it faded until the bar reaches it (`wordGlyph(lit:)`,

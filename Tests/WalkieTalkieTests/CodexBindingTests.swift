@@ -1,0 +1,86 @@
+import XCTest
+@testable import WalkieTalkie
+
+final class CodexBindingTests: XCTestCase {
+    func testDesktopBindingRestoresTheConversationWithoutATerminal() {
+        let handle = TerminalBinding.Handle.codex(threadID: "chat-a", tty: nil)
+        XCTAssertEqual(handle.restoreKey, "codex:chat-a")
+        XCTAssertNil(handle.deviceTTY)
+        XCTAssertNotEqual(handle, .codex(threadID: "chat-b", tty: nil))
+    }
+
+    func testCLIBindingKeepsConversationAndTerminalIdentitiesSeparate() {
+        let handle = TerminalBinding.Handle.codex(threadID: "chat-a", tty: "/dev/ttys009")
+        XCTAssertEqual(handle.tty, "ttys009")
+        XCTAssertEqual(handle.restoreKey, "codex:chat-a")
+    }
+
+    func testChatMetadataDoesNotInventATitleOrProject() {
+        XCTAssertNil(CodexBridge.Conversation(["title": "missing id"]))
+        let chat = CodexBridge.Conversation(["id": "chat-a", "title": "", "cwd": "/projects/example", "busy": true])
+        XCTAssertEqual(chat?.title, "Untitled Codex chat")
+        XCTAssertEqual(chat?.folder, "example")
+        XCTAssertEqual(chat?.key, "codex:chat-a")
+        XCTAssertEqual(chat?.busy, true)
+    }
+
+    func testAttachmentParserDoesNotReadAnUnrelatedDirectory() {
+        XCTAssertEqual(CodexBridge.attachmentPaths(in: "[📁=/etc]"), [])
+        XCTAssertEqual(CodexBridge.attachmentPaths(in: "plain dictation"), [])
+        XCTAssertEqual(CodexBridge.attachmentPaths(in: "[📁=$WALKIE_SHOTS/../../../../etc]"), [])
+    }
+
+    func testNativeDesktopAppIsBindable() {
+        XCTAssertTrue(TerminalBinding.isBindable(bundleID: "com.openai.codex"))
+        XCTAssertFalse(TerminalBinding.isBindable(bundleID: "com.apple.finder"))
+    }
+
+    func testCropKeepsContextAndFilmCarriesItsContactSheet() throws {
+        let folder = Outbox.cacheRoot.appendingPathComponent("attachment-test-\(UUID().uuidString)")
+        let film = folder.appendingPathComponent("film-test")
+        try FileManager.default.createDirectory(at: film, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let names = ["screenshot-0.jpg", "screenshot-0-800px.jpg", "screenshot-0-original.jpg"]
+        for name in names { try Data([0]).write(to: folder.appendingPathComponent(name)) }
+        let sheet = film.appendingPathComponent("sheet.png")
+        try Data([0]).write(to: sheet)
+        let text = "[📁=\(folder.path)]\n[🎬=\(sheet.path)]"
+        XCTAssertEqual(Set(CodexBridge.attachmentPaths(in: text)), Set([
+            folder.appendingPathComponent("screenshot-0.jpg").path,
+            folder.appendingPathComponent("screenshot-0-800px.jpg").path, sheet.path
+        ]))
+    }
+
+    func testCompletionCueIsExplicitAndOnlyAddedOnce() {
+        let ordinary = "Please fix the layout"
+        XCTAssertEqual(CodexBridge.withCompletionCue(ordinary), ordinary)
+        let marked = CodexBridge.withCompletionCue(ordinary + "\n\nkamikaze")
+        XCTAssertTrue(marked.contains("close only this session"))
+        XCTAssertEqual(CodexBridge.withCompletionCue(marked), marked)
+    }
+
+    func testMixedScreenshotsAndFilmsResolveSeparateSessionFolders() throws {
+        let root = Outbox.cacheRoot.appendingPathComponent("mixed-test-\(UUID().uuidString)")
+        let shots = root.appendingPathComponent("dictation")
+        let film = root.appendingPathComponent("app-session/film-test")
+        try FileManager.default.createDirectory(at: shots, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: film, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let shot = shots.appendingPathComponent("screenshot-0-800px.jpg")
+        let sheet = film.appendingPathComponent("sheet.png")
+        try Data([0]).write(to: shot)
+        try Data([0]).write(to: sheet)
+        let relativeSheet = sheet.path.replacingOccurrences(of: Outbox.cacheRoot.path, with: "$WALKIE_SHOTS")
+        let text = "[📁=\(shots.path)]\n[🎬1 = \(relativeSheet), a contact sheet]"
+        XCTAssertEqual(Set(CodexBridge.attachmentPaths(in: text)), Set([shot.path, sheet.path]))
+    }
+
+    func testAttachmentSymlinkCannotEscapeTheCache() throws {
+        let folder = Outbox.cacheRoot.appendingPathComponent("symlink-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createSymbolicLink(atPath: folder.appendingPathComponent("screenshot-0.jpg").path,
+                                                  withDestinationPath: "/etc/hosts")
+        XCTAssertEqual(CodexBridge.attachmentPaths(in: "[📁=\(folder.path)]"), [])
+    }
+}

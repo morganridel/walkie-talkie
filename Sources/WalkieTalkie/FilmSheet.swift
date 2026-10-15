@@ -5,19 +5,19 @@ import UniformTypeIdentifiers
 /// **The one picture an agent can actually look at** — N frames of a screen
 /// recording laid out as a numbered grid (2026-09-18).
 ///
-/// The feature Victor asked for is a short screen recording, and the thing that
+/// The feature the original author asked for is a short screen recording, and the thing that
 /// makes it non-obvious is that **an agent cannot watch a video**. A `.mp4` path
 /// in the envelope is a path to something the recipient has no way to open; the
 /// frames have to arrive as an image or they do not arrive at all.
 ///
 /// So the film reaches the agent twice, at two resolutions, and the split is
-/// Victor's (2026-09-18): *"it should be in very low resolution, first of all,
+/// the original author's (2026-09-18): *"it should be in very low resolution, first of all,
 /// and then give access to the actual frames somehow"*.
 ///
 /// | | what it is | who reads it |
 /// |---|---|---|
 /// | the sheet | every frame, thumbnailed, one PNG | the agent, immediately, at a glance |
-/// | the frames | full resolution, one JPEG each | the agent when it needs to read the screen, and Victor |
+/// | the frames | full resolution, one JPEG each | the agent when it needs to read the screen, and the original author |
 ///
 /// **The sheet is deliberately cheap.** A 10 s recording at 5 fps is 50 cells;
 /// at `cellWidth` they cost about as many tokens as one ordinary screenshot,

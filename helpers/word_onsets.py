@@ -1,7 +1,7 @@
 """Move each Whisper word's start onto the speech it names (2026-10-04).
 
 Whisper's word timings (cross-attention DTW) make the words contiguous: the word
-after a pause *starts in the pause*. Measured on 60 of Victor's dictations
+after a pause *starts in the pause*. Measured on 60 of the user's dictations
 (`evals/local-word-timing/`): after every pause of 0.25 s or more, the next
 word's start sat a median **620 ms before the audio's own voice onset** (p10
 1.7 s early), while parakeet-tdt's sat 60 ms before it. A screenshot taken in

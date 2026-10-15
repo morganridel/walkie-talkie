@@ -10,7 +10,7 @@ import QuartzCore
 /// nothing connecting them. A blink over the window would confirm the capture
 /// but leave the chip unexplained; a blink at the cursor would confirm the chip
 /// but never say which window. The travel is the sentence: *that* window is now
-/// *this* chip. It is the same argument Victor Addons' break timer makes when it
+/// *this* chip. It is the same argument the original author Addons' break timer makes when it
 /// flies in from the coffee that started it.
 ///
 /// **The thing that flies is the window itself, not a chenar around it.** An
@@ -23,7 +23,7 @@ import QuartzCore
 /// went away between the bind and the frame) — a flight with no picture still
 /// answers *where from*, which is most of what it is for.
 ///
-/// **White, not blue, and not a signal colour at all.** Victor Addons flashes
+/// **White, not blue, and not a signal colour at all.** the original author Addons flashes
 /// **yellow** for "I captured this" and the relay flashes **red** for "it went to
 /// the agent" (`CaptureFlash`) — both of those are events being announced. This
 /// is not an announcement, it is a thing being *moved*, and a screenshot in
@@ -55,7 +55,7 @@ import QuartzCore
 /// provably right — the panel measured `-1920,0 5568×2197` and the layer landed
 /// at exactly the source window — and it *still* drew on one screen only.
 ///
-/// The reason is `com.apple.spaces spans-displays`, which is unset on Victor's
+/// The reason is `com.apple.spaces spans-displays`, which is unset on the original author's
 /// Mac and unset by default on macOS: **each display has its own Space, so the
 /// window server gives a window to one display and no window spans two.**
 /// `canJoinAllSpaces` does not buy it back — that is about Spaces on a display,
@@ -92,7 +92,7 @@ enum BindFlight {
     /// A flight that reaches its destination and blinks out has its last frame
     /// exactly where the eye finally caught up with it; one that is already
     /// dissolving as it settles reads as the rectangle being *absorbed* by what
-    /// it landed on. Victor, 2026-09-07, about the spawn: *"când mai are 10%,
+    /// it landed on. the original author, 2026-09-07, about the spawn: *"când mai are 10%,
     /// 20% din distanță, începe să facă fade-out … mai stând acolo încă jumate
     /// de secundă, până când dispare complet."*
     ///
@@ -169,8 +169,8 @@ enum BindFlight {
     /// shrinking, going from half opacity to full. That is the sentence a spawn
     /// needs and the opposite of the one a bind needs: a bind says *that window
     /// is now this chip*, and a spawn says *what you just said is now that
-    /// window over there*, about a window Victor has not looked at yet and does
-    /// not know the position of. Victor's ask, 2026-09-04.
+    /// window over there*, about a window the original author has not looked at yet and does
+    /// not know the position of. the original author's ask, 2026-09-04.
     ///
     /// It is one flipped `t` rather than a second animation, so the two can never
     /// drift: the hold that opens a bind (standing still over the window) becomes
@@ -185,7 +185,7 @@ enum BindFlight {
     ///
     /// **`outlined` refuses the picture altogether** — a hollow white rectangle,
     /// no contents and no fill. It is the shape of **both flights that end on a
-    /// window** (Victor, 2026-09-07: *"să nu ia poza terminalului … doar un
+    /// window** (the original author, 2026-09-07: *"să nu ia poza terminalului … doar un
     /// chenar către chenarul terminalului"*, and for the send flight the same
     /// day: *"nu mai știu mental ce era în acel terminal, doar să înțeleg că se
     /// duce într-un terminal, undeva"*), and the argument the type makes for
@@ -411,7 +411,7 @@ enum BindFlight {
     /// **The screen, not the window.** `CGWindowListCreateImage` can be asked for
     /// one window's own buffer by id, which would come back unobstructed and
     /// without a shadow — and would be the *wrong* picture: what has to be
-    /// recognisable is what Victor was looking at when he pressed, including
+    /// recognisable is what the original author was looking at when he pressed, including
     /// whatever is sitting on top of that terminal. Grabbing the rectangle also
     /// costs nothing extra and needs no window id, which the binding does not
     /// keep (see `Target.sourceFrame`).

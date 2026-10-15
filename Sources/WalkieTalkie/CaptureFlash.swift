@@ -6,8 +6,8 @@ import QuartzCore
 ///
 /// **The picture goes into the counter, not a border round the screen**
 /// (2026-09-23). It was a yellow vignette — gradient edges fading inward over
-/// the whole display, Victor Addons' capture flash — and it answered *did that
-/// press land* by lighting up everything except the thing that changed. Victor:
+/// the whole display, the original author Addons' capture flash — and it answered *did that
+/// press land* by lighting up everything except the thing that changed. the original author:
 /// *"there's an effect that takes that photo … and zooms it … into the icon that
 /// shows the number of photos. That can avoid you having to draw a yellow border
 /// around the screen … The feeling is much better if you just bring it into the
@@ -24,7 +24,7 @@ enum CaptureFlash {
     /// which is the whole of what it says.
     static let intoChipDuration: CFTimeInterval = 0.5
 
-    /// The white edge the flying frame wears, at its start — Victor's *"several-
+    /// The white edge the flying frame wears, at its start — the original author's *"several-
     /// pixel border"*. A full-screen picture lying exactly on the screen it was
     /// taken of is invisible; the edge is what makes it a *thing* that then
     /// leaves. It thins as the picture shrinks, or a 4 pt frame round a 16 pt
@@ -46,7 +46,7 @@ enum CaptureFlash {
     /// the first one's picture in flight.
     ///
     /// **`picture` nil flies the outline alone** (2026-09-24) — the dragged
-    /// area's receipt. Victor: *"it's a bit distracting to see the image zooming
+    /// area's receipt. the original author: *"it's a bit distracting to see the image zooming
     /// in and collapsing inside, so just the border, the rectangle."* He has
     /// just looked at that box while framing it; its pixels shrinking over his
     /// work say nothing he did not already see, and the white edge alone still
@@ -155,13 +155,13 @@ enum CaptureFlash {
     /// this is the half that can land at the press.
     ///
     /// **The reticle says where he was pointing while he said it.** Every shot the relay takes already carries
-    /// that reading twice — burned into the picture for Victor, and in the file
+    /// that reading twice — burned into the picture for the original author, and in the file
     /// name for the agent — and both of those are things you find *afterwards*.
     /// This is the same fact at the only moment it can still be corrected: if
     /// the target lands somewhere he did not mean, the sentence is still being
     /// spoken and he can point again with the back button.
     ///
-    /// It is the mark Victor Addons drops after every ⌃P, and deliberately so —
+    /// It is the mark the original author Addons drops after every ⌃P, and deliberately so —
     /// that desktop already means "here" by it, so there is nothing to learn.
     ///
     /// `cursor` is where the gesture happened, passed in for the same reason
@@ -169,7 +169,7 @@ enum CaptureFlash {
     /// subprocess ahead of the capture, and by the time anything reads
     /// `NSEvent.mouseLocation` again the hand has moved on.
     ///
-    /// `cycleMarker` (2026-09-04, Victor's ask): a live A/B/C playtest of the
+    /// `cycleMarker` (2026-09-04, the original author's ask): a live A/B/C playtest of the
     /// two `CaptureEffects` prototypes he'd been tuning that session (spikes,
     /// tap ripple) against the classic red reticle — every real capture marker
     /// round-robined through all three so he could compare them in actual daily
@@ -206,7 +206,7 @@ enum CaptureFlash {
     /// sites go through `announce`'s main-thread `show` closure), so no lock
     /// needed.
     ///
-    /// **The playtest is over and the tap ripple won** (Victor, 2026-09-06):
+    /// **The playtest is over and the tap ripple won** (the original author, 2026-09-06):
     /// the other two are commented out rather than deleted, so the list is
     /// still the whole ballot and putting one back is uncommenting it. With a
     /// single entry the rotation is a constant — every capture marker is now
@@ -227,7 +227,7 @@ enum CaptureFlash {
 
     /// The red target, on screen, at `point` in global Cocoa coordinates.
     ///
-    /// The animation is Victor Addons' `ScreenCaptureFlash.markCursor`, values
+    /// The animation is the original author Addons' `ScreenCaptureFlash.markCursor`, values
     /// included: it lands at **1.3× and settles to 0.9× over 0.35s**, so it reads
     /// as a scope being brought down onto the spot rather than a badge appearing
     /// beside one, and what stays behind is the smaller, quieter mark. It is at
@@ -341,10 +341,10 @@ enum CaptureFlash {
     /// Half a second, start to finish.
     static let markerDuration: CFTimeInterval = 0.5
     /// Where the bloom starts and ends, against the mark's drawn size. The end is
-    /// ~4× the old resting 0.9×, which is what Victor asked for.
+    /// ~4× the old resting 0.9×, which is what the original author asked for.
     private static let markerStartScale: CGFloat = 0.5
     private static let markerEndScale: CGFloat = 3.6
-    /// A **quarter turn**, spent entirely on the way out — Victor's number.
+    /// A **quarter turn**, spent entirely on the way out — the original author's number.
     ///
     /// 90° is the one angle this shape can be turned by and still be itself: a
     /// ring, four arms and a dot are four-fold symmetric, so the mark lands
@@ -369,7 +369,7 @@ extension NSColor {
     ///
     /// **Lifted from `victor-macos-addons`, where ⌃P has meant it for years.**
     /// That desktop already draws this exact border around the screen when it
-    /// takes a picture, and Victor watches both apps on the same Mac — two
+    /// takes a picture, and the original author watches both apps on the same Mac — two
     /// different colours for the same event is a distinction that has to be
     /// learned and buys nothing. It replaces `systemRed`, which was doing double
     /// duty: red is also how every UI on that screen says *error*, and a red
@@ -377,6 +377,6 @@ extension NSColor {
     /// something going wrong for the fraction of a second before it is recognised.
     ///
     /// `systemYellow` is the literal value there — its own code calls it "the
-    /// yellow border" — and it renders as the amber Victor calls orange.
+    /// yellow border" — and it renders as the amber the original author calls orange.
     static var captureAccent: NSColor { .systemYellow }
 }

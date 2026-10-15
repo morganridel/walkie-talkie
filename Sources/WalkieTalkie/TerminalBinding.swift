@@ -1,13 +1,13 @@
 import AppKit
 import ApplicationServices
 
-/// The terminal a dictation is typed into, once Victor has pointed the relay at
+/// The terminal a dictation is typed into, once the original author has pointed the relay at
 /// one — and the machinery that puts the words there.
 ///
 /// **Why this exists.** Without it, attaching a session costs a trip into the
 /// terminal to type `/relay`, an agent turn to arm a watcher on `outbox.jsonl`,
 /// and a label filter that has to match. That is three things to get right
-/// before the first word, in a workflow whose entire premise is that Victor is
+/// before the first word, in a workflow whose entire premise is that the original author is
 /// away from the keyboard. Bound, the same dictation is typed straight into the
 /// session he was looking at when he pressed the key, and the outbox goes back
 /// to being what it always was underneath: the log.
@@ -29,9 +29,10 @@ final class TerminalBinding {
 
     /// How the bound terminal is addressed at delivery time.
     enum Handle: Equatable {
+        case codex(threadID: String, tty: String?)
         /// A Terminal.app tab, found by the tty it is showing. The tty survives
         /// tab reordering, being dragged into another window, and everything
-        /// else Victor might do to the window between binding and speaking —
+        /// else the original author might do to the window between binding and speaking —
         /// which a tab index or a window id does not.
         case terminalApp(tty: String)
 
@@ -39,7 +40,7 @@ final class TerminalBinding {
         /// the tty turns out to be running tmux, because a tty binding there is
         /// quietly wrong: tmux hands the input to whichever pane is *active*
         /// when it arrives, so splitting the window after binding sends the
-        /// next sentence somewhere Victor never pointed at.
+        /// next sentence somewhere the original author never pointed at.
         case tmux(pane: String, tty: String)
 
         /// A terminal panel inside VS Code or IntelliJ, addressed **through the
@@ -104,6 +105,7 @@ final class TerminalBinding {
         /// last in, not the one the relay was pointed at. The first word is still
         /// the tty, so every reader that takes `$1` is unchanged.
         var restoreKey: String? {
+            if case .codex(let id, _) = self { return "codex:" + id }
             guard let tty = tty else { return nil }
             if case .tmux(let pane, _) = self { return "\(tty) \(pane)" }
             return tty
@@ -115,6 +117,7 @@ final class TerminalBinding {
             case .tmux(_, let tty):       return tty
             case .ide(let h):             return h.shellPID.flatMap { TerminalBinding.tty(ofPID: $0) }
             case .keystroke:              return nil
+            case .codex(_, let tty):      return tty
             }
         }
     }
@@ -132,7 +135,7 @@ final class TerminalBinding {
         /// The **destination app**: `Terminal`, `Visual Code`, `IntelliJ IDEA`.
         ///
         /// It is what the overlay draws the icon of, and the icon is the half of
-        /// the chip Victor reads without reading: three destinations that behave
+        /// the chip the original author reads without reading: three destinations that behave
         /// differently (a tty he can be refused at, an editor extension, a blind
         /// paste) and are otherwise told apart only by a folder name that is
         /// often the same in all three.
@@ -164,7 +167,7 @@ final class TerminalBinding {
         ///
         /// Deliberately not refreshed with the title: it is read once, used once,
         /// within a frame or two of the bind, and a window frame goes stale the
-        /// moment Victor drags anything. Nothing downstream may treat it as the
+        /// moment the original author drags anything. Nothing downstream may treat it as the
         /// current position of the target.
         let sourceFrame: CGRect?
         let boundAt: Date
@@ -198,7 +201,7 @@ final class TerminalBinding {
             // owns the panel. It normally can; if it could not, saying so is
             // better than implying a check that will not happen.
             case .ide(let h): return h.shellPID != nil
-            case .terminalApp, .tmux: return true
+            case .terminalApp, .tmux, .codex: return true
             }
         }
     }
@@ -270,7 +273,7 @@ final class TerminalBinding {
 
     // MARK: - Binding
 
-    /// Bind the terminal Victor is looking at.
+    /// Bind the terminal the original author is looking at.
     ///
     /// The app is passed in rather than read here because this runs on the
     /// listener queue, several `osascript` and `ps` subprocesses deep, while
@@ -283,7 +286,7 @@ final class TerminalBinding {
     /// on every app switch without touching the main thread; `bind` still does
     /// the real work and can still refuse (an editor with no terminal open).
     static func isBindable(bundleID: String) -> Bool {
-        bundleID == "com.apple.Terminal" || IDEBridge.kind(bundleID: bundleID) != nil
+        bundleID == "com.apple.Terminal" || CodexBridge.desktopBundleIDs.contains(bundleID) || IDEBridge.kind(bundleID: bundleID) != nil
     }
 
     func bind(app: NSRunningApplication) -> Target? {
@@ -353,7 +356,7 @@ final class TerminalBinding {
     /// was never pointed at: `SpawnTerminal` has just opened the window and
     /// `do script` handed back the device it landed on, so there is nothing to
     /// ask about "the tab in front" — the answer is already in hand, and asking
-    /// again would be guessing at a window Victor's focus may already have left.
+    /// again would be guessing at a window the original author's focus may already have left.
     ///
     /// Runs subprocesses — call it off the main thread, like every other bind.
     @discardableResult
@@ -399,6 +402,10 @@ final class TerminalBinding {
     /// `bind(tty:)` without the binding: the `Target` a delivery to that tab
     /// needs, the bound one left as it is — the answer panel's ☠️ sends there.
     func resolve(tty: String, pane: String? = nil, owner expected: TTYOwner? = nil) -> Target? {
+        if tty.hasPrefix("codex:") {
+            guard let chat = try? CodexBridge.conversation(String(tty.dropFirst(6))) else { return nil }
+            return codexTarget(chat)
+        }
         let device = Self.devicePath(tty)
         let short = (device as NSString).lastPathComponent
         let tabs = Self.liveTitles()
@@ -419,6 +426,23 @@ final class TerminalBinding {
         return bound
     }
 
+    @discardableResult
+    func bind(chat: CodexBridge.Conversation) -> Target {
+        let bound = codexTarget(chat)
+        adopt(bound, spawned: false)
+        return bound
+    }
+
+    private func codexTarget(_ chat: CodexBridge.Conversation, tty: String? = nil, frame: CGRect? = nil) -> Target {
+        let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").first
+        return Target(handle: .codex(threadID: chat.id, tty: tty),
+                      label: chat.folder.isEmpty ? "Codex" : chat.folder,
+                      address: chat.key, appName: tty == nil ? "Codex" : "Terminal",
+                      bundleID: tty == nil ? "com.openai.codex" : "com.apple.Terminal",
+                      folder: chat.cwd.isEmpty ? nil : Self.label(forDirectory: chat.cwd), title: chat.title,
+                      sourceFrame: frame ?? app.flatMap { Self.focusedWindow(pid: $0.processIdentifier).frame }, boundAt: Date())
+    }
+
     /// `ttys014` → `/dev/ttys014`; anything already a path is left alone.
     private static func devicePath(_ tty: String) -> String {
         tty.hasPrefix("/") ? tty : "/dev/" + (tty as NSString).lastPathComponent
@@ -431,7 +455,7 @@ final class TerminalBinding {
     /// `unboundAt` stamped, and the new one goes to the top of the list. Doing it
     /// here rather than at each call site is what makes the elapsed time in the
     /// menu true — a bind that *displaces* another never passes through
-    /// `unbind()`, and stamping only there would leave every terminal Victor
+    /// `unbind()`, and stamping only there would leave every terminal the original author
     /// moved away from claiming it was let go of hours later, when the app
     /// finally quit.
     private func adopt(_ bound: Target, spawned: Bool) {
@@ -470,10 +494,11 @@ final class TerminalBinding {
                                 pane preferred: String? = nil) -> Target? {
         // tmux first: the tty is the *client's*, and everything typed at it goes
         // to whichever pane happens to be active. Pinning the pane at bind time
-        // is the only way the binding means what Victor pointed at.
+        // is the only way the binding means what the original author pointed at.
         // Both terminal cases live in a Terminal.app window, so the rectangle
         // the overlay flies from is found the same way for either.
         let frame = Self.terminalWindowFrame(tty: tty)
+        if let chat = CodexBridge.resolve(tty: tty) { return codexTarget(chat, tty: tty, frame: frame) }
 
         // A named pane wins over the active one only if the tty is a tmux client
         // at all and the pane is still there — a stale id falls back to the
@@ -507,7 +532,7 @@ final class TerminalBinding {
     /// The directory used to be read once, at bind. That was true for as long as
     /// the chip showed `folder@branch` as a second line beside the agent's title —
     /// a caption on a binding. It is now the *only* line, so it has to be the
-    /// current answer: Victor `cd`s between repos and switches branches inside one
+    /// current answer: the original author `cd`s between repos and switches branches inside one
     /// session all day, and a chip still naming the folder he bound in an hour ago
     /// says the words are going somewhere they are not.
     ///
@@ -524,9 +549,10 @@ final class TerminalBinding {
         // AX read rather than a subprocess.
         case .keystroke(let pid, _): fresh = Self.focusedWindow(pid: pid).title
         // The window's own title, exactly as for a paste target: the panel has
-        // no title of its own that means anything to Victor, and both IDEs put
+        // no title of its own that means anything to the original author, and both IDEs put
         // the project first in the window title.
         case .ide: fresh = nil
+        case .codex(let id, _): fresh = (try? CodexBridge.conversation(id))?.title
         }
         let folder = currentFolder(for: existing)
         guard fresh != existing.title || folder != existing.folder else { return nil }
@@ -553,12 +579,13 @@ final class TerminalBinding {
         case .ide(let handle):          return handle.shellPID.flatMap { Self.folderLabel(shellPID: $0) }
                                             ?? IDEBridge.currentDirectory(of: handle).map { Self.label(forDirectory: $0) }
         case .keystroke:                return nil
+        case .codex(let id, _): return (try? CodexBridge.conversation(id)).map { Self.label(forDirectory: $0.cwd) }
         }
     }
 
 
     /// Whether the bound session still exists — the question the 10s poll asks
-    /// so that a terminal Victor simply **closed** lets go of the binding by
+    /// so that a terminal the original author simply **closed** lets go of the binding by
     /// itself, instead of waiting for the next dictation to discover it.
     ///
     /// The check already existed and ran in exactly the wrong place: `deliver`
@@ -570,7 +597,7 @@ final class TerminalBinding {
     /// microphone.
     ///
     /// **Three answers, and the third is the reason this is not a `Bool`.**
-    /// Unbinding is not free — it is the thing Victor pointed at something to
+    /// Unbinding is not free — it is the thing the original author pointed at something to
     /// get — so "I could not ask" must never be spelled the same way as "it is
     /// not there". Every case below reports `.gone` only on a definite answer
     /// and `.unknown` on silence.
@@ -590,13 +617,16 @@ final class TerminalBinding {
     func checkAlive() -> Liveness {
         guard let target = target else { return .unknown }
         switch target.handle {
+        case .codex(let id, _):
+            do { return try CodexBridge.conversation(id) == nil ? .gone("Codex chat no longer exists") : .alive }
+            catch { return .unknown }
         case .terminalApp(let tty):
             // **Any process on the tty, not the *foreground* one** — which is
             // the weaker test on purpose, and the difference between this and
             // the delivery guard. `foregroundCommand` answers nil for a live tab
             // whose every process happens to be backgrounded, and there it costs
             // one refused delivery that says so out loud; here it would cost the
-            // binding, silently, while Victor is not looking. A tab that is
+            // binding, silently, while the original author is not looking. A tab that is
             // still open has a shell in it, so this is the fact worth asking for.
             guard Self.hasProcesses(onTTY: tty) else { return .gone("\(target.address) is gone") }
             // **…and the same tab still hosts it** (2026-09-27, TD21). Processes
@@ -722,13 +752,13 @@ final class TerminalBinding {
     /// foreground process on the target is a shell, the dictation is not typed
     /// at an agent — it is *run*. "Șterge tot ce e în folderul de build" said
     /// out loud becomes a real `rm` against a real directory. So the check runs
-    /// on **every delivery**, not once at bind: Victor hits Escape, quits, or
+    /// on **every delivery**, not once at bind: the original author hits Escape, quits, or
     /// the session crashes, and the tab goes back to being a prompt with the
     /// binding still pointing at it. It fails **closed** — a target we cannot
     /// interrogate is treated as a shell.
     ///
     /// **`to`: the target latched when the microphone closed** (2026-09-26,
-    /// Victor's Q2: *the recipient is the terminal that was bound while he
+    /// the original author's Q2: *the recipient is the terminal that was bound while he
     /// spoke*). A bind, rebind or unbind since then does not move the sentence;
     /// it goes to the terminal named here, which need not be the one bound now.
     /// A target found gone lets go of the binding only when it **is** the
@@ -737,7 +767,7 @@ final class TerminalBinding {
         let outcome = typeIn(text, to: latched)
         // **A session told `kamikaze` is dead already** (2026-10-13): its next
         // answer's ☠️ shows it, before the window has had time to close.
-        if case .delivered = outcome, Self.saysKamikaze(text), let tty = (latched ?? target)?.handle.tty {
+        if case .delivered = outcome, Self.saysKamikaze(text), let tty = (latched ?? target).flatMap({ $0.address.hasPrefix("codex:") ? $0.address : $0.handle.tty }) {
             ReplyPanel.doom(tty)
         }
         return outcome
@@ -758,6 +788,7 @@ final class TerminalBinding {
     /// counts as alive, so the doubt falls on the side of a ☠️ still offered.
     /// Runs `ps` — off the main thread.
     static func agentRunning(onTTY tty: String) -> Bool {
+        if tty.hasPrefix("codex:") { return (try? CodexBridge.conversation(String(tty.dropFirst(6))))?.live ?? false }
         guard let command = foregroundCommand(onTTY: tty) else { return false }
         return !isShell(command)
     }
@@ -765,10 +796,13 @@ final class TerminalBinding {
     private func typeIn(_ text: String, to latched: Target?) -> Outcome {
         guard let target = latched ?? target else { return .noTarget }
         let unbind: () -> Void = { [weak self] in self?.unbind(ifAddress: target.address) }
-        let line = Self.singleLine(text)
+        let line = Self.singleLine(CodexBridge.withCompletionCue(text))
         guard !line.isEmpty else { return .failed("nothing to send") }
 
         switch target.handle {
+        case .codex(let id, _):
+            do { try CodexBridge.send(text, to: id); return .delivered }
+            catch { return .failed(error.localizedDescription) }
         case .terminalApp(let tty):
             // **The tab, not the number** (TD21): a latched or bound tab that was
             // closed and whose tty a new tab took is gone — the words go to the
@@ -860,7 +894,7 @@ final class TerminalBinding {
 
     // MARK: - The session's inbox (2026-10-08)
 
-    /// **Into a Claude Code session without typing** (Victor, 2026-10-08: *"nu
+    /// **Into a Claude Code session without typing** (the original author, 2026-10-08: *"nu
     /// vreau niciun dialog de confirmare și sunt ok să rămână în coadă până când
     /// termină tura … poți să folosești moduri"*). A session running the
     /// `walkie-inbox` mod keeps `~/.walkie-talkie/inbox/<tty>/.alive` fresh (every
@@ -876,7 +910,7 @@ final class TerminalBinding {
     /// typed fallback can never both deliver one sentence. Withdrawn → nil, and
     /// the caller types it as before.
     ///
-    /// **Off unless `WT_INBOX=1`** (2026-10-12, Victor: *"pe mine mă doare acum
+    /// **Off unless `WT_INBOX=1`** (2026-10-12, the original author: *"pe mine mă doare acum
     /// să nu aștept să termine tura … hai să ne întoarcem la … introducerea de
     /// taste direct acolo"*). `$.prompt.submit` runs a plugin's prompt only once
     /// the session is idle — no mod API folds one into a running turn — so a
@@ -1017,7 +1051,7 @@ final class TerminalBinding {
     /// index 1 — a harness witness whose `cat` had been killed (`shellExitAction`
     /// 1 keeps a window open after an unclean exit, its tab with no tty), a
     /// window mid-teardown, one hidden or in the Dock — made every bind fail,
-    /// seven gestures in a row at 19:55, while Victor's own window sat right
+    /// seven gestures in a row at 19:55, while the original author's own window sat right
     /// behind it. Now each window is asked inside its own `try`, the hidden and
     /// miniaturised ones are passed over, and among those left the one holding
     /// keyboard focus (Accessibility, matched by frame or title) wins, then
@@ -1117,7 +1151,7 @@ final class TerminalBinding {
     /// **It doubles as the liveness check, and that is why the menu needs no
     /// second question.** A tty the history remembers and this map does not is a
     /// window that has been closed; its row stays, greyed, rather than being
-    /// deleted behind Victor's back.
+    /// deleted behind the original author's back.
     ///
     /// **Keyed short**, because that is what a row is matched by — and the `try`
     /// is per window: a window being torn down while the script walks it throws,
@@ -1165,8 +1199,11 @@ final class TerminalBinding {
     ///
     /// Off the main thread — it is an `osascript` and a `ps`.
     static func activeAgentSessions() -> [ActiveTerminals.Session] {
+        let codex = ((try? CodexBridge.conversations(liveOnly: true)) ?? []).map {
+            ActiveTerminals.Session(tty: $0.key, directory: $0.cwd, title: $0.title, busy: $0.busy)
+        }
         let titles = liveTitles()
-        guard !titles.isEmpty, let out = run("/bin/ps", ["-ax", "-o", "pid=,tty="]) else { return [] }
+        guard !titles.isEmpty, let out = run("/bin/ps", ["-ax", "-o", "pid=,tty="]) else { return codex }
         var pids: [String: [Int32]] = [:]
         for line in out.components(separatedBy: "\n") {
             let parts = line.split(separator: " ", omittingEmptySubsequences: true)
@@ -1175,7 +1212,7 @@ final class TerminalBinding {
             guard titles[tty] != nil else { continue }
             pids[tty, default: []].append(pid)
         }
-        return titles.keys.sorted().compactMap { tty in
+        return codex + titles.keys.sorted().compactMap { tty in
             guard let (pid, dir) = pids[tty]?.lazy
                     .compactMap({ pid in publishedDirectory(ownedBy: pid).map { (pid, $0) } }).first
             else { return nil }
@@ -1253,7 +1290,7 @@ final class TerminalBinding {
     // MARK: - Bringing a rebound terminal forward
 
     /// **Put the terminal a menu rebind just pointed at in front of him, focused**
-    /// (Victor, 2026-09-23: *"când fac rebind la un terminal, din meniu mă refer,
+    /// (the original author, 2026-09-23: *"când fac rebind la un terminal, din meniu mă refer,
     /// trebuie să-mi vină din nou în față, focusat, ca să văd dacă am trimis cui
     /// trebuie"*).
     ///
@@ -1281,6 +1318,13 @@ final class TerminalBinding {
         let pid: pid_t?
         var windowAt: CGPoint?
         switch target.handle {
+        case .codex(let id, let tty):
+            if let tty, let tab = terminalWindowFrame(tty: tty) {
+                let proxy = Target(handle: .terminalApp(tty: tty), label: target.label, address: target.address, appName: "Terminal", bundleID: "com.apple.Terminal", folder: target.folder, title: target.title, sourceFrame: tab, boundAt: target.boundAt)
+                return bringToFront(proxy)
+            }
+            guard let url = URL(string: "codex://threads/" + id) else { return false }
+            return NSWorkspace.shared.open(url)
         case .terminalApp(let tty), .tmux(_, let tty):
             if case .tmux(let pane, _) = target.handle {
                 // The pane he picked, not whichever one the window last had
@@ -1330,7 +1374,7 @@ final class TerminalBinding {
     /// **The app in front, and its focused window raised** — the half of
     /// `bringToFront` after the window was put at index 1 inside its own app.
     ///
-    /// **The window at `windowAt`, not the focused one** (2026-10-08, Victor, of
+    /// **The window at `windowAt`, not the focused one** (2026-10-08, the original author, of
     /// the reply pop-up's name: *"it brings in front the wrong terminal"*). Read
     /// right after AppleScript put the tab's window at index 1, AX's
     /// `kAXFocusedWindow` can still be the window that was key before — and
@@ -1382,7 +1426,7 @@ final class TerminalBinding {
     }
 
     /// **The Terminal window showing this tty, in front and centred on the
-    /// Retina — at once, no flight** (2026-10-08, Victor, of the walkie icon on
+    /// Retina — at once, no flight** (2026-10-08, the original author, of the walkie icon on
     /// the answer panel: *"that terminal should pop in front … on the retina in
     /// the center of the screen … with no animation, just immediately"*). For
     /// reading more of an answer, so the window comes to where he is looking
@@ -1443,7 +1487,7 @@ final class TerminalBinding {
     /// The frame of the Terminal.app window showing this tty.
     ///
     /// The **window**, not the tab: a tab has no geometry of its own, and the
-    /// window is what Victor can actually recognise on screen — which is the
+    /// window is what the original author can actually recognise on screen — which is the
     /// whole job of the rectangle drawn from it.
     ///
     /// Not private since 2026-09-01: a spawned session flies the same rectangle
@@ -1486,6 +1530,9 @@ final class TerminalBinding {
             return NSWorkspace.shared.frontmostApplication.flatMap { focusedWindow(pid: $0.processIdentifier).frame }
         }
         switch target.handle {
+        case .codex(_, let tty):
+            if let tty { return terminalWindowFrame(tty: tty) }
+            return NSRunningApplication.runningApplications(withBundleIdentifier: target.bundleID).first.flatMap { focusedWindow(pid: $0.processIdentifier).frame }
         case .terminalApp(let tty), .tmux(_, let tty):
             return terminalWindowFrame(tty: tty)
         case .ide:
@@ -1499,7 +1546,7 @@ final class TerminalBinding {
     /// **Where the next typed character would appear in the receiving app**
     /// (2026-10-10) — the caret's centre, in Cocoa global space, or nil.
     ///
-    /// Victor: *"if we can locate a cursor into the window"* the dust circles it
+    /// the original author: *"if we can locate a cursor into the window"* the dust circles it
     /// instead of the window's middle. Read through Accessibility: the app's
     /// focused element, its selected range, the bounds of the character at that
     /// range. Terminal.app answers with its real cursor (measured: just after
@@ -1614,7 +1661,7 @@ final class TerminalBinding {
         // The documented way to wake that tree is to set `AXManualAccessibility`
         // on the application, and it is deliberately not used: VS Code answers it
         // by switching the editor into screen-reader mode, which changes how
-        // Victor's editor renders. Asking the window server instead costs one call,
+        // the original author's editor renders. Asking the window server instead costs one call,
         // changes nothing about the app, and answers the only question the flight
         // has — where is that window.
         let server = windowServerWindow(pid: pid)
@@ -1726,7 +1773,7 @@ final class TerminalBinding {
     /// reader logging read boundaries: `109 b'…like]\r'`, one chunk — and a TUI
     /// in raw mode reads a chunk that ends in `\r` as a **paste**, keeping the
     /// return as a newline in its prompt instead of submitting. So the dictation
-    /// sat there unsent, which is exactly what Victor reported for a terminal on
+    /// sat there unsent, which is exactly what the original author reported for a terminal on
     /// 2026-08-26, and exactly the bug the IDE bridges were fixed for a few
     /// hours earlier. `do script ""` sends a bare `\r` in a read of its own,
     /// which is a keypress: `17 b'hello-from-split\r'` then `1 b'\r'`.
@@ -1743,7 +1790,7 @@ final class TerminalBinding {
     /// Claude Code strips it — `Removed 1 invisible character · review and
     /// press Enter to send` — and waits for one more. Every envelope with a
     /// screenshot footer is long enough, so the whole dictation sat in the
-    /// prompt unsent, which is what Victor reported on 2026-09-22 (he saw it
+    /// prompt unsent, which is what the original author reported on 2026-09-22 (he saw it
     /// with Wispr Flow as the engine, but the engine is not the variable — the
     /// length is; measured against a Haiku session on `ttys004`: 54 chars
     /// submit, 203+ chars stall, at every delay from 120 ms to 4 s).
@@ -1751,7 +1798,7 @@ final class TerminalBinding {
     /// Bracketed paste (`ESC[200~ … ESC[201~` around the text) would make the
     /// `\r` a keypress and submit in one write — but Claude Code then wraps the
     /// text in `<pasted_content>` and the model treats it as data, not as what
-    /// Victor said ("I need you to explicitly ask me…"). Tried and rejected the
+    /// the original author said ("I need you to explicitly ask me…"). Tried and rejected the
     /// same morning.
     ///
     /// So the Return is **adaptive**: after the bare `\r`, the tab's contents
@@ -1772,7 +1819,7 @@ final class TerminalBinding {
                             -- key that arrives within ~150 ms of a large chunk
                             -- into the paste, and a Return inside a paste is a
                             -- newline. Both Returns became blank lines under the
-                            -- sentence, which sat unsent (Victor's screenshot).
+                            -- sentence, which sat unsent (your screenshot).
                             delay 0.5
                             do script "" in t
                             delay 0.35
@@ -1802,7 +1849,7 @@ final class TerminalBinding {
         // so the echo can be told from the hint (`asksForReview`). **Read up to
         // three times** (2026-09-28: the hint is a notification Claude Code
         // draws a beat after the Return, and one read at 0.35 s missed it —
-        // Victor: *"tot nu dă Enter după dictare bound"*); the last read that
+        // the original author: *"tot nu dă Enter după dictare bound"*); the last read that
         // showed nothing is logged, squashed, so a stalled sentence leaves
         // the screen it stalled on in `relay.log`.
         let read = """
@@ -1843,7 +1890,7 @@ final class TerminalBinding {
         // on an empty prompt — nor on a permission question, where it would
         // answer *Yes*.
         //
-        // **Watched for 4 s, looked at about once a second** (2026-09-29, Victor:
+        // **Watched for 4 s, looked at about once a second** (2026-09-29, the original author:
         // *"bounded dictation does not hit enter in the bound terminal reliably …
         // hit repeatedly enter 1/s for 3-4 seconds"*). It used to be one read at
         // 0.35 s: a Claude Code busy redrawing showed only its status line then,
@@ -1903,7 +1950,7 @@ final class TerminalBinding {
     /// sentence's opening: typed, not submitted. Whitespace dropped on both
     /// sides, since the box wraps where its width says.
     ///
-    /// **Or a collapsed paste** (2026-09-29, Victor: *"a 3a oara raportez
+    /// **Or a collapsed paste** (2026-09-29, the original author: *"a 3a oara raportez
     /// bugul asta"*): Claude Code shows a long block — a seven-line envelope
     /// with a ✂️ clause — as `[Pasted text #1 +6 lines]`, so the opening is
     /// never on screen. The 15:19 sentence to `ttys024` got `0 extra
@@ -2002,7 +2049,7 @@ final class TerminalBinding {
     /// by the time this runs the dictation is long over and nothing else is
     /// competing for the caret.
     ///
-    /// The clipboard is restored, because the relay must not cost Victor
+    /// The clipboard is restored, because the relay must not cost the original author
     /// whatever he was carrying on it.
     private static func paste(_ text: String, into app: NSRunningApplication) -> Bool {
         let saved = Clipboard.with { $0.string(forType: .string) }
@@ -2091,7 +2138,7 @@ final class TerminalBinding {
     /// holding ⌘. Measured after one Replace Wispr paste: `0x00100000`, and it
     /// stayed there.
     ///
-    /// It self-heals the moment Victor touches a real key, which is why nothing
+    /// It self-heals the moment the original author touches a real key, which is why nothing
     /// ever reported it — but two things in this app read that state and are
     /// wrong until he does. `postWisprHandsFree` waits for the watched
     /// modifiers to clear before it sends Wispr's chord, i.e. it spins its full
@@ -2172,7 +2219,7 @@ final class TerminalBinding {
     /// A prompt is a foreground job that is **only** a shell: a waiting zsh is
     /// alone in the group, and a zsh running something is not in the group at
     /// all (`Ss`, no `+`). So a job with any non-shell in it is a program
-    /// running, whatever launched it. A nested interactive shell — Victor types
+    /// running, whatever launched it. A nested interactive shell — the original author types
     /// `bash` — is still one shell alone in the group and is still refused,
     /// which is the case the old rule was right about and this one keeps.
     ///
@@ -2181,7 +2228,7 @@ final class TerminalBinding {
     /// thing running in the terminal, and a log line naming it answers nothing.
     /// Skipping it makes that same job report `copilot`.
     ///
-    /// **A carrier anywhere in the job wins the name** (2026-09-26, Victor's Q5):
+    /// **A carrier anywhere in the job wins the name** (2026-09-26, the original author's Q5):
     /// `git log` is `git` + `less`, `sudo -s` without a pty is `sudo` + `zsh`, and
     /// the verdict must be about the process that would hand the words on — so the
     /// job reports `less` / `sudo`, which `refusesDelivery` then refuses.
@@ -2210,7 +2257,7 @@ final class TerminalBinding {
     /// **Is the caret in a Claude Code prompt?** (2026-09-23) — the tty of the
     /// front Terminal.app tab when it is, nil otherwise.
     ///
-    /// Victor: *"if I am putting my [caret] into a Claude Code terminal prompt,
+    /// the original author: *"if I am putting my [caret] into a Claude Code terminal prompt,
     /// it should already submit the prompt as it's actually a prompt."* So a
     /// forward-click sentence goes in *and is submitted* here, and anywhere else
     /// it is only pasted. Built from the three questions this file already
@@ -2269,7 +2316,7 @@ final class TerminalBinding {
     /// of the terminal holding the caret when it is a Claude Code prompt, nil
     /// otherwise.
     ///
-    /// Victor: *"walkie-talkie doesn't seem to fire Enter after the prompt that
+    /// the original author: *"walkie-talkie doesn't seem to fire Enter after the prompt that
     /// I've given in the terminal … it will only fill the text but not hit the
     /// enter."* Question 1 above ruled every IDE out, so a forward-click sentence
     /// in VS Code's terminal was ⌘V'd and left in the box. VS Code is the one
@@ -2345,7 +2392,7 @@ final class TerminalBinding {
     }
 
     /// **Programs that are not a shell at a prompt but hand the line to one**
-    /// (2026-09-26, Victor's Q5: *refuse* `ssh` / `sudo -s` / `script` / a pager,
+    /// (2026-09-26, the original author's Q5: *refuse* `ssh` / `sudo -s` / `script` / a pager,
     /// like a shell at its prompt). The guard used to be a local snapshot: the
     /// shell behind `ssh`, `sudo -s`, `script`, `docker exec`, `screen` or a tmux
     /// client is on another host or another pty, so the tab's foreground job
@@ -2372,7 +2419,7 @@ final class TerminalBinding {
 
     /// What the app is called **on screen**, which is not always what macOS calls
     /// it. VS Code's bundle name is the single word `Code`, and a chip that says
-    /// `Code` beside a folder name reads as a noun, not as an application. Victor
+    /// `Code` beside a folder name reads as a noun, not as an application. the original author
     /// calls it Visual Code, so that is what the overlay calls it.
     static func display(_ appName: String) -> String {
         appName == "Code" || appName == "Code - OSS" ? "Visual Code" : appName
@@ -2384,7 +2431,7 @@ final class TerminalBinding {
     ///
     /// **Claude Code keeps two.** The process is launched somewhere and stays
     /// there forever; the *session* moves, and that move is what its status line
-    /// shows and what Victor means by "which folder". Measured on a live session
+    /// shows and what the original author means by "which folder". Measured on a live session
     /// working in `walkie-talkie`: `lsof -d cwd` on the pid still answered
     /// `~/workspace`, which is also why the branch went missing — `~/workspace`
     /// is not a repo, so there was nothing to put after the `@`.
@@ -2395,7 +2442,7 @@ final class TerminalBinding {
     /// exist at all.
     ///
     /// So the session directory is *published* rather than inferred, and keyed by
-    /// **the tty** — the one handle both sides hold. Victor's status line already
+    /// **the tty** — the one handle both sides hold. the original author's status line already
     /// receives the directory from Claude Code and now writes it to
     /// `~/.claude/cwd/<ttysNNN>` (under its *parent's* tty: Claude Code spawns it
     /// without a controlling terminal of its own, but keeps one itself).
@@ -2510,6 +2557,7 @@ final class TerminalBinding {
     /// one. Nothing on the tty owning one means no agent is running there, which
     /// is when the process's own `cwd` becomes the honest answer.
     private static func publishedDirectory(onTTY device: String) -> String? {
+        if let chat = CodexBridge.resolve(tty: device), !chat.cwd.isEmpty { return chat.cwd }
         guard let out = run("/bin/ps", ["-t", device, "-o", "pid="]) else { return nil }
         for line in out.components(separatedBy: "\n") {
             guard let pid = Int32(line.trimmingCharacters(in: .whitespaces)) else { continue }
@@ -2596,7 +2644,7 @@ final class TerminalBinding {
     /// **`main` and `master` are not worth saying.** They are where most of these
     /// sessions are most of the time, so `@main` was on the chip permanently —
     /// the same six characters on every bind, carrying no information and costing
-    /// width on a label that rides over Victor's work. A branch that is *not* the
+    /// width on a label that rides over the original author's work. A branch that is *not* the
     /// default is the one fact worth interrupting for: it says this session is
     /// somewhere other than where he usually is.
     static func label(forDirectory dir: String) -> String {
