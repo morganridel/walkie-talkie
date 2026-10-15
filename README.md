@@ -41,7 +41,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite executes 317 tests with 2 opt-in integration skips and no failures (315 passed). The release bundle builds, installs, launches, and loads
+suite executes 321 tests with 2 opt-in integration skips and no failures (319 passed). The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
@@ -134,7 +134,11 @@ The [daily workflows](docs/CODEX_TEST_GUIDE.md#daily-workflows) compare continui
 optional one-time Options+ mappings, and Wheel mode. The app's menu lists current gestures and actions. Use **Disconnect** to clear a
 binding. **Rebind to…** offers recent destinations and searches Codex session
 history. New Codex chats can be launched through the Codex CLI from **Prompt to
-new**. Codex desktop text, images, and steering have passed disposable-chat
+new**. Without a folder pick, they use **`~/workspace`**. Change the saved
+default through **New chat folder → Choose folder…** in the menu, or select
+**Use ~/workspace** to reset it. A folder picked for one recording overrides
+the default for that take. The saved setting wins over the legacy
+`WT_PROJECT_ROOT` launch-environment fallback. Codex desktop text, images, and steering have passed disposable-chat
 tests; verify the selected target before sending work prompts.
 
 The packaged app uses the generic local bundle identity `local.walkie-talkie`.
@@ -164,8 +168,8 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 77 passing tests. The Swift suite has 315 passing
-tests and 2 opt-in integration skips (317 executed, no failures); those opt-in
+The current Python suite has 77 passing tests. The Swift suite has 319 passing
+tests and 2 opt-in integration skips (321 executed, no failures); those opt-in
 checks also passed separately in a disposable native CLI PTY. The finish helper verifies the exact session and closes only a window containing
 that single tab; a window with sibling tabs is refused before signaling Codex. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for

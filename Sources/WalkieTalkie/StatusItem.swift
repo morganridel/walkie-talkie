@@ -294,6 +294,9 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// the sentence lands, and a new session is the one destination that does
     /// not exist yet when the words start.
     private let newSession = NSMenuItem(title: "Prompt to new", action: nil, keyEquivalent: "")
+    private let newChatFolderItem = NSMenuItem(title: "New chat folder", action: nil, keyEquivalent: "")
+    private let newChatFolderSubmenu = NSMenu()
+    private var folderChooser: NSOpenPanel?
     /// The shutter. Its one route is named: the back button, only while a dictation
     /// is running — which is also the only window in which it stops typing
     /// Return.
@@ -1161,6 +1164,12 @@ final class StatusItem: NSObject, NSMenuDelegate {
         logiGestures.submenu = gesturesSubmenu
         applyLogiGesturesRow()
         menu.addItem(logiGestures)
+
+        newChatFolderItem.image = Self.symbolIcon("folder")
+        newChatFolderSubmenu.autoenablesItems = false
+        newChatFolderItem.submenu = newChatFolderSubmenu
+        applyNewChatFolderRow()
+        menu.addItem(newChatFolderItem)
 
         // **`Halo fx`, last of the pickers**, above Autosend. `sparkles` is ✨'s
         // own SF Symbol, so the row keeps its picture and loses only the colour.
@@ -2271,6 +2280,59 @@ final class StatusItem: NSObject, NSMenuDelegate {
         rebindPanel.onResume = { [weak self] session, cwd in self?.onResumeSession?(session, cwd) }
         rebindPanel.show(at: point, query: query)
     }
+    private func applyNewChatFolderRow() {
+        let path = NewChatFolder.path
+        newChatFolderItem.toolTip = path
+        newChatFolderSubmenu.removeAllItems()
+        let current = NSMenuItem(title: (path as NSString).abbreviatingWithTildeInPath,
+                                 action: nil, keyEquivalent: "")
+        current.isEnabled = false
+        current.toolTip = path
+        newChatFolderSubmenu.addItem(current)
+        newChatFolderSubmenu.addItem(.separator())
+        let choose = NSMenuItem(title: "Choose folder…", action: #selector(chooseNewChatFolder), keyEquivalent: "")
+        choose.target = self
+        newChatFolderSubmenu.addItem(choose)
+        let reset = NSMenuItem(title: "Use ~/workspace", action: #selector(resetNewChatFolder), keyEquivalent: "")
+        reset.target = self
+        newChatFolderSubmenu.addItem(reset)
+    }
+
+    @objc private func chooseNewChatFolder() {
+        guard folderChooser == nil else { folderChooser?.makeKeyAndOrderFront(nil); return }
+        let panel = NSOpenPanel()
+        panel.title = "Default folder for new Codex CLI chats"
+        panel.message = "Used by Prompt to new when you don't pick another folder."
+        panel.prompt = "Use folder"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: NewChatFolder.path, isDirectory: true)
+        folderChooser = panel
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self] response in
+            guard let self else { return }
+            if response == .OK, let directory = self.folderChooser?.url {
+                NewChatFolder.select(directory)
+                self.applyNewChatFolderRow()
+            }
+            self.folderChooser = nil
+        }
+    }
+
+    @objc private func resetNewChatFolder() {
+        do {
+            try FileManager.default.createDirectory(at: NewChatFolder.workspace, withIntermediateDirectories: true)
+            NewChatFolder.select(NewChatFolder.workspace)
+            applyNewChatFolderRow()
+        } catch {
+            let alert = NSAlert(error: error)
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
+
     @objc private func newSessionClicked() { onNewSession?() }
     @objc private func shotClicked() { onShot?() }
     @objc private func pasteLastClicked() { onPasteLast?() }
@@ -2308,6 +2370,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // Devices come and go while the app runs, and the only moment this list
         // has to be right is the moment he is looking at it.
         applyMicRow()
+        applyNewChatFolderRow()
         applyHaloRow()
         applyHaloEngineRow()
         applyHaloVoiceRow()

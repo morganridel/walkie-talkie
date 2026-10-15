@@ -41,10 +41,15 @@ new-chat flow and then bind it as above.
 The new-chat folder menu offers pinned/recent folders and their open chats.
 Click **✨ the folder** for a new chat; clicking an indented chat selects that
 existing conversation instead. Keep the pointer over the menu to stop its fade.
-If you choose nothing, this Mac uses `~/syncthing/projects` (or `WT_PROJECT_ROOT`
-when configured), which may differ from the folder you are currently bound to.
-Check the destination label before Send. The chooser has no arbitrary-folder
-browse control. Pins are an existing `pinned` array of absolute paths in
+If you choose nothing, the default is **`~/workspace`**, independent of the
+current binding. Change it in **Walkie Talkie menu → New chat folder → Choose
+folder…**; **Use ~/workspace** resets it. The selection is saved and applies to
+the next new-chat recording without a restart. An explicit folder pick for one
+recording still wins. The menu shows the full current default, and the prompt's
+destination label shows the folder for that take; check it before Send.
+`WT_PROJECT_ROOT` remains a launch-environment fallback only when no folder has
+been saved in the app. The temporary new-chat menu has no arbitrary-folder
+browse control; the settings chooser does. Pins are an existing `pinned` array of absolute paths in
 `~/.walkie-talkie/pinned-projects.json`; keep other entries when adding a folder,
 and relaunch to reload them.
 

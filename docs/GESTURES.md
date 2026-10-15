@@ -6,6 +6,8 @@ These controls describe Morgan’s Codex fork. Keyboard controls work with a tra
 
 Press **⌃⇧⌘B from any app** for the project/chat switcher. Choose a project, then an open or historical chat. Projects are ordered by their most recent chat. Once bound to Codex desktop, **⌃⌘B** opens it too. In Terminal, ⌃⌘B binds the active Codex CLI tab directly. The menu's **Bind Codex chat…** opens the same switcher.
 
+New CLI chats default to `~/workspace`. Set another default in **Walkie Talkie menu → New chat folder → Choose folder…**, or reset it with **Use ~/workspace**. Picking a folder during a new-chat recording overrides the default for that take.
+
 See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, editing an unsent draft, new chats in the same/different folder, and native desktop chats outside sidebar projects.
 
 | Action | Control |

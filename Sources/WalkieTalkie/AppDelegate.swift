@@ -5745,8 +5745,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Set before the gate below and before anything reads `hasDestination`:
         // it *is* the answer for a spawn.
         spawnPending = spawn
-        // A folder chosen for a previous sentence must never ride this one.
-        spawnFolder = nil
+        // Latch the default for this sentence; changing the setting while it
+        // transcribes must not redirect an already-recorded prompt.
+        spawnFolder = spawn ? Self.spawnDirectory : nil
         pasteMode = paste
         // Every caller that passes `paste` is the forward click (or its route
         // from a desk) — the caret **prompt** (2026-09-23). A relay-started
@@ -6084,7 +6085,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.info("✨ 🔼 ↑ on a caret sentence — off the caret, into a new session")
         }
         spawnPending = true
-        spawnFolder = nil
+        spawnFolder = Self.spawnDirectory
         overlay.setSpawnDestination("✨ \(Self.spawnFolderName)", mark: "✨")
         // The ring's halo is per destination — it stops saying *caret* now.
         syncBorrowedGestures()
@@ -8044,6 +8045,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var out: [String: Any] = [
             "at": Outbox.iso(Date()),
             "localLanguage": WhisperLanguage.selected.rawValue,
+            "newChatFolder": Self.spawnDirectory,
             "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
             "logiGestures": status.isLogiGestures,
             // The relay's own sentence-in-flight flag — *not* the microphone.
@@ -8752,29 +8754,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.setSpawnDestination(nil)
     }
 
-    /// **The default, and nothing is inferred.** the original author's call, and the
-    /// three reasons line up behind it: it is where he starts every session by
-    /// hand, so it is the one folder Claude Code already trusts — a spawn into a
-    /// sub-repo stops on the "do you trust this folder" question instead of
-    /// working — every repo he has is a folder inside it, so the agent can still
-    /// be told which one, and a destination that is always the same is one he
-    /// never has to check before he starts talking.
-    ///
-    /// The alternative was resolving it from the bound target or the terminal in
-    /// front. It was written, and it is what surfaced the trust prompt: an answer
-    /// that is right four times out of five is worse here than one that is fixed,
-    /// because the fifth is only discovered after the sentence is spoken.
-    ///
-    /// **Since 2026-09-04 it can be overridden, but only by him saying so**, in
-    /// the three seconds `SpawnFolderMenu` is on screen. That does not reopen the
-    /// argument above: the alternative it beat was *guessing*, and a click is not
-    /// a guess. Every folder on that menu is one Claude Code already trusts, so
-    /// the failure this constant exists to prevent cannot happen there either.
-    private static let spawnDirectory = ProcessInfo.processInfo.environment["WT_PROJECT_ROOT"]
-        ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("syncthing/projects").path
+    /// A saved default, independent of foreground focus or the current binding.
+    /// An explicit folder pick overrides it for one recording. The recording
+    /// latches its default before opening the microphone.
+    private static var spawnDirectory: String { NewChatFolder.path }
 
-    /// What the chip calls that folder while he is talking at it.
-    private static let spawnFolderName = (spawnDirectory as NSString).lastPathComponent
+    /// What the chip calls the configured default folder.
+    private static var spawnFolderName: String { (spawnDirectory as NSString).lastPathComponent }
 
     /// Type a message into the bound terminal, if there is one.
     ///

@@ -69,6 +69,11 @@ enum SpawnTerminal {
         let stamp = Self.stamp()
         let promptFile = dir.appendingPathComponent("prompt-\(stamp).txt")
         do {
+            // The built-in default must also work on a fresh Mac. Custom or
+            // historical folders are never silently recreated.
+            if directory == NewChatFolder.workspace.path {
+                try FileManager.default.createDirectory(at: NewChatFolder.workspace, withIntermediateDirectories: true)
+            }
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try prompt.write(to: promptFile, atomically: true, encoding: .utf8)
         } catch {
