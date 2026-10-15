@@ -317,13 +317,19 @@ struct CodexPickerProject: Equatable {
 
 enum CodexPickerCatalog {
     static func projects(from conversations: [CodexBridge.Conversation]) -> [CodexPickerProject] {
-        Dictionary(grouping: conversations, by: \.cwd).map { cwd, chats in
+        // The metadata helper already returns chats newest first using Codex's
+        // recency ordering. A folder's first occurrence is its most recent chat.
+        var paths: [String] = []
+        var grouped: [String: [CodexBridge.Conversation]] = [:]
+        for chat in conversations {
+            if grouped[chat.cwd] == nil { paths.append(chat.cwd) }
+            grouped[chat.cwd, default: []].append(chat)
+        }
+        return paths.map { cwd in
             let leaf = (cwd as NSString).lastPathComponent
             let title = cwd.isEmpty ? "No recorded folder" : (leaf.isEmpty ? cwd : leaf)
-            return CodexPickerProject(cwd: cwd, title: title, conversations: chats)
-        }.sorted {
-            let titleOrder = $0.title.localizedCaseInsensitiveCompare($1.title)
-            return titleOrder == .orderedSame ? $0.cwd < $1.cwd : titleOrder == .orderedAscending
+            return CodexPickerProject(cwd: cwd, title: title,
+                                      conversations: grouped[cwd] ?? [])
         }
     }
 

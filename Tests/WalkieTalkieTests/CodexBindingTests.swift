@@ -253,6 +253,20 @@ final class CodexBindingTests: XCTestCase {
         XCTAssertFalse(gate.isChecking)
     }
 
+    func testPickerProjectsFollowTheirMostRecentChatOrder() {
+        let chats = [
+            CodexBridge.Conversation(["id": "z-new", "cwd": "/work/zebra"])!,
+            CodexBridge.Conversation(["id": "a-new", "cwd": "/work/alpha"])!,
+            CodexBridge.Conversation(["id": "z-old", "cwd": "/work/zebra"])!,
+            CodexBridge.Conversation(["id": "b-old", "cwd": "/work/beta"])!,
+        ]
+        let projects = CodexPickerCatalog.projects(from: chats)
+        XCTAssertEqual(projects.map(\.cwd), ["/work/zebra", "/work/alpha", "/work/beta"])
+        XCTAssertEqual(projects[0].conversations.map(\.id), ["z-new", "z-old"])
+        XCTAssertEqual(CodexPickerCatalog.projects(projects, matching: "work").map(\.cwd),
+                       ["/work/zebra", "/work/alpha", "/work/beta"])
+    }
+
     func testPickerCatalogGroupsEveryChatByRecordedWorkingFolder() {
         let chats = [
             CodexBridge.Conversation(["id": "a", "title": "Newest", "cwd": "/work/alpha", "live": true])!,

@@ -4,7 +4,7 @@ These controls describe Morgan’s Codex fork. Keyboard controls work with a tra
 
 ## Your trackpad and keyboard
 
-Press **⌃⇧⌘B from any app** for the project/chat switcher. Choose a project, then an open or historical chat. Once bound to Codex desktop, **⌃⌘B** opens it too. In Terminal, ⌃⌘B binds the active Codex CLI tab directly. The menu's **Bind Codex chat…** opens the same switcher.
+Press **⌃⇧⌘B from any app** for the project/chat switcher. Choose a project, then an open or historical chat. Projects are ordered by their most recent chat. Once bound to Codex desktop, **⌃⌘B** opens it too. In Terminal, ⌃⌘B binds the active Codex CLI tab directly. The menu's **Bind Codex chat…** opens the same switcher.
 
 See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, editing an unsent draft, new chats in the same/different folder, and native desktop chats outside sidebar projects.
 

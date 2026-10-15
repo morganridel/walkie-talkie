@@ -59,7 +59,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (306 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (307 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -90,7 +90,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
    Consult route descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **77 Python tests** and **304 Swift tests** pass (306 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **305 Swift tests** pass (307 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -150,7 +150,8 @@ metadata independently matched `local-whisper` and the exact selected chat.
 
 - While a safe browser/editor is in front, press **⌃⇧⌘B**. The floating
   switcher should appear near the pointer, within the display bounds, with
-  search focused and project folders shown first. Type a folder name, use ↑/↓
+  search focused and project folders shown first, ordered by their most recent
+  chat. Type a folder name, use ↑/↓
   and Return, and check that only that folder's chats appear. Search their
   titles; use Escape or ‹ to return to projects, and Escape again to dismiss.
   Clicking outside dismisses it and returns the keyboard to the previous app.
@@ -481,7 +482,7 @@ pause/resume, and two film/contact-sheet deliveries passed. The film sheets had
 fixture and captured synthetic selections from actual image inputs.
 
 Native CLI text/image/steering and production caret dispatch passed. The full
-current Swift suite executed 306 cases: 304 passed, 2 opt-in skips, no failures.
+current Swift suite executed 307 cases: 305 passed, 2 opt-in skips, no failures.
 Those opt-in PTY checks passed separately. All 77 Python tests passed. Physical
 Terminal/VS Code focus, mouse controls, optional providers and other devices
 remain separate manual checks.
@@ -513,7 +514,11 @@ currently clear on relaunch, so select the intended chat again.
 The subsequent **16:21** repair fixes single-click activation and selection loss
 from full table reloads. Plain navigation keys are handled at the real key
 panel, with an AppKit component fixture covering field/table focus. Current
-suite: 306 executed, 2 opt-in skips, 0 failures (304 passed). Both installed
+suite: 307 executed, 2 opt-in skips, 0 failures (305 passed). Both installed
 macOS grants were refreshed by the agent and verify, with a responding canary
-(2.16 ms). The repaired physical arrow/Return/click flow remains pending the
-user's repeated check; the earlier global shortcut itself was confirmed.
+(2.16 ms). The user confirmed the repaired physical arrow/Return/single-click flow;
+readback shows the exact selected disposable chat bound. The installed **16:35**
+build orders project folders by their most recent chat using Codex's recency
+order; search preserves that order. Both existing macOS permissions were
+refreshed by the agent and verify; the signature and both local workers verify. Update a disposable chat and reopen the switcher to check its folder
+moves appropriately after refresh.
