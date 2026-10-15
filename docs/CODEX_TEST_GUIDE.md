@@ -359,8 +359,16 @@ when that hardware or provider setup is wanted; an unrun step is not a pass.
 
 ## Screenshots, crop, selection, browser, and music
 
-- If opening context capture is enabled, start a prompt and verify its screenshot
-  and pointer marker. Test the explicit shutter independently below.
+For practical instructions, see [showing something while you speak](GESTURES.md#showing-something-while-you-speak)
+and [the bottom-right icon legend](GESTURES.md#the-icons-at-the-bottom-right-while-recording).
+The icons are non-clickable reminders of the two mouse buttons' gestures, not
+an on-screen toolbar. Pointer movement alone does not keep Codex updated.
+Normal bound/new/caret prompts attempt an opening screenshot; plain dictation
+and Quick Ask do not. Later visual references need a shutter, region selection,
+browser element pick or film. Text selections provide another context source.
+
+- Start a normal prompt and verify its opening screenshot
+  and recorded pointer coordinates. Test the explicit shutter independently below.
   Use **⌃⌘S** for another shot without opening the menu. The optional
   **Take Screenshot** row is clickable during prompt recording. Confirm original and
   resized files, labels, prompt references, and shot times.

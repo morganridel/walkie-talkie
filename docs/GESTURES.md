@@ -67,6 +67,61 @@ For the English test, choose **Engine → Local language → English** before re
 
 Try a short prompt: open example.com, point at its heading, press ⌃⌘D, say “What is the heading I’m pointing at?”, press ⌃⌘S, then ⌃⌘D. Review the transcript and screenshot, then Return to send. Use the disposable integration-test chat.
 
+## The icons at the bottom right while recording
+
+These are a **gesture legend, not clickable buttons**. The upper cross is the
+front thumb button; the lower cross is the rear thumb button. A cross's centre
+means click, and its arms mean hold that button, move the mouse in that
+direction, then release. Empty boxes mean no action at this stage. The legend
+changes between prompts, plain dictation, Quick Ask and a region selection.
+It deliberately fades or moves away when the pointer approaches it.
+
+During a normal prompt, these are the actions:
+
+| Icon | Mouse gesture | Keyboard equivalent |
+|---|---|---|
+| 🏁 end | Front click | **⌃⌘D** to stop; review, then Return to send |
+| 🗑️ cancel | Front + left | **⌃⌥⌘F11** |
+| ✨ new | Front + up | **⌃⌥⌘F8**; redirects this recording to a new CLI chat |
+| ☠️ | Front + down | **⌃⌥⌘F9**; toggles the completion-and-close/archive cue |
+| 📸 shot | Rear click | **⌃⌘S**, or **⌃⌥⌘F6** |
+| 🔴 / ⏹️ video | Rear + up | **⌃⌥⌘F4** |
+| ⌨️ type | Rear + down | **⌃⌥⌘F12**; adds a typed note |
+
+The ☠️ cue asks the receiving agent to finish the task and then close its
+verified CLI window or archive the receiving desktop chat. While plain
+dictation is recording, rear click instead stops and inserts Return, and
+rear + right stops without Return. During Quick Ask those stop gestures ask
+the model. See the full mapping below for state-dependent behavior.
+
+## Showing something while you speak
+
+Moving the pointer by itself is **not a continuous visual feed to Codex**.
+A normal prompt to the bound chat, a new CLI chat, or a full prompt at the caret
+attempts an opening screenshot with that moment's pointer position. Plain F5
+dictation and Quick Ask take no opening screenshot. Check the attachment count;
+Screen Recording permission is needed for a successful capture.
+
+To point at something later, put the pointer on it and press **⌃⌘S**. That
+snapshot carries the pointer coordinates, so say “this button” as you capture
+it. Moving somewhere else afterward does not update that snapshot. The shutter
+captures the display, not an automatic tight crop around the pointer.
+
+You can also provide context without an explicit shutter:
+
+- Select text during a normal prompt: supported apps' changed selections are
+  collected through Accessibility. Plain F5 dictation does not add them.
+- In Edge/Chrome with the Inspector extension enabled, hold **⌘⇧** until the
+  element outline appears, then click. It adds the picked element's text,
+  selector and URL. This is a deliberate pick, not passive hovering.
+- A physical wheel drag frames a region; locking it with right-click and then
+  drawing a second region describes “move this here”. Film captures a sequence
+  of images while it runs rather than continuously streaming the screen.
+
+The inspected fork has rectangle/region and source/destination tools, but no
+general freehand arrow drawing tool. An arrow drawn during Victor's demo cannot
+be attributed to this fork without identifying the tool or revision he used.
+
 ## If you add a Logitech mouse
 
 The **front side button** is the thumb button closer to the nose of the mouse; the **rear side button** is closer to your wrist. “Right/up/left/down” means **hold that button, move the whole mouse a little in that direction, then release**. It does not mean scrolling or moving fingers on the trackpad.
