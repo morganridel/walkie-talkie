@@ -7,6 +7,25 @@ could deliver a prompt. The routes below can open UI or send data; do not aim
 them at a real work chat without checking the selected target first.
 
 For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
+Its [input comparison](GESTURES.md#ways-to-use-gestures) explains keyboard,
+trackpad, Logitech and wheel access, including the gestures that need a physical
+mouse. Holding a keyboard key while moving the pointer, and native trackpad
+swipes, are not implemented directional controls.
+
+## Feature index
+
+Use [daily workflows](#daily-workflows) for Quick Ask, continuing chats, drafts,
+new chats and project switching. The sections below also cover
+[prompt delivery and reply bubbles](#prompt-delivery-quick-answers-and-reply-ui),
+[transcription engines, language, captions and microphones](#local-mlx-cloud-fallback-captions-and-microphone),
+[screenshots, crops, browser picks, film and media](#screenshots-crop-selection-browser-and-music),
+[review, editing, autosend, cancel and recovery](#hold-edit-autosend-cancel-and-recover),
+[hotkeys, gestures and clipboard](#hotkeys-gestures-caret-and-clipboard),
+[restart, login, settings and outbox](#restart-login-settings-and-outbox), and
+[effects, history and sound](#effects-reference-panel-history-and-sound).
+The [feature/evidence matrix](CODEX_PARITY.md) distinguishes what is implemented
+from what has passed real-use checks; optional providers and physical mouse
+checks remain deferred.
 
 ## Daily workflows
 
@@ -15,6 +34,7 @@ CLI chat. Binding chooses a chat; it does not choose an unsent draft inside it.
 
 | What you want | Workflow | Result |
 |---|---|---|
+| Ask a standalone quick question, without selecting a folder | While idle, press **⌃⌥⌘F11**, speak, then **F5** to stop. Requires **Gestures → Logi**, plus Fn if needed. | Automatically answers in a bubble; no binding, folder choice or Return. F11's chord cancels if a recording/prompt or answer is already in progress. |
 | Continue an existing chat | Bind it with **⌃⌘B**. Press **⌃⌘D**, speak, press **⌃⌘D** again, review, then **Return**. | Sends a prompt to that exact chat. If it is already answering, it can steer the active turn. |
 | Add words to an existing unsent prompt | Click inside that prompt, press **F5**, speak, then **F5** again. Send using Codex when ready. | Inserts plain text at the caret without Return. Binding is not required; existing draft text remains editable. |
 | Dictate the first prompt of a new chat in the same project folder | Press **⌃⌥⌘F8**, click the **✨ folder row** for that project, speak, stop with **⌃⌘D**, review, then **Return**. | Opens a new Codex CLI chat in Terminal in the chosen folder. Choose the folder explicitly; the current binding does not automatically supply it. |
@@ -64,7 +84,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (317 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (321 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -95,7 +115,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
    Consult route descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **77 Python tests** and **315 Swift tests** pass (317 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **319 Swift tests** pass (321 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -209,6 +229,11 @@ metadata independently matched `local-whisper` and the exact selected chat.
   microphone. Verify the displayed text and attachments, then explicitly send
   and check the destination. Cancel in a second run and check it was not
   delivered. Never use this route with an actual work target for a smoke test.
+- For the normal keyboard Quick Ask workflow, select **Gestures → Logi** and,
+  while idle, press **⌃⌥⌘F11**, speak, then **F5**. No folder or binding is
+  needed. Do not repeat the F11 chord to finish: during recording it cancels.
+  Verify the spoken question and automatic bubble; this physical shortcut flow
+  remains separate from the installed-app API evidence below.
 - Check the quick-answer panel from the app and with
   `POST /test/quick {"text":"What is 2 + 2?","wait":"all"}`. Use
   `"wait":true` to measure just the first answer. Exercise the question,
@@ -535,7 +560,7 @@ currently clear on relaunch, so select the intended chat again.
 The subsequent **16:21** repair fixes single-click activation and selection loss
 from full table reloads. Plain navigation keys are handled at the real key
 panel, with an AppKit component fixture covering field/table focus. Current
-suite: 317 executed, 2 opt-in skips, 0 failures (315 passed). Both installed
+suite: 321 executed, 2 opt-in skips, 0 failures (315 passed). Both installed
 macOS grants were refreshed by the agent and verify, with a responding canary
 (2.16 ms). The user confirmed the repaired physical arrow/Return/single-click flow;
 readback shows the exact selected disposable chat bound. The installed **16:35**
@@ -549,7 +574,7 @@ The **16:56** verification build is installed. Both existing macOS grants were
 refreshed by the agent and verify, as do the signature, English setting and
 both local workers. The shortcut canary responds (0.48 ms) and the disposable
 desktop test is bound. Current source checks: 315 Swift passes plus two opt-in
-skips (317 executed); 77 Python passes.
+skips (321 executed); 77 Python passes.
 
 
 The final physical F5 check passed: spoken words appeared in an existing unsent
