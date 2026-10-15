@@ -8335,6 +8335,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// one more time at activation: bind a verified live owner, resume only a
     /// conclusively unowned chat, and leave an unknown outcome untouched.
     private func activateSearchSession(_ session: String, recordedCWD: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.overlay.flash("📍 checking Codex chat…", duration: 13)
+        }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             do {

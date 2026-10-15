@@ -7,9 +7,9 @@ test guide](CODEX_TEST_GUIDE.md).
 
 | Area | Implementation in this fork | Verification evidence |
 |---|---|---|
-| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 296 executed, 2 opt-in integration checks skipped, 0 failures; 294 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
+| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 299 executed, 2 opt-in integration checks skipped, 0 failures; 297 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
 | Codex CLI discovery | `CodexBridge` resolves the helper and bundled native CLI executable; `CODEX_BIN` can override the binary. | **Verified.** Native CLI connected in PTY E2E; installed helper doctor resolves the native binary and version. |
-| Chat picker | `Bind Codex chat…` lists chat metadata; picker supports title/project search, project filter, refresh, and explicit live-chat binding. Saved rows are labelled and cannot bind; verified CLI rows retain their Terminal TTY. | **Partial.** Regression tests verify CLI handle/TTY preservation and reject unproven/saved mappings. Installed-app API binding selected the exact disposable desktop chat in 0.45 s after removing window/branch lookups. Codex target labels use the recorded project folder. User opened the disposable chat, selected it through Bind Codex chat, and completed the spoken test; the app reported that exact target. Search/filter/refresh, project switching, and other pointer actions remain manual. |
+| Chat picker | `Bind Codex chat…` lists chat metadata; picker supports title/project search, project filter, refresh, and explicit live-chat binding. Bulk scan misses are labelled status unverified; selection rechecks the exact owner before binding. Verified CLI rows retain their Terminal TTY. | **Partial.** Regression tests verify CLI handle/TTY preservation and reject unproven/saved mappings. Installed-app API binding selected the exact disposable desktop chat in 0.45 s after removing window/branch lookups. Codex target labels use the recorded project folder. User opened the disposable chat, selected it through Bind Codex chat, and completed the spoken test; the app reported that exact target. The picker’s exact selection check now handles a live chat missed by the bulk scan; closed/unknown rows never bind or resume. Search/filter/refresh, project switching, and other pointer actions remain manual. |
 | CLI chat sending | Codex target is represented in `TerminalBinding`; bound and verified caret delivery call the bridge with text and actual screenshot/crop/film-sheet image inputs. Busy sends can steer the exact active turn. | **Verified in native CLI PTY E2E.** Initial prompt exactly once; follow-up send; synthetic red image read as red; busy follow-up steered the same turn. A separate production caret dispatch resolved the exact foreground CLI ID, displayed `[Image #1]`, and answered `CARET_RPC_RED`. Exited TUIs/shells fail caret ownership checks; attempted RPC failures never fall back to paste or retry. Physical Terminal/VS Code caret interaction remains manual. |
 | Codex desktop delivery | Same-user native desktop IPC adapter preserves protocol version and verifies owner discovery for desktop threads. | **Verified in a disposable desktop chat.** Text delivered with the expected reply, a synthetic red image was interpreted as red, and a busy update steered the same active turn and reached the expected marker. Installed-app bind/hold/edit/send also reached that chat; cancel caused no delivery or new turn. Tested with Desktop 26.1007.30912 and native CLI 0.162.0-alpha.17.2. IPC remains internal and version-coupled. Desktop completion uses the receiving model's `set_thread_archived` tool; exact-window closing is unsupported. Completion cue archived only the disposable chat; it was subsequently restored. Archiving interrupts the active turn, so a result must be provided before the archive action. |
 | New/resumed sessions | `walkie-codex` starts the shared daemon idempotently, persists the initial prompt through RPC before attaching the CLI TUI, creates/resumes the exact conversation, and writes a tty sidecar. `SpawnTerminal` uses this launcher. | **Packaged new launch verified.** The installed app opened Terminal, delivered one initial prompt, received the exact requested marker, and bound the same CLI thread with a verified PID/TTY sidecar. Native PTY new/resume tests also passed. Packaging now validates capability descriptions, and exact open/tiling scripts compile offline. Closed-history resume through the visible panel remains a manual check. |
@@ -35,10 +35,10 @@ for future runs. Redact private chat content, audio, tokens, paths, and credenti
 
 | Date/build | Area and method | Result/evidence |
 |---|---|---|
-| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 296 executed, 2 skipped, 0 failures (294 passed). |
+| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 299 executed, 2 skipped, 0 failures (297 passed). |
 | 2026-10-15 release | Signed bundle build, install, launch, local API, and signature verification after model startup. | Passed. Both transcription workers ready using Quiet Journal runtime/cache; Quiet Journal health remains good. Microphone and Screen Recording are enabled. After removing/re-adding the current app in Accessibility and reopening, startup reports trusted=true/eventTap=true; the harmless canary is alive (about 0.14 ms). The earlier stale grant is resolved. Real spoken start/stop/send subsequently passed; other physical gestures remain separate checks. |
 | 2026-10-15 CLI identity follow-up | Real native CLI and isolated cold-start tests. | Native daemon symlink accepted with ownership checks; shared read and TTY resolve retain the same verified CLI identity; initial prompt completed exactly once; exited CLI disappears from live rows; synthetic test archived. Isolated cold start installed daemon, initialized RPC and attached TUI successfully, then stopped/cleaned only its own daemon. |
-| Current Python tests | Full Python test suite. | 75 tests pass. |
+| Current Python tests | Full Python test suite. | 77 tests pass. |
 | CLI integration | Native Codex CLI PTY smoke on a disposable conversation. | Initial prompt exactly once; follow-up direct send; synthetic red image read as red; busy send steered the same turn ID and reached expected final marker. Test chat archived; TUI exited 0. |
 | Finish helper | Native guarded product-helper close on a disposable packaged CLI session. | The original dry-run passed and its exact Codex TUI exited, but Terminal rejected tab close (-1708). The corrected implementation supports only a verified single-tab window; multi-tab refusal occurs before signaling. The corrected real-session close passed; exact PID exited and tty match count became zero. |
 | 2026-10-15 desktop integration | Owner-verified native Desktop IPC on a user-authorized disposable chat. | Text and synthetic red image passed. A missing native steer composer record/text-element array was found and fixed; same-turn steering then passed. Owner rejection errors retain their reason. |
@@ -101,20 +101,44 @@ zero Terminal matches afterward. Installed permissions are recorded separately. 
 on every code rebuild; binding clears on relaunch. Physical mouse controls and
 configured cloud providers remain unverified, with procedures in the guide.
 
-## Current installed release — 15 October 2026, 13:53
+## Earlier installed release — 15 October 2026, 13:53
 
 The final release includes the Rebind/ownership, Terminal launch and guarded
 single-tab finish fixes. Its packaged helpers match the tested source byte for
 byte; both local workers are ready, English persisted, and its installed deep
-strict signature verifies after startup. Swift: 296 executed, 2 opt-in skips,
-0 failures (294 passed); both opt-in native checks passed separately. Python:
-75 passed. The user refreshed both grants and reopened the app. Accessibility
+strict signature verifies after startup. Swift: 299 executed, 2 opt-in skips,
+0 failures (297 passed); both opt-in native checks passed separately. Python:
+77 passed. The user refreshed both grants and reopened the app. Accessibility
 and Screen Recording now verify; the event-tap canary is alive (0.32 ms), and
 the exact disposable desktop chat is bound again. No additional rebuild is planned.
 
-A later closed-history check confirmed the disposable CLI chat was closed once,
-but two fresh exact ownership queries then timed out with
-`thread_ownership_unknown`. No resume/send was attempted; the test chat was
-returned to the archive. Packaged closed-history resume remains unverified.
-This is a current native IPC availability limit, distinct from the now-resolved
-macOS grants; a timeout must never be treated as proof a chat is closed.
+A closed-history audit found a concrete timeout mismatch: the native Codex
+router permits ten seconds for peer discovery before returning `no-client-found`,
+but the bridge’s default socket deadline was five seconds. Strict read-only
+history activation now allows twelve seconds; ordinary metadata, bulk scans,
+sends and no-retry behavior retain their existing deadlines. A real exact read
+of the disposable closed CLI chat returned conclusive `ownerState: closed` in
+10.13 seconds. The overlay shows “checking Codex chat…” while this runs.
+Swift: 297 passed with 2 opt-in skips; Python: 77 passed. Packaged closed-history
+resume still needs a post-install check while the Mac is unlocked. A timeout
+still means unknown, never closed.
+
+Picker follow-up: quick-scan misses no longer disable binding or claim the chat
+is saved. Bind checks the selected exact ID asynchronously and only a fresh
+live owner can be accepted. Closed/unknown/wrong-ID results cannot bind or
+resume. Selection/filter/reload/close/reopen invalidate pending callbacks;
+duplicate clicks are refused. Focused binding tests: 16 passed. Full Swift:
+299 executed, 2 opt-in skips, 0 failures (297 passed). Native picker interaction
+and packaged closed-chat resume remain post-install checks while unlocked.
+
+## Current installed release — 15 October 2026, 14:30
+
+The combined deadline/picker build is installed. Both local workers are ready,
+English persisted, packaged helpers match source, and the deep strict signature
+verifies after startup. The 14:19 package’s exact owner check already returned
+conclusive closure in 10.46 seconds; its helper is unchanged in this build.
+Swift: 299 executed, 2 opt-in skips, 0 failures (297 passed). Python: 77 passed.
+The current process reports Accessibility/event tap and Screen Recording
+unavailable after its changed ad-hoc signature. The Mac was locked during UI
+inspection. Renew the two installed-app grants and reopen it when unlocked;
+then verify picker selection and packaged closed-history resume.

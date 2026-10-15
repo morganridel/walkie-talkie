@@ -539,6 +539,66 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertEqual(error["code"], "thread_ownership_unknown")
         self.assertEqual(error["details"]["cause"], "desktop_ipc_unavailable")
 
+    def test_exact_owner_state_uses_longer_read_only_discovery_timeout(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        timeouts = []
+
+        class RecordingDesktopClient:
+            def __init__(self, timeout=5.0):
+                timeouts.append(timeout)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def find_owner(self, _thread_id):
+                raise codex_bridge.BridgeError(
+                    "no owner", code="desktop_thread_not_owned",
+                    details={"reason": "no-client-found"})
+
+        common = (
+            mock.patch.object(codex_bridge, "RpcClient", self.rpc_client_for_thread()),
+            mock.patch.object(codex_bridge, "sidecar_tty_map", return_value={}),
+            mock.patch.object(codex_bridge, "DesktopIpcClient", RecordingDesktopClient),
+        )
+        with common[0], common[1], common[2]:
+            strict = codex_bridge.one_thread(thread, require_owner_state=True)
+            ordinary = codex_bridge.one_thread(thread)
+
+        self.assertEqual(timeouts, [12.0, 5.0])
+        self.assertEqual(strict["ownerState"], "closed")
+        self.assertNotIn("ownerState", ordinary)
+
+    def test_exact_owner_timeout_remains_unknown_not_closed(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+
+        class TimedOutDesktopClient:
+            def __init__(self, timeout=5.0):
+                self.timeout = timeout
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def find_owner(self, _thread_id):
+                raise codex_bridge.BridgeError(
+                    "desktop discovery timed out",
+                    code="desktop_ipc_outcome_unknown")
+
+        with mock.patch.object(codex_bridge, "RpcClient", self.rpc_client_for_thread()), \
+             mock.patch.object(codex_bridge, "sidecar_tty_map", return_value={}), \
+             mock.patch.object(codex_bridge, "DesktopIpcClient", TimedOutDesktopClient):
+            with self.assertRaises(codex_bridge.BridgeError) as caught:
+                codex_bridge.one_thread(thread, require_owner_state=True)
+
+        self.assertEqual(caught.exception.code, "thread_ownership_unknown")
+        self.assertEqual(caught.exception.details["cause"],
+                         "desktop_ipc_outcome_unknown")
+
     def test_resolve_tty_returns_consistent_verified_cli_owner(self):
         thread = "11111111-1111-4111-8111-111111111111"
         db = sqlite3.connect(self.home / "thread_history_1.sqlite")

@@ -13,7 +13,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (296 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (299 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -40,7 +40,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **75 Python tests** and **294 Swift tests** pass (296 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **297 Swift tests** pass (299 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -101,8 +101,10 @@ metadata independently matched `local-whisper` and the exact selected chat.
 - Open the menu and choose **Bind Codex chat…**. Verify chat titles and project
   paths load, search matches both title and project, the project filter narrows
   the list, Refresh reloads it, and selecting/double-clicking a live row binds the
-  intended chat. Confirm saved rows are labelled and cannot be bound until
-  opened in Codex. Select a live CLI row and confirm its Terminal identity is
+  intended chat. Rows missed by the quick scan should say status unverified, not definitely
+  saved. Select one and Bind: the exact ID must be checked on demand. A live
+  owner binds; a conclusive closed result shows open-in-Codex/Rebind guidance;
+  unknown ownership shows an error without binding or resuming. Select a live CLI row and confirm its Terminal identity is
   retained when using the reply bubble’s bring-forward action. Confirm the selected target with `GET /target`.
 - Switch among projects and bind a second disposable chat. Confirm that the
   picker does not confuse a chat with another open chat or rely on frontmost
@@ -129,8 +131,10 @@ metadata independently matched `local-whisper` and the exact selected chat.
   closed sessions reopen in their recorded project folder and a live session
   binds to its tty.
 - Open a saved desktop chat in Codex before binding it, then refresh the picker.
-  A saved metadata row is not proof the desktop owns it live; sending to a chat
-  with no live owner should fail clearly rather than open a second private copy.
+  A metadata row is not proof the desktop owns it live. Change the selected row,
+  project filter, or close/reopen the panel while its exact owner check is in
+  flight: the stale result must not bind the old selection. Sending to a chat
+  with no live owner must fail clearly without opening a second private copy.
 - For CLI bridge evidence, a native PTY smoke has already confirmed first-prompt
   exactly-once delivery, a direct follow-up, reading a synthetic red image, and
   steering an active turn without changing its turn ID. These protocol results
@@ -432,8 +436,8 @@ disposable chat as actual image inputs and were described correctly.
 A production Codex caret dispatch also passed in an isolated native CLI PTY with
 an actual red image. This verifies target resolution and RPC dispatch, while
 physical Terminal/VS Code focus and mouse gestures remain manual. Full Swift
-checks executed 296 cases with 2 opt-in integration skips and no failures;
-those opt-in checks passed separately in the disposable PTY. All 75 Python tests
+checks executed 299 cases with 2 opt-in integration skips and no failures;
+those opt-in checks passed separately in the disposable PTY. All 77 Python tests
 passed. Optional cloud/Wispr providers, other microphones, multi-tab CLI closing,
 wheel crops/moves, DOM dragging/iframes, and remaining pointer controls have not
 been claimed as passed.
@@ -458,7 +462,7 @@ A real disposable single-tab close passed, with the exact PID gone and zero tty
 matches afterward. Test this using disposable sessions only; never count a dry-run or an early
 HTTP acknowledgement as delivery/closure evidence.
 
-The current 13:53 installed release has matching packaged helper hashes,
+The earlier 13:53 release had matching packaged helper hashes,
 ready local workers, English retained, and a valid deep strict signature.
 The user refreshed both grants and reopened it. Accessibility and Screen
 Recording now verify; the shortcut canary is alive (0.32 ms), and the exact
@@ -466,11 +470,22 @@ disposable desktop chat is bound again. Later code rebuilds can require renewed
 grants because the app uses ad-hoc signing. Select the intended chat again after relaunch;
 binding currently clears on restart. About publishes 12 real gesture rows.
 
-The final closed-history check encountered two exact owner-query timeouts
-(`thread_ownership_unknown`) after an earlier conclusive closed response. No
-resume or prompt was attempted, and the disposable chat was archived again.
-Do not bypass this safety check or retry an uncertain send. Check again when
-Codex Desktop’s owner router is responsive; restarting Codex should be a user
-choice made when other work can safely be interrupted. Full end-to-end parity
-is not claimed while this check and the listed hardware/provider checks remain
-unverified.
+The closed-history audit found that the bridge’s five-second socket deadline
+expired before Codex’s ten-second peer-discovery deadline. Strict exact history
+activation now waits up to twelve seconds, showing “checking Codex chat…”.
+A real read of the closed disposable CLI chat returned conclusive closure in
+10.13 seconds. Sends, ordinary metadata and bulk scans retain their prior
+budgets, and no send is retried automatically. Timeout still means unknown.
+After installing this fix, test a disposable closed chat through Rebind to…;
+verify the same ID/project reopens with no repeated initial prompt, then finish
+only its verified single-tab window. This packaged check requires an unlocked
+Mac. Optional hardware/provider checks remain separate and unverified.
+
+The current combined build is **15 October 2026, 14:30**. It has 297 passing
+Swift tests (299 executed, 2 opt-in skips) and 77 passing Python tests, matching
+packaged helpers, ready workers, English retained and a valid signature. Its
+changed ad-hoc signature requires renewed Accessibility and Screen Recording.
+The Mac was locked during native UI inspection. After unlocking and renewing
+the two grants, check Bind Codex chat’s unverified-row selection/project filter
+and Rebind to’s closed-session resume as described above. No additional voice
+or screenshot delivery is needed to establish the owner-check behavior.

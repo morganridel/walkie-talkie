@@ -15,7 +15,7 @@ enum CodexBridge {
         var folder: String { (cwd as NSString).lastPathComponent }
         var handle: TerminalBinding.Handle { .codex(threadID: id, tty: terminalTTY) }
         var locationLabel: String {
-            guard live else { return "Saved · open in Codex or resume through Rebind to…" }
+            guard live else { return "Status unverified · checked when binding" }
             if let terminalTTY { return "CLI · " + (terminalTTY as NSString).lastPathComponent }
             return "Codex · live"
         }
@@ -77,6 +77,29 @@ enum CodexBridge {
     enum RebindDisposition: Equatable {
         case bind(Conversation)
         case resume(session: String, cwd: String)
+    }
+
+    enum PickerDisposition: Equatable {
+        case bind(Conversation)
+        case closed
+    }
+
+    /// Bulk owner discovery is deliberately bounded, so a list miss is not
+    /// evidence that a chat is closed. Re-check the selected stable ID and
+    /// carry forward only the freshly verified row.
+    static func pickerDisposition(
+        session: String,
+        load: (String) throws -> Conversation? = {
+            try CodexBridge.conversation($0, requireOwnerState: true)
+        }
+    ) throws -> PickerDisposition {
+        guard let chat = try load(session) else {
+            throw failure("Codex chat no longer exists")
+        }
+        guard chat.id == session else {
+            throw failure("Codex ownership check returned a different chat")
+        }
+        return chat.live ? .bind(chat) : .closed
     }
 
     /// Re-check one stable ID at activation time. A saved metadata row is never
@@ -191,8 +214,41 @@ enum CodexBridge {
     private static func failure(_ message: String) -> NSError { NSError(domain: "CodexBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
 }
 
+/// Invalidates owner checks when the picker changes underneath them. Tokens
+/// also prevent a double click from starting two checks for one selection.
+final class CodexPickerCheckGate {
+    struct Token: Equatable {
+        fileprivate let generation: UInt64
+        let threadID: String
+    }
+
+    private var generation: UInt64 = 0
+    private var current: Token?
+    var isChecking: Bool { current != nil }
+
+    func begin(threadID: String) -> Token? {
+        guard current == nil else { return nil }
+        generation &+= 1
+        let token = Token(generation: generation, threadID: threadID)
+        current = token
+        return token
+    }
+
+    func invalidate() {
+        generation &+= 1
+        current = nil
+    }
+
+    func accept(_ token: Token) -> Bool {
+        guard current == token, generation == token.generation else { return false }
+        current = nil
+        return true
+    }
+}
+
 /// Explicit chat selection prevents a background dictation being sent to a different chat.
-final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
+final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegate,
+                             NSSearchFieldDelegate, NSWindowDelegate {
     private var panel: NSPanel?
     private let search = NSSearchField()
     private let projects = NSPopUpButton()
@@ -201,14 +257,23 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
     private let message = NSTextField(labelWithString: "Loading Codex chats…")
     private var all: [CodexBridge.Conversation] = []
     private var visible: [CodexBridge.Conversation] = []
+    private let ownerCheck = CodexPickerCheckGate()
+    private var reloadGeneration: UInt64 = 0
+    private var isReloading = false
     var onPick: ((CodexBridge.Conversation) -> Void)?
 
     func show() {
-        if let panel { panel.makeKeyAndOrderFront(nil); return }
+        if let panel {
+            ownerCheck.invalidate()
+            panel.makeKeyAndOrderFront(nil)
+            reload()
+            return
+        }
         let p = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 650, height: 420),
                         styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         p.title = "Bind a Codex chat"
         p.isReleasedWhenClosed = false
+        p.delegate = self
         let view = NSView(frame: p.contentView!.bounds)
         p.contentView = view
         search.placeholderString = "Search chats by name or project"
@@ -235,11 +300,19 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         reload()
     }
     @objc private func reload() {
+        ownerCheck.invalidate()
+        reloadGeneration &+= 1
+        let generation = reloadGeneration
+        isReloading = true
         message.stringValue = "Loading Codex chats…"
+        updateBindButton()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result = Result { try CodexBridge.conversations() }
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.reloadGeneration == generation,
+                      self.panel?.isVisible == true else { return }
+                self.isReloading = false
+                self.updateBindButton()
                 switch result {
                 case .success(let rows):
                     self.all = rows
@@ -253,16 +326,22 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
     }
     func controlTextDidChange(_ obj: Notification) { filterChanged() }
     @objc private func filterChanged() {
+        ownerCheck.invalidate()
         let query = search.stringValue.lowercased(), project = projects.indexOfSelectedItem > 0 ? projects.titleOfSelectedItem : nil
         visible = all.filter { (project == nil || $0.cwd == project) && (query.isEmpty || ($0.title + " " + $0.cwd).lowercased().contains(query)) }
         table.reloadData()
         table.deselectAll(nil)
-        if let firstLive = visible.firstIndex(where: \.live) { table.selectRowIndexes(IndexSet(integer: firstLive), byExtendingSelection: false) }
-        bindButton.isEnabled = visible.indices.contains(table.selectedRow) && visible[table.selectedRow].live
-        message.stringValue = "\(visible.filter(\.live).count) live · \(visible.count) total · Saved chats must be opened before binding"
+        if let preferred = visible.firstIndex(where: \.live) ?? visible.indices.first {
+            table.selectRowIndexes(IndexSet(integer: preferred), byExtendingSelection: false)
+        }
+        updateBindButton()
+        updateStatusSummary()
     }
     func tableViewSelectionDidChange(_ notification: Notification) {
-        bindButton.isEnabled = visible.indices.contains(table.selectedRow) && visible[table.selectedRow].live
+        let cancelledCheck = ownerCheck.isChecking
+        ownerCheck.invalidate()
+        updateBindButton()
+        if cancelledCheck { updateStatusSummary() }
     }
     func numberOfRows(in tableView: NSTableView) -> Int { visible.count }
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -273,13 +352,45 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         return label
     }
     @objc private func bindSelected() {
-        guard visible.indices.contains(table.selectedRow) else { return }
-        let chat = visible[table.selectedRow]
-        guard chat.live else {
-            message.stringValue = "Open this saved chat in Codex and Refresh, or resume it through Rebind to…"
-            return
+        guard !isReloading, panel?.isVisible == true,
+              visible.indices.contains(table.selectedRow) else { return }
+        let selected = visible[table.selectedRow]
+        guard let token = ownerCheck.begin(threadID: selected.id) else { return }
+        updateBindButton()
+        message.stringValue = "Checking…"
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { try CodexBridge.pickerDisposition(session: token.threadID) }
+            DispatchQueue.main.async {
+                guard let self, self.ownerCheck.accept(token) else { return }
+                self.updateBindButton()
+                switch result {
+                case .success(.bind(let chat)):
+                    self.reloadGeneration &+= 1
+                    self.panel?.orderOut(nil)
+                    self.panel = nil
+                    self.onPick?(chat)
+                case .success(.closed):
+                    self.message.stringValue = "This chat is closed. Open it in Codex, or use Rebind to… to resume it."
+                case .failure(let error):
+                    self.message.stringValue = "Could not verify this chat: \(error.localizedDescription)"
+                }
+            }
         }
-        panel?.orderOut(nil); panel = nil
-        onPick?(chat)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        ownerCheck.invalidate()
+        reloadGeneration &+= 1
+        updateBindButton()
+    }
+
+    private func updateBindButton() {
+        bindButton.title = ownerCheck.isChecking ? "Checking…" : "Bind selected chat"
+        bindButton.isEnabled = !isReloading && !ownerCheck.isChecking
+            && visible.indices.contains(table.selectedRow)
+    }
+
+    private func updateStatusSummary() {
+        message.stringValue = "\(visible.filter(\.live).count) verified live · \(visible.count) total · Other statuses are checked when binding"
     }
 }

@@ -931,7 +931,14 @@ def one_thread(thread_id, *, require_owner_state=False):
             row["ownerState"] = "live"
         return row
     try:
-        with DesktopIpcClient() as client:
+        # The native router allows up to ten seconds for every connected
+        # desktop client to reject owner discovery before it returns the
+        # conclusive no-client-found result.  Exact history activation needs
+        # that negative result; ordinary metadata probing stays on the short
+        # default deadline.
+        desktop_client = (DesktopIpcClient(timeout=12.0) if require_owner_state
+                          else DesktopIpcClient())
+        with desktop_client as client:
             owner, _ = client.find_owner(thread_id)
         if owner:
             row.update({"live": True,

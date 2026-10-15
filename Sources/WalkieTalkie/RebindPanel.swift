@@ -244,6 +244,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         let panel = KeyPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                              styleMask: [.borderless, .nonactivatingPanel],
                              backing: .buffered, defer: false)
+        panel.title = "Rebind to a Codex chat"
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true

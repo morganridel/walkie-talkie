@@ -35,7 +35,7 @@ final class CodexBindingTests: XCTestCase {
         var saved = row
         saved["live"] = false
         XCTAssertNil(CodexBridge.Conversation(saved)?.terminalTTY)
-        XCTAssertTrue(CodexBridge.Conversation(saved)?.locationLabel.hasPrefix("Saved") == true)
+        XCTAssertTrue(CodexBridge.Conversation(saved)?.locationLabel.hasPrefix("Status unverified") == true)
         for invalid in ["codex:chat-a", "ttys009", "/dev/ttys009;kill", "/tmp/ttys009"] {
             var malformed = row
             malformed["tty"] = invalid
@@ -83,6 +83,59 @@ final class CodexBindingTests: XCTestCase {
             session: "chat-a", recordedCWD: "/recorded/project", load: { _ in throw unknown })) {
             XCTAssertEqual(($0 as NSError).localizedDescription, "ownership unknown")
         }
+    }
+
+    func testPickerActivationBindsFreshlyVerifiedOwnerFromUnverifiedRow() throws {
+        let listed = CodexBridge.Conversation([
+            "id": "chat-a", "cwd": "/stale/project", "live": false,
+        ])!
+        let fresh = CodexBridge.Conversation([
+            "id": "chat-a", "cwd": "/fresh/project", "live": true,
+            "ttyOwner": true, "tty": "/dev/ttys009",
+        ])!
+        var loadedID: String?
+
+        let result = try CodexBridge.pickerDisposition(session: listed.id) { id in
+            loadedID = id
+            return fresh
+        }
+
+        XCTAssertEqual(loadedID, "chat-a")
+        XCTAssertEqual(result, .bind(fresh))
+        XCTAssertEqual(fresh.handle, .codex(threadID: "chat-a", tty: "/dev/ttys009"))
+    }
+
+    func testPickerActivationRejectsClosedUnknownAndWrongConversation() throws {
+        let closed = CodexBridge.Conversation(["id": "chat-a", "live": false])!
+        XCTAssertEqual(try CodexBridge.pickerDisposition(
+            session: "chat-a", load: { _ in closed }), .closed)
+
+        let unknown = NSError(domain: "test", code: 9,
+                              userInfo: [NSLocalizedDescriptionKey: "owner lookup timed out"])
+        XCTAssertThrowsError(try CodexBridge.pickerDisposition(
+            session: "chat-a", load: { _ in throw unknown })) {
+            XCTAssertEqual(($0 as NSError).localizedDescription, "owner lookup timed out")
+        }
+
+        let wrong = CodexBridge.Conversation(["id": "chat-b", "live": true])!
+        XCTAssertThrowsError(try CodexBridge.pickerDisposition(
+            session: "chat-a", load: { _ in wrong })) {
+            XCTAssertTrue(($0 as NSError).localizedDescription.contains("different chat"))
+        }
+    }
+
+    func testPickerOwnerCheckInvalidatesStaleCompletionAndDuplicateClick() {
+        let gate = CodexPickerCheckGate()
+        let first = gate.begin(threadID: "chat-a")!
+        XCTAssertNil(gate.begin(threadID: "chat-a"))
+
+        gate.invalidate()
+        XCTAssertFalse(gate.accept(first))
+
+        let reopened = gate.begin(threadID: "chat-b")!
+        XCTAssertFalse(gate.accept(first))
+        XCTAssertTrue(gate.accept(reopened))
+        XCTAssertFalse(gate.isChecking)
     }
 
     func testCropKeepsContextAndFilmCarriesItsContactSheet() throws {
