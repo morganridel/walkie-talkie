@@ -840,7 +840,8 @@ final class ElevenLabsSource: DictationSource {
     }
 
     static func transcribe(wav: URL, key: String, attempt: Int = 0, purpose: String = "final",
-                           upload: Upload? = nil, _ done: @escaping (Outcome) -> Void) {
+                           upload: Upload? = nil, session: URLSession = .shared,
+                           _ done: @escaping (Outcome) -> Void) {
         // A cancelled upload asks nothing more of the network — not even the retry.
         if upload?.isCancelled == true { return }
         let boundary = "walkie-\(UUID().uuidString)"
@@ -896,7 +897,7 @@ final class ElevenLabsSource: DictationSource {
             if retriable, attempt == 0 {
                 Log.error("ElevenLabs attempt 1 failed (\(error?.localizedDescription ?? "HTTP \(code)")) — retrying")
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.8) {
-                    transcribe(wav: wav, key: key, attempt: 1, purpose: purpose, upload: upload, done)
+                    transcribe(wav: wav, key: key, attempt: 1, purpose: purpose, upload: upload, session: session, done)
                 }
                 return
             }
@@ -948,7 +949,7 @@ final class ElevenLabsSource: DictationSource {
             if f.kind == "delay" {
                 DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(f.delayMs)) {
                     if upload?.isCancelled == true { return }
-                    let task = URLSession.shared.dataTask(with: req) { data, response, error in settle(data, response, error) }
+                    let task = session.dataTask(with: req) { data, response, error in settle(data, response, error) }
                     if let upload, !upload.adopt(task) { return }
                     task.resume()
                 }
@@ -969,7 +970,7 @@ final class ElevenLabsSource: DictationSource {
             }
             return
         }
-        let task = URLSession.shared.dataTask(with: req) { data, response, error in settle(data, response, error) }
+        let task = session.dataTask(with: req) { data, response, error in settle(data, response, error) }
         if let upload, !upload.adopt(task) { return }
         task.resume()
     }

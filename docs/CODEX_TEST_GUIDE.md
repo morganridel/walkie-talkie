@@ -59,7 +59,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (307 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (317 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -90,7 +90,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
    Consult route descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **77 Python tests** and **305 Swift tests** pass (307 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **315 Swift tests** pass (317 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -296,11 +296,19 @@ metadata independently matched `local-whisper` and the exact selected chat.
   finish even if a caption decode is still in flight. `POST /test/live-caption`
   tests the caption band presentation with synthetic text; it does not test
   actual MLX live decoding. Disable captions and confirm the band closes.
+- For offline cloud transport verification, run
+  `./tools/swift-build.sh test --filter ElevenLabsTransportTests`. Ten cases
+  intercept every request in memory with URLProtocol, use a dummy key and an
+  empty synthetic WAV, and test real parsing, bounded retries and cancellation.
+  They use no microphone or provider account and send no audio. They do not
+  establish successful live cloud transcription or the app-level fallback race.
 - Select ElevenLabs (or the other cloud row available in Engine), dictate a
   short sample, then exercise **Transcribe Locally Now** (⌘⌃X) and the automatic
   local-fallback setting. Verify which transcript wins if cloud and local
   results race. `POST /test/eleven` can inject cloud failures; keep credentials
-  out of logs and test notes.
+  out of logs and test notes. Use injected `401` or `timeout` for a failure-only
+  check, or point `WT_ELEVEN_BATCH_URL` at a local fake Scribe. An injected `500`
+  or `429` with `once:true` can consume its fault and retry the real provider.
 - Switch microphones from the **Mic** menu and confirm the selected input in the
   menu and through a real recording. Compare against `POST /test/mic` and
   `/test/input` state changes, which select devices but do not prove the
@@ -482,7 +490,7 @@ pause/resume, and two film/contact-sheet deliveries passed. The film sheets had
 fixture and captured synthetic selections from actual image inputs.
 
 Native CLI text/image/steering and production caret dispatch passed. The full
-current Swift suite executed 307 cases: 305 passed, 2 opt-in skips, no failures.
+current Swift suite executed 317 cases: 315 passed, 2 opt-in skips, no failures.
 Those opt-in PTY checks passed separately. All 77 Python tests passed. Physical
 Terminal/VS Code focus, mouse controls, optional providers and other devices
 remain separate manual checks.
@@ -514,7 +522,7 @@ currently clear on relaunch, so select the intended chat again.
 The subsequent **16:21** repair fixes single-click activation and selection loss
 from full table reloads. Plain navigation keys are handled at the real key
 panel, with an AppKit component fixture covering field/table focus. Current
-suite: 307 executed, 2 opt-in skips, 0 failures (305 passed). Both installed
+suite: 317 executed, 2 opt-in skips, 0 failures (315 passed). Both installed
 macOS grants were refreshed by the agent and verify, with a responding canary
 (2.16 ms). The user confirmed the repaired physical arrow/Return/single-click flow;
 readback shows the exact selected disposable chat bound. The installed **16:35**
