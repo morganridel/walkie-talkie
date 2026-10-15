@@ -124,6 +124,8 @@ class CodexBridgeTests(unittest.TestCase):
         self.sock = None
         self.ipc_server = None
         self.ipc_methods = []
+        self.ipc_requests = []
+        self.ipc_errors = {}
 
     def tearDown(self):
         if self.sock:
@@ -308,6 +310,34 @@ class CodexBridgeTests(unittest.TestCase):
                         return
                     method = request["method"]
                     self.ipc_methods.append(method)
+                    self.ipc_requests.append(request)
+                    if method in self.ipc_errors:
+                        send(connection, {
+                            "type": "response", "requestId": request["requestId"],
+                            "resultType": "error", "error": self.ipc_errors[method],
+                        })
+                        continue
+                    if method == "thread-follower-steer-turn":
+                        params = request.get("params") or {}
+                        restore = params.get("restoreMessage") or {}
+                        context = restore.get("context") or {}
+                        required_arrays = (
+                            context.get("workspaceRoots"), context.get("addedFiles"),
+                            context.get("fileAttachments"),
+                            context.get("commentAttachments"),
+                            context.get("imageAttachments"),
+                        )
+                        text_items = [value for value in params.get("input", [])
+                                      if value.get("type") == "text"]
+                        if (any(not isinstance(value, list) for value in required_arrays)
+                                or any(not isinstance(value.get("text_elements"), list)
+                                       for value in text_items)):
+                            send(connection, {
+                                "type": "response", "requestId": request["requestId"],
+                                "resultType": "error",
+                                "error": "invalid native composer message",
+                            })
+                            continue
                     if method == "initialize":
                         result = {"clientId": "walkie-client"}
                     elif method == "thread-owner-discovery":
@@ -579,6 +609,77 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertEqual(result["turnId"], "desktop-active-turn")
         self.assertEqual(self.ipc_methods.count("thread-follower-steer-turn"), 1)
         self.assertNotIn("thread-follower-start-turn", self.ipc_methods)
+        request = next(value for value in self.ipc_requests
+                       if value["method"] == "thread-follower-steer-turn")
+        params = request["params"]
+        restore = params["restoreMessage"]
+        self.assertEqual(restore["id"], params["clientUserMessageId"])
+        self.assertEqual(restore["text"], "continue")
+        self.assertEqual(restore["cwd"], "/tmp/project/sub")
+        self.assertIsInstance(restore["createdAt"], int)
+        self.assertEqual(restore["context"], {
+            "prompt": "continue",
+            "messageThreadId": None,
+            "turnTrigger": "walkie-talkie",
+            "addedFiles": [],
+            "fileAttachments": [],
+            "commentAttachments": [],
+            "ideContext": None,
+            "imageAttachments": [],
+            "workspaceRoots": ["/tmp/project/sub"],
+        })
+
+    def test_active_desktop_steer_preserves_input_images(self):
+        db = sqlite3.connect(self.home / "thread_history_1.sqlite")
+        db.execute("UPDATE thread_turns SET status = 'inProgress'")
+        db.commit()
+        db.close()
+        self.make_desktop_ipc()
+        text = self.root / "message.txt"
+        text.write_text("describe")
+        image = self.root / "image.png"
+        image.write_bytes(b"synthetic image")
+        self.json_output(self.run_bridge(
+            "send", "--thread", "11111111-1111-4111-8111-111111111111",
+            "--text-file", str(text), "--image", str(image)))
+        request = next(value for value in self.ipc_requests
+                       if value["method"] == "thread-follower-steer-turn")
+        self.assertEqual(request["params"]["input"], [
+            {"type": "text", "text": "describe", "text_elements": []},
+            {"type": "localImage", "path": str(image.resolve())},
+        ])
+
+    def test_active_desktop_owner_rejection_is_not_masked_as_unowned(self):
+        db = sqlite3.connect(self.home / "thread_history_1.sqlite")
+        db.execute("UPDATE thread_turns SET status = 'inProgress'")
+        db.commit()
+        db.close()
+        self.make_socket()
+        self.env["FAKE_THREAD_STATUS"] = "notLoaded"
+        self.ipc_errors["thread-follower-steer-turn"] = "native steer rejected"
+        self.make_desktop_ipc()
+        text = self.root / "message.txt"
+        text.write_text("continue")
+        result = self.run_bridge(
+            "send", "--thread", "11111111-1111-4111-8111-111111111111",
+            "--text-file", str(text))
+        self.assertEqual(result.returncode, 2)
+        error = json.loads(result.stdout)
+        self.assertEqual(error["code"], "desktop_thread_unavailable")
+        self.assertEqual(error["details"]["reason"], "native steer rejected")
+        request = next(value for value in self.ipc_requests
+                       if value["method"] == "thread-follower-steer-turn")
+        self.assertEqual(request["params"]["restoreMessage"]["cwd"], "/tmp/project")
+
+    def test_desktop_owner_discovery_miss_has_distinct_error(self):
+        self.ipc_errors["thread-owner-discovery"] = "no-client-found"
+        self.make_desktop_ipc()
+        with mock.patch.dict(os.environ, self.env, clear=True):
+            with codex_bridge.DesktopIpcClient() as client:
+                with self.assertRaises(codex_bridge.BridgeError) as caught:
+                    client.find_owner("11111111-1111-4111-8111-111111111111")
+        self.assertEqual(caught.exception.code, "desktop_thread_not_owned")
+        self.assertEqual(caught.exception.details["reason"], "no-client-found")
 
     def test_projects_include_swift_compatible_rank_fields(self):
         result = self.json_output(self.run_bridge("projects"))

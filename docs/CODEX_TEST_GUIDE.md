@@ -38,18 +38,53 @@ them at a real work chat without checking the selected target first.
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all 43 Python tests and all 268 Swift tests pass. The release
+Current evidence: all **46 Python tests** and **268 Swift tests** pass. The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
-valid after model startup. Accessibility was not granted, and automated native
-UI access was not approved, so visible UI and physical interaction checks remain.
-A native CLI PTY E2E passed initial prompt exactly
-once, direct follow-up, synthetic image interpretation, and same-turn busy steer;
-the disposable chat was archived and the TUI exited 0. The finish helper has 12
-mocked tests and a safe `--dry-run`; no real tab close has been tested. A
-read-only same-user Desktop IPC probe confirmed thread ownership only. Desktop
-send needs explicit approval for a disposable Desktop chat. Desktop IPC is
-internal and version-coupled; ownership discovery alone does not verify delivery.
+valid after model startup. Native CLI tests passed first-prompt exactly-once
+delivery, follow-up text, synthetic red-image input, and same-turn steering.
+A user-authorized disposable desktop chat also passed text, red-image input,
+and steering the same active turn. The installed Swift app passed bind, hold,
+edit, send, and cancel checks using synthetic transcripts; cancellation created
+no delivery or new chat turn. Desktop IPC is internal and version-coupled;
+tested Desktop version: 26.1007.30912, native CLI: 0.162.0-alpha.17.2.
+The CLI finish helper has 12 mocked tests and a safe dry-run; no real tab close
+has been tested. Desktop completion archived only the disposable chat and the
+test restored it afterward. Archiving interrupts the active turn, so provide
+the result before the archive action; a final answer after archive is lost. Rendered UI and physical gestures
+remain separate manual checks.
+
+### macOS permissions and stopping a recording
+
+- **System Settings → Privacy & Security → Microphone → Walkie Talkie: on**
+  permits audio capture. Local MLX transcription does not require enabling
+  Apple's keyboard Dictation.
+- **Accessibility → Walkie Talkie: on** permits global shortcuts, mouse
+  gestures, and caret/context access. Start and stop a prompt with the same
+  shortcut: **Control + Command + D (⌃⌘D)**. The menu's Start/Stop Dictation
+  action is an alternative. A missing event tap prevents the global shortcut
+  even when recording from the menu works.
+- **Screen & System Audio Recording → Walkie Talkie: on** permits screen,
+  crop, and film capture. Restart the app when macOS requests it.
+- **Automation → Walkie Talkie → Terminal: on**, if macOS requests it, permits
+  launching and managing a Terminal tab. Chrome automation is needed only for
+  the relevant browser actions. Allow individual prompts when using those
+  features; these rows may not exist before the first request.
+
+If Accessibility looks enabled but shortcuts remain dead, compare the running
+process's startup `accessibility trusted` log and the harmless event-tap canary:
+`POST /test/firewall {}` should report `alive:true`. A Settings checkbox alone
+does not establish that the process is trusted. Ad-hoc builds can invalidate a
+previous grant. After the final app has been installed, quit it, remove the old
+Walkie Talkie entry with the minus button, add **/Applications/Walkie Talkie.app**
+with the plus button, enable it, and reopen it. Use the actual installed bundle;
+do not add a build-directory executable. If it still reports untrusted, record
+that result and leave physical tests pending. Never edit the macOS TCC database.
+
+During the latest permission check, Microphone and Screen Recording were on.
+Accessibility appeared on, but toggle/reopen still left the app untrusted and
+its event tap dead; a fresh entry for the final build remains to be checked.
+The latest canary also found the screen locked; unlock before checking shortcuts.
 
 ## Codex binding and chat selection
 
@@ -70,10 +105,10 @@ internal and version-coupled; ownership discovery alone does not verify delivery
   not infer persistence from a single in-process rebind.
 - Test the Codex CLI binding and picker independently from Codex desktop. The
   desktop bridge has a same-user native IPC adapter with owner discovery, but
-  actual message delivery has not been verified. Only after explicit approval
-  for a disposable desktop test chat, send harmless text and verify it appears
-  exactly once in the intended owner window. Treat this internal, version-coupled
-  IPC as a compatibility risk; do not infer send success from ownership discovery.
+  text, images, and active-turn steering have passed in a disposable desktop
+  chat. Repeat with a harmless marker and confirm it reaches the intended chat
+  exactly once. Treat this internal, version-coupled IPC as a compatibility risk;
+  ownership discovery alone does not establish delivery after an app update.
 - Run **Prompt to new** against a disposable folder and verify the expected
   Codex CLI process opens with the initial prompt. The `walkie-codex` launcher
   starts the shared daemon idempotently, creates or resumes the exact
@@ -89,7 +124,8 @@ internal and version-coupled; ownership discovery alone does not verify delivery
 - For CLI bridge evidence, a native PTY smoke has already confirmed first-prompt
   exactly-once delivery, a direct follow-up, reading a synthetic red image, and
   steering an active turn without changing its turn ID. These protocol results
-  do not verify app-picker/UI behavior or desktop-chat delivery. Repeat UI steps
+  do not verify app-picker/UI behavior. Desktop bridge delivery was tested
+  separately as described above. Repeat UI steps
   only with a disposable Codex CLI conversation.
 - `POST /test/spawn` enters the new-session prompt flow with supplied text;
   `POST /test/spawn-folders` opens the folder chooser; `POST /test/spawn-pick`
@@ -145,8 +181,10 @@ internal and version-coupled; ownership discovery alone does not verify delivery
   Codex Desktop chat or to close an app/window.
 - In a desktop-chat prompt, the completion cue uses the receiving model's own
   `set_thread_archived` tool after the task. The helper cannot close an exact
-  desktop-owned window. The desktop send/archive path is pending end-to-end
-  approval and verification; the read-only owner probe does not count.
+  desktop-owned window. The desktop send path passed disposable-chat tests.
+  Completion archive passed on the disposable chat. Archiving interrupts the
+  active turn, so the result must be given before the archive tool action.
+  Restore the test chat afterward if you want to reuse it.
 
 ## Local MLX, cloud fallback, captions, and microphone
 

@@ -250,16 +250,28 @@ class DesktopIpcClient:
             return response
 
     def find_owner(self, thread_id, host_id="local"):
-        response = self.request("thread-owner-discovery", {
-            "hostId": host_id, "conversationId": thread_id,
-        })
-        return response.get("handledByClientId"), response.get("result") or {}
+        try:
+            response = self.request("thread-owner-discovery", {
+                "hostId": host_id, "conversationId": thread_id,
+            })
+        except BridgeError as error:
+            details = error.details or {}
+            if (error.code == "desktop_thread_unavailable"
+                    and details.get("reason") == "no-client-found"):
+                raise BridgeError(
+                    "no Codex Desktop window owns this thread",
+                    code="desktop_thread_not_owned",
+                    details=details,
+                ) from error
+            raise
+        owner = response.get("handledByClientId")
+        if not owner:
+            raise BridgeError("no Codex Desktop window owns this thread",
+                              code="desktop_thread_not_owned")
+        return owner, response.get("result") or {}
 
     def follower_request(self, thread_id, method, params, host_id="local"):
         owner, capabilities = self.find_owner(thread_id, host_id)
-        if not owner:
-            raise BridgeError("no Codex Desktop window owns this thread",
-                              code="desktop_thread_unavailable")
         response = self.request(method, params, target=owner, host_id=host_id)
         return response.get("result") or {}, capabilities
 
@@ -1040,22 +1052,63 @@ def nested_turn_id(value):
     return None
 
 
-def send_desktop(args, inputs):
+def desktop_restore_message(thread_id, inputs, message_id, cwd=None):
+    """Build the local composer record required by Desktop's steer handler."""
+    if not isinstance(cwd, str) or not cwd:
+        rows = db_threads(thread_id=thread_id, limit=1)
+        cwd = rows[0].get("cwd") if rows else None
+    if not isinstance(cwd, str) or not cwd:
+        raise BridgeError(
+            "Codex Desktop thread working directory is unavailable",
+            code="desktop_thread_metadata_unavailable",
+            details={"threadId": thread_id},
+        )
+    text = "\n".join(
+        value["text"] for value in inputs
+        if value.get("type") == "text" and isinstance(value.get("text"), str)
+    )
+    return {
+        "id": message_id,
+        "text": text,
+        "context": {
+            "prompt": text,
+            "messageThreadId": None,
+            "turnTrigger": "walkie-talkie",
+            "addedFiles": [],
+            "fileAttachments": [],
+            "commentAttachments": [],
+            "ideContext": None,
+            "imageAttachments": [],
+            "workspaceRoots": [cwd],
+        },
+        "cwd": cwd,
+        "createdAt": int(time.time() * 1000),
+    }
+
+
+def send_desktop(args, inputs, cwd=None):
     """Route through the app's owner/follower IPC; never resume a second copy."""
     message_id = str(uuid.uuid4())
+    desktop_inputs = [
+        {**value, "text_elements": value.get("text_elements") or []}
+        if value.get("type") == "text" else value
+        for value in inputs
+    ]
     active = active_turn_id(args.thread)
     if active:
         if args.model:
             raise BridgeError("cannot change model while steering an active turn",
                               code="active_model_override")
         method = "thread-follower-steer-turn"
-        params = {"conversationId": args.thread, "input": inputs,
-                  "clientUserMessageId": message_id}
+        params = {"conversationId": args.thread, "input": desktop_inputs,
+                  "clientUserMessageId": message_id,
+                  "restoreMessage": desktop_restore_message(
+                      args.thread, desktop_inputs, message_id, cwd=cwd)}
         action = "steered"
     else:
         method = "thread-follower-start-turn"
         request = {"threadId": args.thread, "clientUserMessageId": message_id,
-                   "input": inputs, "turnTrigger": "walkie-talkie"}
+                   "input": desktop_inputs, "turnTrigger": "walkie-talkie"}
         if args.model:
             request["model"] = args.model
         params = {"conversationId": args.thread,
@@ -1116,9 +1169,9 @@ def send_existing(args):
             # if no owner exists, require an explicit launcher resume instead
             # of creating a second live copy behind the user's back.
             try:
-                return send_desktop(args, inputs)
+                return send_desktop(args, inputs, cwd=thread.get("cwd"))
             except BridgeError as error:
-                if error.code not in ("desktop_ipc_unavailable", "desktop_thread_unavailable"):
+                if error.code not in ("desktop_ipc_unavailable", "desktop_thread_not_owned"):
                     raise
             raise BridgeError(
                 "thread is not owned by the shared daemon or a desktop window; resume it explicitly",

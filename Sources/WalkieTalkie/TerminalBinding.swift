@@ -435,13 +435,15 @@ final class TerminalBinding {
 
     private func codexTarget(_ chat: CodexBridge.Conversation, tty: String? = nil, frame: CGRect? = nil) -> Target {
         let terminalTTY = tty ?? chat.terminalTTY
-        let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").first
         return Target(handle: terminalTTY.map { .codex(threadID: chat.id, tty: $0) } ?? chat.handle,
                       label: chat.folder.isEmpty ? "Codex" : chat.folder,
                       address: chat.key, appName: terminalTTY == nil ? "Codex" : "Terminal",
                       bundleID: terminalTTY == nil ? "com.openai.codex" : "com.apple.Terminal",
-                      folder: chat.cwd.isEmpty ? nil : Self.label(forDirectory: chat.cwd), title: chat.title,
-                      sourceFrame: frame ?? (terminalTTY == nil ? app.flatMap { Self.focusedWindow(pid: $0.processIdentifier).frame } : nil), boundAt: Date())
+                      // Use Codex metadata; a filesystem/Git lookup can stall on privacy prompts.
+                      folder: chat.cwd.isEmpty ? nil : chat.folder, title: chat.title,
+                      // The IPC owner is a chat, not the currently focused desktop window.
+                      // AX lookup here both guesses the wrong window and can block binding.
+                      sourceFrame: frame, boundAt: Date())
     }
 
     /// `ttys014` → `/dev/ttys014`; anything already a path is left alone.

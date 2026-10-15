@@ -44,8 +44,8 @@ compiler workaround; system Command Line Tools remain unchanged. The full Swift
 suite passes 268 tests. The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
-again after a rebuild. Physical controls and desktop message delivery still need
-the manual checks below.
+again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
+Physical controls and the remaining UI features still need the manual checks below.
 
 Allow the requested **Accessibility**, **Microphone**, and **Screen Recording**
 permissions in macOS. Launch the `.app` through Finder or `open` so macOS keeps
@@ -78,13 +78,17 @@ A native CLI PTY smoke test verified the initial prompt appeared once, a follow-
 sent directly, a synthetic red image was interpreted as red, and a follow-up
 while Codex was busy steered the same turn ID and completed with its expected
 marker. The test chat was archived and its CLI exited successfully. This verifies
-the CLI bridge only; it does not verify desktop-app delivery or the packaged app.
+the CLI bridge; desktop and packaged-app evidence is described separately below.
 
 Codex desktop integration uses a same-user IPC adapter that preserves the
 desktop protocol version and verifies thread ownership. This is an internal,
-version-coupled interface. Ownership discovery has passed a read-only probe;
-desktop message delivery still needs an end-to-end check in a disposable desktop
-chat before relying on it. Quick-answer timing measured roughly 0.20 s to worker
+version-coupled interface. A disposable desktop chat passed text delivery,
+synthetic red-image interpretation, and steering the same active turn. The
+installed app also passed bind, hold, edit, send, and cancel checks using a
+synthetic transcript; this does not verify microphone gestures or rendered UI.
+Desktop steering includes the native composer record and text-element arrays
+required by the tested desktop version (26.1007.30912). Quick-answer timing
+measured roughly 0.20 s to worker
 ready, 2.61 s to first delta, and 2.71 s total; web mode measured 5.24 s to first
 delta and 5.36 s total. These are observations from one run, not performance
 guarantees.
@@ -105,7 +109,7 @@ loaded from `chrome-extension/` using `chrome://extensions` → Developer mode �
    project, select the intended chat, and bind it. Confirm the binding in the
    app's target row before dictating.
 2. Start a prompt with **⌘⌃D** or from the menu. Speak, optionally capture a
-   screenshot or select context, then stop. Review the prompt and attachments;
+   screenshot or select context, then press **⌘⌃D again to stop**. Review the prompt and attachments;
    send or cancel it in the held-prompt panel.
 3. Choose **Engine** to select a local model or optional cloud recognizer, and
    **Mic** to select an input device. The menu also exposes local warm-up,
@@ -114,8 +118,8 @@ loaded from `chrome-extension/` using `chrome://extensions` → Developer mode �
 The app's menu lists current gestures and actions. Use **Disconnect** to clear a
 binding. **Rebind to…** offers recent destinations and searches Codex session
 history. New Codex chats can be launched through the Codex CLI from **Prompt to
-new**. Codex desktop message delivery remains under validation; verify the
-result in the selected chat before relying on it.
+new**. Codex desktop text, images, and steering have passed disposable-chat
+tests; verify the selected target before sending work prompts.
 
 The packaged app uses the generic local bundle identity `local.walkie-talkie`.
 On a fresh profile, Local Whisper is the default engine; saved preferences or
@@ -144,7 +148,7 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 43 passing tests and the Swift suite has 268 passing
+The current Python suite has 46 passing tests and the Swift suite has 268 passing
 tests. The finish helper has 12 mocked tests and a safe dry-run check; it has not
 closed a real Terminal tab. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for
