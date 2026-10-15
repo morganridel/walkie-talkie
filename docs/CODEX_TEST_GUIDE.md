@@ -607,4 +607,4 @@ legacy coverage, new-chat dispatch in Wheel mode without posted events,
 autorepeat suppression, cancel-only Escape dispatch, stage-dependent hints,
 compact external-display layout and rendered dark/light previews. The full
 Swift run passed: 330 executed, 2 opt-in skips, 0 failures (328 passed).
-The 19:17 installed build passed a synthetic plain recording/hint/cancel check without microphone, screenshots or delivery. Physical shortcut checks and renewal of existing macOS grants are deferred until Morgan unlocks the Mac, as requested.
+The 19:17 installed build passed a synthetic plain recording/hint/cancel check without microphone, screenshots or delivery. After unlock, the existing grants were refreshed in System Settings. The running app verifies Accessibility/event tap and Screen Recording, the saved test-chat binding was restored, and English/workspace/keyboard-hint settings remain. Morgan physically confirmed that Control-Command-I inserted spoken words without submission and that the Control-Command recording reminder appeared. App metadata reports Local Whisper delivery to the caret; the other letter aliases were not separately exercised physically.
