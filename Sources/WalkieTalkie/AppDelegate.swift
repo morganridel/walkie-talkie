@@ -1663,6 +1663,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if let chats = try? CodexBridge.conversations(liveOnly: true) {
                 for chat in chats { live[chat.key] = chat.title }
             }
+            if let target = self.terminal.target, target.address.hasPrefix("codex:") {
+                live[target.address] = target.title ?? target.label
+            }
             return RebindHistory.shared.rows(live: live,
                                              boundAddress: self.terminal.target?.address)
         }
@@ -1671,21 +1674,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // still showing it. Two calls at one opening rather than a cached map
         // passed between them — 30 ms against a list that would otherwise be
         // deciding liveness from a snapshot it did not take.
-        status.liveTitles = { TerminalBinding.liveTitles() }
+        status.liveTitles = { [weak self] in
+            var live = TerminalBinding.liveTitles()
+            if let target = self?.terminal.target, target.address.hasPrefix("codex:") {
+                live[target.address] = target.title ?? target.label
+            }
+            return live
+        }
         status.onRebindMessage = { [weak self] text in
             DispatchQueue.main.async { self?.overlay.flash(text, duration: 3) }
         }
-        // **A session found in the transcripts whose window has been closed.**
-        // The spawn is the one ⇧ + wheel makes, minus the prompt: same tiling,
-        // same flight, same bind at the end — `adoptSpawnedWindow` does not care
-        // that the session inside the window is an old one.
-        //
-        // The flash is not decoration here. `do script` plus a Claude Code
-        // starting up is a couple of seconds in which the panel has closed, the
-        // window is not on a screen he is looking at, and the only alternative is
-        // a gesture that appears to have done nothing.
+        // Search uses bounded owner probes, so activation asks the exact stable
+        // ID again. A live owner binds; only a conclusively closed chat resumes.
         status.onResumeSession = { [weak self] session, cwd in
-            self?.resumeSession(session, in: cwd)
+            self?.activateSearchSession(session, recordedCWD: cwd)
         }
         // No toggle, off the main thread, and the window brought forward — see
         // `rebindFromMenu`.
@@ -8324,6 +8326,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // learn the words went nowhere (⌘⇧P still has them).
                     Log.error("✨ spawn failed: \(why)")
                     self.overlay.flash("⚠️ \(why)", duration: 8)
+                }
+            }
+        }
+    }
+
+    /// A history hit is not proof that a chat is closed. Resolve its stable ID
+    /// one more time at activation: bind a verified live owner, resume only a
+    /// conclusively unowned chat, and leave an unknown outcome untouched.
+    private func activateSearchSession(_ session: String, recordedCWD: String) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            do {
+                switch try CodexBridge.rebindDisposition(session: session,
+                                                         recordedCWD: recordedCWD) {
+                case .bind(let chat):
+                    let bound = self.terminal.bind(chat: chat)
+                    DispatchQueue.main.async { self.showBound(bound) }
+                    TerminalBinding.bringToFront(bound)
+                case .resume(let id, let cwd):
+                    // `resumeSession` latches NSEvent.mouseLocation before it
+                    // dispatches the spawn, so enter it on AppKit's thread.
+                    DispatchQueue.main.async { self.resumeSession(id, in: cwd) }
+                }
+            } catch {
+                let reason = error.localizedDescription
+                Log.error("📍 could not verify Codex chat \(session): \(reason)")
+                DispatchQueue.main.async {
+                    self.overlay.flash("⚠️ could not verify Codex chat — \(reason)", duration: 8)
                 }
             }
         }

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Finish a Codex CLI task and close only its verified Terminal tab.
 
+Terminal's AppleScript dictionary closes windows, not tab objects. This helper
+therefore closes only when the exact tty is the sole tab in its verified window;
+multi-tab windows are reported unsupported before the Codex process is signaled.
+
 For desktop-owned Codex conversations this helper deliberately reports
 unsupported. Desktop chats must be archived through the owning app integration.
 """
@@ -58,7 +62,7 @@ def verified_record(thread_id):
 
 def terminal_tab_count(tty):
     device = codex_bridge.validated_tty(tty)
-    script = f'''tell application "Terminal"
+    script = f'''tell application id "com.apple.Terminal"
     set matches to 0
     repeat with w in windows
         repeat with t in tabs of w
@@ -75,6 +79,48 @@ end tell'''
         return int(result.stdout.strip()) if result.returncode == 0 else 0
     except ValueError:
         return 0
+
+
+def terminal_window_snapshot(tty):
+    """Return the unique tty's Terminal window ID and tab count, or None."""
+    device = codex_bridge.validated_tty(tty)
+    script = f'''tell application id "com.apple.Terminal"
+    set matches to 0
+    set matchedWindowID to ""
+    set matchedWindowTabCount to 0
+    repeat with w in windows
+        set windowTabs to tabs of w
+        set windowTabCount to count of windowTabs
+        repeat with t in windowTabs
+            try
+                if (tty of t as text) is "{device}" then
+                    set matches to matches + 1
+                    set matchedWindowID to id of w as text
+                    set matchedWindowTabCount to windowTabCount
+                end if
+            end try
+        end repeat
+    end repeat
+    return (matches as text) & linefeed & matchedWindowID & linefeed & (matchedWindowTabCount as text)
+end tell'''
+    try:
+        result = subprocess.run(["/usr/bin/osascript", "-e", script],
+                                capture_output=True, text=True, timeout=8, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    lines = (result.stdout or "").splitlines()
+    if len(lines) < 3:
+        return None
+    try:
+        matches = int(lines[0].strip())
+        window_tabs = int(lines[2].strip())
+        window_id = int(lines[1].strip()) if lines[1].strip() else None
+    except ValueError:
+        return None
+    return {"matches": matches, "windowID": window_id,
+            "windowTabCount": window_tabs}
 
 
 def tty_owner_identity(tty):
@@ -116,44 +162,127 @@ def tty_owner_identity(tty):
     return pid, started
 
 
-def close_terminal_tab(tty):
-    """Close exactly one Terminal tab with this tty; never close its window/app."""
+def close_terminal_window(tty, window_id):
+    """Close the verified single-tab window containing this exact tty."""
+    script = close_terminal_window_script(tty, window_id)
+    try:
+        result = subprocess.run(["/usr/bin/osascript", "-e", script],
+                                capture_output=True, text=True, timeout=8, check=False)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "detail": "Terminal close AppleScript timed out after 8 seconds"}
+    except OSError as error:
+        detail = str(error).replace("\n", " ")[:160]
+        return {"ok": False, "detail": f"could not start osascript: {detail}"}
+
+    stdout = (result.stdout or "").strip()
+    if result.returncode == 0 and stdout == "closed":
+        return {"ok": True}
+    if result.returncode == 0 and stdout == "ambiguous":
+        return {"ok": False, "detail": "Terminal no longer has exactly one matching tab"}
+    if result.returncode == 0 and stdout == "multi_tab":
+        return {"ok": False, "detail": "the matching Terminal window has sibling tabs"}
+    if result.returncode == 0 and stdout == "window_changed":
+        return {"ok": False, "detail": "the matching Terminal window changed before close"}
+    stderr = " ".join((result.stderr or "").split())[:200]
+    detail = f"osascript exit {result.returncode}"
+    if stderr:
+        detail += f": {stderr}"
+    elif stdout:
+        detail += f": unexpected response {stdout[:80]!r}"
+    return {"ok": False, "detail": detail}
+
+
+def close_terminal_window_script(tty, window_id):
+    """Build a script that closes only an exact one-tab Terminal window.
+
+    Terminal's dictionary supports closing windows, not tab objects. The window
+    is safe to close only after both passes verify one tab, its exact tty, and
+    its recorded window ID.
+    """
     device = codex_bridge.validated_tty(tty)
-    script = f'''tell application "Terminal"
-    set foundTabs to {{}}
+    script = f'''tell application id "com.apple.Terminal"
+    set matches to 0
+    set matchingWindow to missing value
+    set matchingWindowTabCount to 0
     repeat with w in windows
-        repeat with t in tabs of w
+        set windowTabs to tabs of w
+        set windowTabCount to count of windowTabs
+        repeat with t in windowTabs
             try
-                if (tty of t as text) is "{device}" then set end of foundTabs to t
+                if (tty of t as text) is "{device}" then
+                    set matches to matches + 1
+                    set matchingWindow to w
+                    set matchingWindowTabCount to windowTabCount
+                end if
             end try
         end repeat
     end repeat
-    if (count of foundTabs) is not 1 then return "ambiguous"
-    close item 1 of foundTabs
+    if matches is not 1 then return "ambiguous"
+    if matchingWindowTabCount is not 1 then return "multi_tab"
+    if (id of matchingWindow as text) is not "{window_id}" then return "window_changed"
+
+    set finalMatches to 0
+    set finalWindow to missing value
+    set finalTabCount to 0
+    repeat with w in windows
+        set windowTabs to tabs of w
+        set windowTabCount to count of windowTabs
+        repeat with t in windowTabs
+            try
+                if (tty of t as text) is "{device}" then
+                    set finalMatches to finalMatches + 1
+                    set finalWindow to w
+                    set finalTabCount to windowTabCount
+                end if
+            end try
+        end repeat
+    end repeat
+    if finalMatches is not 1 then return "ambiguous"
+    if finalTabCount is not 1 then return "multi_tab"
+    if (id of finalWindow as text) is not "{window_id}" then return "window_changed"
+    set finalTabs to tabs of finalWindow
+    if (count of finalTabs) is not 1 then return "multi_tab"
+    if (tty of item 1 of finalTabs as text) is not "{device}" then return "window_changed"
+    close finalWindow
     return "closed"
 end tell'''
-    result = subprocess.run(["/usr/bin/osascript", "-e", script],
-                            capture_output=True, text=True, timeout=8, check=False)
-    return (result.stdout or "").strip() == "closed" and result.returncode == 0
+    return script
+
+
+def verified_single_tab_window(tty, expected_window_id=None):
+    """Verify one tty match and a one-tab window, optionally by saved ID."""
+    if terminal_tab_count(tty) != 1:
+        return None, "terminal_tab_not_unique"
+    snapshot = terminal_window_snapshot(tty)
+    if snapshot is None or snapshot["matches"] != 1 or snapshot["windowID"] is None:
+        return None, "terminal_window_unknown"
+    if snapshot["windowTabCount"] != 1:
+        return None, "terminal_multitab_close_unsupported"
+    if expected_window_id is not None and snapshot["windowID"] != expected_window_id:
+        return None, "terminal_window_changed"
+    return snapshot, None
 
 
 def finish_verified(thread_id, *, dry_run=False):
+    """Finish only a verified CLI target whose Terminal window has one tab."""
     record = verified_record(thread_id)
     if record is None:
         return {"ok": False, "action": "unsupported",
                 "reason": "no_verified_cli_terminal_sidecar",
                 "threadId": thread_id}
     tty = record["tty"]
-    if terminal_tab_count(tty) != 1:
+    initial_window, why = verified_single_tab_window(tty)
+    if why:
         return {"ok": False, "action": "unsupported",
-                "reason": "terminal_tab_not_unique", "threadId": thread_id}
+                "reason": why, "threadId": thread_id}
     owner_before = tty_owner_identity(tty)
     if owner_before is None:
         return {"ok": False, "action": "unsupported",
                 "reason": "terminal_owner_unknown", "threadId": thread_id}
     if dry_run:
         return {"ok": True, "action": "would_close_tab", "threadId": thread_id,
-                "tty": tty, "pid": record["pid"], "terminalOwner": owner_before[0]}
+                "tty": tty, "pid": record["pid"], "terminalOwner": owner_before[0],
+                "windowID": initial_window["windowID"]}
 
     # The sidecar is checked again immediately before signaling. Never signal
     # Codex's shared app-server daemon or a desktop app process.
@@ -189,18 +318,30 @@ def finish_verified(thread_id, *, dry_run=False):
         return {"ok": False, "action": "unsupported",
                 "reason": "terminal_owner_changed", "threadId": thread_id,
                 "tty": tty}
-    if terminal_tab_count(tty) != 1:
+    after_window, why = verified_single_tab_window(
+        tty, expected_window_id=initial_window["windowID"])
+    if why:
         return {"ok": False, "action": "unsupported",
-                "reason": "terminal_tab_not_unique", "threadId": thread_id}
+                "reason": why, "threadId": thread_id, "tty": tty}
     # Check again immediately before the AppleScript operation to minimize the
     # tty-reuse race between owner discovery and addressing the tab by tty.
     if tty_owner_identity(tty) != owner_before:
         return {"ok": False, "action": "unsupported",
                 "reason": "terminal_owner_changed", "threadId": thread_id,
                 "tty": tty}
-    if not close_terminal_tab(tty):
+    final_window, why = verified_single_tab_window(
+        tty, expected_window_id=after_window["windowID"])
+    if why:
+        return {"ok": False, "action": "unsupported",
+                "reason": why, "threadId": thread_id, "tty": tty}
+    if tty_owner_identity(tty) != owner_before:
+        return {"ok": False, "action": "unsupported",
+                "reason": "terminal_owner_changed", "threadId": thread_id,
+                "tty": tty}
+    close_result = close_terminal_window(tty, final_window["windowID"])
+    if not close_result["ok"]:
         return {"ok": False, "action": "failed", "reason": "terminal_tab_close_failed",
-                "threadId": thread_id, "tty": tty}
+                "detail": close_result["detail"], "threadId": thread_id, "tty": tty}
     return {"ok": True, "action": "closed_tab", "threadId": thread_id,
             "tty": tty, "pid": record["pid"]}
 
@@ -261,14 +402,15 @@ def main(argv=None):
         emit({"ok": False, "action": "unsupported",
               "reason": "no_verified_cli_terminal_sidecar", "threadId": thread_id})
         return 3
-    if terminal_tab_count(record["tty"]) != 1:
-        emit({"ok": False, "action": "unsupported", "reason": "terminal_tab_not_unique",
+    window, why = verified_single_tab_window(record["tty"])
+    if why:
+        emit({"ok": False, "action": "unsupported", "reason": why,
               "threadId": thread_id})
         return 3
     if args.dry_run:
         emit({"ok": True, "action": "would_wait_and_close_tab" if turn_id else "would_close_tab",
               "threadId": thread_id, "turnId": turn_id, "tty": record["tty"],
-              "pid": record["pid"]})
+              "pid": record["pid"], "windowID": window["windowID"]})
         return 0
     if turn_id:
         command = [sys.executable, str(Path(__file__).resolve()), "--thread", thread_id,

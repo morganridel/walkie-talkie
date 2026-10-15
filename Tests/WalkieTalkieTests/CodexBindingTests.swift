@@ -54,6 +54,37 @@ final class CodexBindingTests: XCTestCase {
         XCTAssertFalse(TerminalBinding.isBindable(bundleID: "com.apple.finder"))
     }
 
+    func testRebindActivationBindsFreshlyVerifiedLiveOwner() throws {
+        let live = CodexBridge.Conversation([
+            "id": "chat-a", "cwd": "/recorded/project", "live": true,
+            "ttyOwner": true, "tty": "codex:chat-a",
+        ])!
+
+        XCTAssertEqual(try CodexBridge.rebindDisposition(
+            session: "chat-a", recordedCWD: "/stale/path", load: { _ in live }),
+            .bind(live))
+    }
+
+    func testRebindActivationResumesOnlyConfirmedClosedMetadata() throws {
+        let closed = CodexBridge.Conversation([
+            "id": "chat-a", "cwd": "/fresh/project", "live": false,
+        ])!
+
+        XCTAssertEqual(try CodexBridge.rebindDisposition(
+            session: "chat-a", recordedCWD: "/stale/path", load: { _ in closed }),
+            .resume(session: "chat-a", cwd: "/fresh/project"))
+    }
+
+    func testRebindActivationPropagatesUnknownOwnershipWithoutResume() {
+        let unknown = NSError(domain: "test", code: 7,
+                              userInfo: [NSLocalizedDescriptionKey: "ownership unknown"])
+
+        XCTAssertThrowsError(try CodexBridge.rebindDisposition(
+            session: "chat-a", recordedCWD: "/recorded/project", load: { _ in throw unknown })) {
+            XCTAssertEqual(($0 as NSError).localizedDescription, "ownership unknown")
+        }
+    }
+
     func testCropKeepsContextAndFilmCarriesItsContactSheet() throws {
         let folder = Outbox.cacheRoot.appendingPathComponent("attachment-test-\(UUID().uuidString)")
         let film = folder.appendingPathComponent("film-test")

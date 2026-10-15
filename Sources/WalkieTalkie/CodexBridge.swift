@@ -55,9 +55,46 @@ enum CodexBridge {
         let result = try invoke(["list", "--limit", "100"] + (liveOnly ? ["--live-only"] : []))
         return (result["threads"] as? [[String: Any]] ?? []).compactMap(Conversation.init)
     }
-    static func conversation(_ id: String, timeout: TimeInterval = 25) throws -> Conversation? {
-        let result = try invoke(["thread", "--id", id], timeout: timeout)
-        return Conversation(result["thread"] as? [String: Any] ?? result)
+    static func conversation(_ id: String, timeout: TimeInterval = 25,
+                             requireOwnerState: Bool = false) throws -> Conversation? {
+        let result = try invoke(["thread", "--id", id]
+                                + (requireOwnerState ? ["--require-owner-state"] : []),
+                                timeout: timeout)
+        let ownerState = result["ownerState"] as? String
+        if requireOwnerState {
+            guard ownerState == "live" || ownerState == "closed" else {
+                throw failure("Codex ownership check returned no conclusive state")
+            }
+        }
+        let chat = Conversation(result["thread"] as? [String: Any] ?? result)
+        if requireOwnerState, let chat,
+           (ownerState == "live") != chat.live {
+            throw failure("Codex ownership check returned inconsistent metadata")
+        }
+        return chat
+    }
+
+    enum RebindDisposition: Equatable {
+        case bind(Conversation)
+        case resume(session: String, cwd: String)
+    }
+
+    /// Re-check one stable ID at activation time. A saved metadata row is never
+    /// enough to resume: Desktop ownership may have changed since search, and a
+    /// second private copy of a live chat must not be opened.
+    static func rebindDisposition(
+        session: String, recordedCWD: String,
+        load: (String) throws -> Conversation? = {
+            try CodexBridge.conversation($0, requireOwnerState: true)
+        }
+    ) throws -> RebindDisposition {
+        guard let chat = try load(session) else {
+            throw failure("Codex chat no longer exists")
+        }
+        if chat.live { return .bind(chat) }
+        let cwd = chat.cwd.isEmpty ? recordedCWD : chat.cwd
+        guard !cwd.isEmpty else { throw failure("Codex chat project folder is unavailable") }
+        return .resume(session: session, cwd: cwd)
     }
     static func resolve(tty: String) -> Conversation? {
         guard let row = try? invoke(["resolve", "--tty", tty]) else { return nil }

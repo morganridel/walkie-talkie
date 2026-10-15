@@ -13,7 +13,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (279 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (296 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -40,7 +40,7 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
    `/test/*` routes can change UI or state. Consult their descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **67 Python tests** and **277 Swift tests** pass (279 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **75 Python tests** and **294 Swift tests** pass (296 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -50,8 +50,9 @@ and steering the same active turn. The installed Swift app passed bind, hold,
 edit, send, and cancel checks using synthetic transcripts; cancellation created
 no delivery or new chat turn. Desktop IPC is internal and version-coupled;
 tested Desktop version: 26.1007.30912, native CLI: 0.162.0-alpha.17.2.
-The CLI finish helper has 12 mocked tests and a safe dry-run; no real tab close
-has been tested. Desktop completion archived only the disposable chat and the
+The CLI finish helper checks the exact thread, process, tty and terminal owner.
+Automatic close supports only a window containing that single tab. A multi-tab
+window is refused before signaling; close that tab yourself after the answer. Desktop completion archived only the disposable chat and the
 test restored it afterward. Archiving interrupts the active turn, so provide
 the result before the archive action; a final answer after archive is lost.
 A real user-spoken prompt also passed ⌃⌘D start/stop and desktop delivery with
@@ -72,7 +73,9 @@ also passed. Visual/pointer interaction remains a separate manual check.
 - **Screen & System Audio Recording → Walkie Talkie: on** permits screen,
   crop, and film capture. Restart the app when macOS requests it.
 - **Automation → Walkie Talkie → Terminal: on**, if macOS requests it, permits
-  launching and managing a Terminal tab. Browser automation is needed only for
+  launching and managing a Terminal tab. The app must include
+  `NSAppleEventsUsageDescription` so macOS can request that approval; the
+  current packaging checks this description before signing. Browser automation is needed only for
   the relevant browser actions. Allow individual prompts when using those
   features; these rows may not exist before the first request.
 
@@ -135,9 +138,11 @@ metadata independently matched `local-whisper` and the exact selected chat.
   separately as described above. Repeat UI steps
   only with a disposable Codex CLI conversation.
 - `POST /test/spawn` enters the new-session prompt flow with supplied text;
+  it can open a Terminal session after Send/countdown. Its early HTTP
+  acknowledgement does not prove that the preview appeared or delivery occurred.
   `POST /test/spawn-folders` opens the folder chooser; `POST /test/spawn-pick`
-  selects an explicit tty. These are UI test hooks, not proof of successful
-  Codex CLI launch. Use `/test/rebind-panel` only to inspect the legacy panel.
+  selects an explicit tty. These hooks can open a session or change a destination; they are not proof of
+  successful Codex CLI launch. Use `/test/rebind-panel` only to inspect the legacy panel.
 
 ## Prompt delivery, quick answers, and reply UI
 
@@ -192,11 +197,11 @@ metadata independently matched `local-whisper` and the exact selected chat.
   time without waiting, signaling, or closing anything.
 - If a turn is active, a bare `walkie-finish` should return after scheduling a
   detached watcher for the database's active exact turn; only after it becomes
-  idle may the watcher signal that verified CLI TUI and close its one verified
-  Terminal tab. If the tab owner changes or cannot be established, it must leave
-  the tab open. A real close has not been tested; use only an explicitly approved
-  disposable CLI session for any manual close test. Never use this helper on a
-  Codex Desktop chat or to close an app/window.
+  idle may the watcher signal that verified CLI TUI and close its window only
+  when it contains that sole tab. A multi-tab window is refused before signaling.
+  If the owner or window identity changes, it must leave the window open. A real
+  disposable single-tab close passed; exact PID exited and tty matches became
+  zero. Never use this helper on a Codex Desktop chat or a window with other tabs.
 - In a desktop-chat prompt, the completion cue uses the receiving model's own
   `set_thread_archived` tool after the task. The helper cannot close an exact
   desktop-owned window. The desktop send path passed disposable-chat tests.
@@ -427,14 +432,35 @@ disposable chat as actual image inputs and were described correctly.
 A production Codex caret dispatch also passed in an isolated native CLI PTY with
 an actual red image. This verifies target resolution and RPC dispatch, while
 physical Terminal/VS Code focus and mouse gestures remain manual. Full Swift
-checks executed 279 cases with 2 opt-in integration skips and no failures;
-those opt-in checks passed separately in the disposable PTY. All 67 Python tests
-passed. Optional cloud/Wispr providers, other microphones, real CLI tab closing,
+checks executed 296 cases with 2 opt-in integration skips and no failures;
+those opt-in checks passed separately in the disposable PTY. All 75 Python tests
+passed. Optional cloud/Wispr providers, other microphones, multi-tab CLI closing,
 wheel crops/moves, DOM dragging/iframes, and remaining pointer controls have not
 been claimed as passed.
 
-The final 12:32 release starts both local workers and preserves English, but
-its ad-hoc signature requires renewed Accessibility and Screen Recording grants
-before physical shortcuts/capture can be used. About now publishes its 12 real
-gesture rows, confirmed through the installed panel. Select the intended chat
-again after relaunch; binding currently clears on restart.
+The 13:35 release started both local workers and preserved English. Its real
+packaged Start New test opened Terminal, delivered the prompt exactly once,
+received the requested marker, and bound that same CLI ID. The missing
+AppleEvents purpose description and AppleScript syntax error found during the
+audit are corrected; exact open/tiling scripts compile in the suite.
+
+Installed Rebind body search displayed the disposable live chat exactly once
+and Return rebound that ID without a new turn. Its metadata loads after the
+panel appears; stale callbacks cannot populate another opening. Project icons
+and Codex labels no longer run Git or probe project paths. Test closed-history
+resume separately: live ownership binds, conclusive absence permits resume,
+and unknown/unavailable ownership must show an error without opening a copy.
+
+The real finish test exposed Terminal’s unsupported `close tab` operation
+(-1708). The corrected helper closes only a window whose sole tab is the exact
+verified tty. It refuses a window with other tabs before terminating Codex.
+A real disposable single-tab close passed, with the exact PID gone and zero tty
+matches afterward. Test this using disposable sessions only; never count a dry-run or an early
+HTTP acknowledgement as delivery/closure evidence.
+
+The current 13:53 installed release has matching packaged helper hashes,
+ready local workers, English retained, and a valid deep strict signature.
+Accessibility and Screen Recording need renewal after its changed ad-hoc
+signature; current physical shortcut/capture access is not yet verified. After a code rebuild, ad-hoc signing may require renewed Accessibility
+and Screen Recording grants. Select the intended chat again after relaunch;
+binding currently clears on restart. About publishes 12 real gesture rows.

@@ -510,6 +510,35 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertIsNone(row["tty"])
         self.assertIsNone(row["busy"])
 
+    def test_exact_thread_activation_confirms_desktop_owner(self):
+        self.make_desktop_ipc()
+        result = self.json_output(self.run_bridge(
+            "thread", "--id", "11111111-1111-4111-8111-111111111111",
+            "--require-owner-state"))
+        self.assertEqual(result["ownerState"], "live")
+        self.assertTrue(result["live"])
+        self.assertTrue(result["ttyOwner"])
+        self.assertEqual(result["tty"],
+                         "codex:11111111-1111-4111-8111-111111111111")
+
+    def test_exact_thread_activation_confirms_absent_desktop_owner(self):
+        self.ipc_errors["thread-owner-discovery"] = "no-client-found"
+        self.make_desktop_ipc()
+        result = self.json_output(self.run_bridge(
+            "thread", "--id", "11111111-1111-4111-8111-111111111111",
+            "--require-owner-state"))
+        self.assertEqual(result["ownerState"], "closed")
+        self.assertFalse(result["live"])
+
+    def test_exact_thread_activation_fails_when_ownership_is_unknown(self):
+        result = self.run_bridge(
+            "thread", "--id", "11111111-1111-4111-8111-111111111111",
+            "--require-owner-state")
+        self.assertEqual(result.returncode, 2)
+        error = json.loads(result.stdout)
+        self.assertEqual(error["code"], "thread_ownership_unknown")
+        self.assertEqual(error["details"]["cause"], "desktop_ipc_unavailable")
+
     def test_resolve_tty_returns_consistent_verified_cli_owner(self):
         thread = "11111111-1111-4111-8111-111111111111"
         db = sqlite3.connect(self.home / "thread_history_1.sqlite")

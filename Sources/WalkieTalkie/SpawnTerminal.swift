@@ -44,6 +44,17 @@ enum SpawnTerminal {
         case failed(String)
     }
 
+    struct OpenDescriptor: Equatable {
+        let tty: String
+        let windowID: Int
+        let windowLines: [String]
+    }
+
+    enum OpenDescriptorResult: Equatable {
+        case descriptor(OpenDescriptor)
+        case malformed(String)
+    }
+
     /// Open the window, and say which tty it landed on so the relay can point
     /// itself at the session it just created.
     ///
@@ -84,9 +95,24 @@ enum SpawnTerminal {
     ///
     /// Runs subprocesses — call it off the main thread.
     static func resumeClaude(session: String, directory: String, near: CGPoint? = nil) -> Outcome {
-        open(resumeScript(session: session, directory: directory),
-             stamp: Self.stamp(), directory: directory, near: near,
-             what: "resumed session \(session.prefix(8))")
+        if let reason = resumeDirectoryFailure(directory) { return .failed(reason) }
+        return open(resumeScript(session: session, directory: directory),
+                    stamp: Self.stamp(), directory: directory, near: near,
+                    what: "resumed session \(session.prefix(8))")
+    }
+
+    /// Search rows deliberately do not touch their recorded project paths while
+    /// the panel is drawing. The explicit resume is the authoritative boundary:
+    /// it already runs off-main and can fail before staging or opening anything.
+    static func resumeDirectoryFailure(_ directory: String) -> String? {
+        var isDirectory: ObjCBool = false
+        guard !directory.isEmpty,
+              FileManager.default.fileExists(atPath: directory, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            let folder = (directory as NSString).lastPathComponent
+            return "could not resume — \(folder.isEmpty ? "project folder" : folder) is unavailable"
+        }
+        return nil
     }
 
     private static func stamp() -> String {
@@ -148,33 +174,24 @@ enum SpawnTerminal {
         // Nothing is lost by dropping it: `front window` above is Terminal's own
         // ordering, so the new tab is still identified, and delivery is
         // `do script … in <tab>`, which never needed a window in front.
-        let osa = """
-        tell application "Terminal"
-            set t to do script "\(escape(launcher.path))"
-            set out to (tty of t) & linefeed & (id of front window as string)
-            repeat with x in windows
-                try
-                    if visible of x then
-                        set b to bounds of x
-                        set out to out & linefeed & (id of x as string) & " " & (item 1 of b as string) & " " & (item 2 of b as string) & " " & (item 3 of b as string) & " " & (item 4 of b as string)
-                    end if
-                end try
-            end repeat
-            return out
-        end tell
-        """
-        guard let reply = run("/usr/bin/osascript", ["-e", osa]) else {
-            return .failed("Terminal would not open a window for the new session")
+        let osa = Self.openAppleScript(launcherPath: launcher.path)
+        let result = TerminalBinding.runOutcome("/usr/bin/osascript", ["-e", osa])
+        let descriptor: OpenDescriptor
+        switch result {
+        case .ok(let reply):
+            switch Self.parseOpenDescriptor(reply) {
+            case .descriptor(let parsed): descriptor = parsed
+            case .malformed(let reason):
+                return .failed("Terminal returned an invalid session descriptor: \(reason)")
+            }
+        default:
+            return .failed(Self.appleScriptFailure(result))
         }
-        let lines = reply.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        guard let tty = lines.first, tty.hasPrefix("/dev/"), lines.count >= 2,
-              let mine = Int(lines[1]) else {
-            return .failed("Terminal would not open a window for the new session")
-        }
+        let tty = descriptor.tty
+        let mine = descriptor.windowID
 
         var windows: [(id: Int, box: Box)] = []
-        for line in lines.dropFirst(2) {
+        for line in descriptor.windowLines {
             let n = line.split(separator: " ").compactMap { Int($0) }
             guard n.count == 5 else { continue }
             windows.append((id: n[0], box: Box(x: n[1], y: n[2], w: n[3] - n[1], h: n[4] - n[2])))
@@ -184,11 +201,13 @@ enum SpawnTerminal {
         if !screens.isEmpty, let window = windows.first(where: { $0.id == mine }) {
             let taken = windows.filter { $0.id != mine }.map { $0.box }
             let target = slot(for: window.box, on: screens, avoiding: taken)
-            _ = run("/usr/bin/osascript", ["-e", """
-            tell application "Terminal" to set bounds of (first window whose id is \(mine)) \
-                to {\(target.x), \(target.y), \(target.x + target.w), \(target.y + target.h)}
-            """])
-            placed = "tiled at \(target.x),\(target.y) \(target.w)×\(target.h)"
+            let tileResult = TerminalBinding.runOutcome("/usr/bin/osascript", ["-e", Self.tileAppleScript(
+                windowID: mine, x: target.x, y: target.y, width: target.w, height: target.h)])
+            if case .ok = tileResult {
+                placed = "tiled at \(target.x),\(target.y) \(target.w)×\(target.h)"
+            } else {
+                Log.error("✨ spawn window placement failed: \(Self.appleScriptFailure(tileResult))")
+            }
         }
 
         // **Put the front back, if Terminal took it.** Nothing above asks for the
@@ -213,6 +232,36 @@ enum SpawnTerminal {
         }
         Log.info("✨ \(what) in \(directory) on \((tty as NSString).lastPathComponent) — \(placed)")
         return .opened(tty: tty)
+    }
+
+    /// Terminal's scripting dictionary is addressed by its installed bundle ID,
+    /// and the returned tab is an AppleScript command expression. Parentheses
+    /// are required when assigning that command's result (`set t to (do script …)`).
+    /// Keep this source isolated so the exact script can be syntax-checked without
+    /// sending an Apple event or opening Terminal.
+    static func openAppleScript(launcherPath: String) -> String {
+        """
+        tell application id "com.apple.Terminal"
+            set t to (do script "\(escape(launcherPath))")
+            set out to (tty of t) & linefeed & (id of front window as string)
+            repeat with x in windows
+                try
+                    if visible of x then
+                        set b to bounds of x
+                        set out to out & linefeed & (id of x as string) & " " & (item 1 of b as string) & " " & (item 2 of b as string) & " " & (item 3 of b as string) & " " & (item 4 of b as string)
+                    end if
+                end try
+            end repeat
+            return out
+        end tell
+        """
+    }
+
+    static func tileAppleScript(windowID: Int, x: Int, y: Int, width: Int, height: Int) -> String {
+        """
+        tell application id "com.apple.Terminal" to set bounds of (first window whose id is \(windowID)) \
+            to {\(x), \(y), \(x + width), \(y + height)}
+        """
     }
 
     /// A rectangle in **AppleScript's** coordinates: origin at the top-left of
@@ -443,21 +492,29 @@ enum SpawnTerminal {
          .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
-    private static func run(_ path: String, _ args: [String]) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = args
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch {
-            Log.error("\(path) would not run: \(error)")
-            return nil
+    static func parseOpenDescriptor(_ output: String) -> OpenDescriptorResult {
+        let lines = output.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard let tty = lines.first else { return .malformed("missing TTY") }
+        guard tty.hasPrefix("/dev/") else { return .malformed("TTY is not a device path") }
+        guard lines.count >= 2 else { return .malformed("missing Terminal window ID") }
+        guard let windowID = Int(lines[1]) else { return .malformed("invalid Terminal window ID") }
+        return .descriptor(OpenDescriptor(tty: tty, windowID: windowID,
+                                          windowLines: Array(lines.dropFirst(2))))
+    }
+
+    static func appleScriptFailure(_ outcome: TerminalBinding.RunOutcome) -> String {
+        switch outcome {
+        case .ok:
+            return "Terminal automation returned success without a failure reason"
+        case .failed(let status, let stderr):
+            let detail = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            return "Terminal automation failed (osascript exit \(status))"
+                + (detail.isEmpty ? "" : ": \(String(detail.prefix(200)))")
+        case .timedOut(let seconds):
+            return "Terminal automation timed out after \(Int(seconds)) seconds"
+        case .couldNotRun(let reason):
+            return "Could not start osascript: \(reason)"
         }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-        return String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

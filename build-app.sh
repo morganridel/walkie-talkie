@@ -263,6 +263,10 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <string>Walkie Talkie needs Accessibility to read the selected text and to listen for its global shortcuts.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Walkie Talkie records your dictation so it can transcribe it locally and relay it to your coding agent.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Walkie Talkie captures screenshots, selected regions, and short screen films to add context to your coding prompts.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Walkie Talkie controls Terminal to open and manage Codex session windows you request.</string>
 </dict>
 </plist>
 PLIST
@@ -282,6 +286,15 @@ fail() { echo "❌ $1" >&2; echo "   $FINAL_APP left untouched." >&2; exit 1; }
 
 PLIST_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$CONTENTS/Info.plist" 2>/dev/null || true)"
 [ "$PLIST_ID" = "$BUNDLE_ID" ] || fail "Info.plist says CFBundleIdentifier=$PLIST_ID, expected $BUNDLE_ID"
+
+# Every protected macOS capability this app actually uses must have its user
+# facing purpose in the signed bundle. ScreenCaptureKit requires the screen
+# recording description; AppleEvents requires its own description for Terminal.
+for USAGE_KEY in NSAccessibilityUsageDescription NSMicrophoneUsageDescription \
+                 NSScreenCaptureUsageDescription NSAppleEventsUsageDescription; do
+    USAGE_VALUE="$(/usr/libexec/PlistBuddy -c "Print :$USAGE_KEY" "$CONTENTS/Info.plist" 2>/dev/null || true)"
+    [ -n "$USAGE_VALUE" ] || fail "Info.plist is missing $USAGE_KEY"
+done
 
 SIGNING_IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "$SIGNING_IDENTITY" ]; then

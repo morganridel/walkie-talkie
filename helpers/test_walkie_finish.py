@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import signal
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 from importlib.machinery import SourceFileLoader
@@ -22,6 +23,7 @@ RECORD = {"pid": 4242, "tty": "/dev/ttys007", "source": "sidecar"}
 PROCESS = [{"pid": 4242, "ppid": 1, "tty": "ttys007",
             "command": "/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex "
                        "--remote unix:// resume " + THREAD}]
+WINDOW = {"matches": 1, "windowID": 42, "windowTabCount": 1}
 
 
 class WalkieFinishTests(unittest.TestCase):
@@ -64,6 +66,7 @@ class WalkieFinishTests(unittest.TestCase):
                                return_value={THREAD: RECORD}), \
              mock.patch.object(walkie_finish.codex_bridge, "process_rows", return_value=PROCESS), \
              mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
              mock.patch.object(walkie_finish, "tty_owner_identity", return_value=(88, 1000)), \
              mock.patch.object(walkie_finish.os, "kill") as kill, \
              mock.patch.object(walkie_finish.subprocess, "Popen") as popen:
@@ -79,6 +82,7 @@ class WalkieFinishTests(unittest.TestCase):
                                return_value={THREAD: RECORD}), \
              mock.patch.object(walkie_finish.codex_bridge, "process_rows", return_value=PROCESS), \
              mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
              mock.patch.object(walkie_finish.subprocess, "Popen") as popen:
             code, result = self.run_main(["--thread", THREAD, "--turn", TURN])
         self.assertEqual(code, 0)
@@ -123,9 +127,10 @@ class WalkieFinishTests(unittest.TestCase):
                                return_value={THREAD: RECORD}), \
              mock.patch.object(walkie_finish.codex_bridge, "process_rows", side_effect=rows), \
              mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
              mock.patch.object(walkie_finish.subprocess, "run", side_effect=ps_output), \
              mock.patch.object(walkie_finish.os, "kill") as kill, \
-             mock.patch.object(walkie_finish, "close_terminal_tab") as close, \
+             mock.patch.object(walkie_finish, "close_terminal_window") as close, \
              mock.patch.object(walkie_finish.time, "sleep"):
             result = walkie_finish.finish_verified(THREAD)
 
@@ -141,6 +146,7 @@ class WalkieFinishTests(unittest.TestCase):
              mock.patch.object(walkie_finish.codex_bridge, "active_turn_id",
                                return_value=TURN) as active, \
              mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
              mock.patch.object(walkie_finish, "finish_verified") as finish, \
              mock.patch.object(walkie_finish.os, "kill") as kill, \
              mock.patch.object(walkie_finish.subprocess, "Popen") as popen:
@@ -159,6 +165,7 @@ class WalkieFinishTests(unittest.TestCase):
              mock.patch.object(walkie_finish.codex_bridge, "process_rows", return_value=PROCESS), \
              mock.patch.object(walkie_finish.codex_bridge, "active_turn_id", return_value=None), \
              mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
              mock.patch.object(walkie_finish, "finish_verified", return_value=expected) as finish, \
              mock.patch.object(walkie_finish.subprocess, "Popen") as popen, \
              mock.patch.dict("os.environ", {"CODEX_TURN_ID": TURN}):
@@ -180,20 +187,20 @@ class WalkieFinishTests(unittest.TestCase):
         self.assertEqual(watch.call_args.args[0].timeout, 12)
         finish.assert_called_once_with(THREAD)
 
-    def test_close_signals_only_verified_cli_pid_and_closes_tab_object(self):
+    def test_close_signals_only_verified_cli_pid_and_closes_single_tab_window(self):
         process_calls = [PROCESS[0], PROCESS[0], None, None]
 
         def rows():
             row = process_calls.pop(0)
             return [row] if row else []
 
-        run_calls = [mock.Mock(returncode=0, stdout="1"),
-                     mock.Mock(returncode=0, stdout="1"),
-                     mock.Mock(returncode=0, stdout="closed")]
         with mock.patch.object(walkie_finish.codex_bridge, "sidecar_tty_map",
                                return_value={THREAD: RECORD}), \
              mock.patch.object(walkie_finish.codex_bridge, "process_rows", side_effect=rows), \
-             mock.patch.object(walkie_finish.subprocess, "run", side_effect=run_calls) as run, \
+             mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot", return_value=WINDOW), \
+             mock.patch.object(walkie_finish.subprocess, "run",
+                               return_value=mock.Mock(returncode=0, stdout="closed")) as run, \
              mock.patch.object(walkie_finish, "tty_owner_identity", return_value=(88, 1000)), \
              mock.patch.object(walkie_finish.os, "kill") as kill, \
              mock.patch.object(walkie_finish.time, "sleep"):
@@ -202,10 +209,93 @@ class WalkieFinishTests(unittest.TestCase):
         self.assertEqual(result["action"], "closed_tab")
         kill.assert_called_once_with(4242, signal.SIGTERM)
         close_script = run.call_args_list[-1].args[0][-1]
-        self.assertIn("close item 1 of foundTabs", close_script)
+        self.assertIn("close finalWindow", close_script)
         self.assertIn("/dev/ttys007", close_script)
-        self.assertNotIn("close w", close_script)
+        self.assertIn('id of finalWindow as text) is not "42"', close_script)
+        self.assertNotIn("close item 1 of foundTabs", close_script)
         self.assertNotIn('quit', close_script)
+
+    def test_close_script_compiles_without_sending_apple_events(self):
+        script = walkie_finish.close_terminal_window_script(RECORD["tty"], 42)
+        self.assertIn('tell application id "com.apple.Terminal"', script)
+        self.assertIn('close finalWindow', script)
+        self.assertIn('if finalTabCount is not 1 then return "multi_tab"', script)
+        with mock.patch.object(walkie_finish.subprocess, "run",
+                               return_value=mock.Mock(returncode=0, stdout="1\n42\n1\n")) as run:
+            snapshot = walkie_finish.terminal_window_snapshot(RECORD["tty"])
+        self.assertEqual(snapshot, WINDOW)
+        snapshot_script = run.call_args.args[0][-1]
+        with tempfile.TemporaryDirectory(prefix="walkie-finish-applescript-") as temp:
+            for name, source_text in (("close", script), ("snapshot", snapshot_script)):
+                source = Path(temp) / f"{name}.applescript"
+                compiled = Path(temp) / f"{name}.scpt"
+                source.write_text(source_text, encoding="utf-8")
+                result = subprocess.run(
+                    ["/usr/bin/osacompile", "-l", "AppleScript", "-o", str(compiled), str(source)],
+                    capture_output=True, text=True, timeout=10, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(compiled.exists())
+
+    def test_multitab_window_is_rejected_before_signaling_codex(self):
+        with mock.patch.object(walkie_finish.codex_bridge, "sidecar_tty_map",
+                               return_value={THREAD: RECORD}), \
+             mock.patch.object(walkie_finish.codex_bridge, "process_rows", return_value=PROCESS), \
+             mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot",
+                               return_value={"matches": 1, "windowID": 42,
+                                             "windowTabCount": 2}), \
+             mock.patch.object(walkie_finish.os, "kill") as kill, \
+             mock.patch.object(walkie_finish, "close_terminal_window") as close:
+            result = walkie_finish.finish_verified(THREAD)
+        self.assertEqual(result["reason"], "terminal_multitab_close_unsupported")
+        kill.assert_not_called()
+        close.assert_not_called()
+
+    def test_changed_window_identity_refuses_close_after_codex_exits(self):
+        process_calls = [PROCESS[0], PROCESS[0], None, None]
+
+        def rows():
+            row = process_calls.pop(0)
+            return [row] if row else []
+
+        snapshots = [WINDOW, {"matches": 1, "windowID": 43, "windowTabCount": 1}]
+        with mock.patch.object(walkie_finish.codex_bridge, "sidecar_tty_map",
+                               return_value={THREAD: RECORD}), \
+             mock.patch.object(walkie_finish.codex_bridge, "process_rows", side_effect=rows), \
+             mock.patch.object(walkie_finish, "terminal_tab_count", return_value=1), \
+             mock.patch.object(walkie_finish, "terminal_window_snapshot",
+                               side_effect=snapshots), \
+             mock.patch.object(walkie_finish, "tty_owner_identity", return_value=(88, 1000)), \
+             mock.patch.object(walkie_finish.os, "kill") as kill, \
+             mock.patch.object(walkie_finish, "close_terminal_window") as close, \
+             mock.patch.object(walkie_finish.time, "sleep"):
+            result = walkie_finish.finish_verified(THREAD)
+        self.assertEqual(result["reason"], "terminal_window_changed")
+        kill.assert_called_once_with(4242, signal.SIGTERM)
+        close.assert_not_called()
+
+    def test_close_failure_returns_bounded_osascript_diagnostic(self):
+        long_error = "Terminal said no. " + ("x" * 500)
+        with mock.patch.object(walkie_finish.subprocess, "run",
+                               return_value=mock.Mock(returncode=1, stdout="",
+                                                      stderr=long_error)) as run:
+            result = walkie_finish.close_terminal_window(RECORD["tty"], 42)
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["detail"].startswith("osascript exit 1: Terminal said no."))
+        self.assertLessEqual(len(result["detail"]), len("osascript exit 1: ") + 200)
+        self.assertEqual(run.call_args.kwargs["timeout"], 8)
+
+    def test_close_failure_reports_timeout_and_launch_errors(self):
+        with mock.patch.object(walkie_finish.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired("osascript", 8)):
+            timed_out = walkie_finish.close_terminal_window(RECORD["tty"], 42)
+        self.assertEqual(timed_out["detail"],
+                         "Terminal close AppleScript timed out after 8 seconds")
+
+        with mock.patch.object(walkie_finish.subprocess, "run",
+                               side_effect=OSError("permission denied\nextra")):
+            launch_failed = walkie_finish.close_terminal_window(RECORD["tty"], 42)
+        self.assertEqual(launch_failed["detail"], "could not start osascript: permission denied extra")
 
     def test_thread_must_be_uuid_and_desktop_without_cli_sidecar_is_unsupported(self):
         code, result = self.run_main(["--thread", "not-a-uuid"])

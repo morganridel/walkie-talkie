@@ -582,7 +582,10 @@ final class TerminalBinding {
         case .ide(let handle):          return handle.shellPID.flatMap { Self.folderLabel(shellPID: $0) }
                                             ?? IDEBridge.currentDirectory(of: handle).map { Self.label(forDirectory: $0) }
         case .keystroke:                return nil
-        case .codex(let id, _): return (try? CodexBridge.conversation(id)).map { Self.label(forDirectory: $0.cwd) }
+        // Codex project labels come from recorded metadata. Git access here
+        // can wait indefinitely for protected-folder permission and pile up a
+        // new child at each refresh; binding already uses the same pure folder.
+        case .codex(let id, _): return (try? CodexBridge.conversation(id)).map(\.folder)
         }
     }
 
@@ -2643,6 +2646,9 @@ final class TerminalBinding {
 
     private static func sessionLabel(onTTY tty: String) -> String? {
         let device = (tty as NSString).lastPathComponent
+        // A retained generic Terminal/IDE handle can now contain Codex. Use
+        // its verified metadata before any legacy cwd or Git inspection.
+        if let chat = CodexBridge.resolve(tty: device), !chat.cwd.isEmpty { return chat.folder }
 
         // **The session's directory first, and only from a file that provably
         // belongs to the process sitting on this tty.**
@@ -2684,7 +2690,8 @@ final class TerminalBinding {
         // the foreground pid had no published file at all while the session
         // sitting behind it did. Whichever pid on this tty owns a `.last-` file
         // *is* the agent, and its answer is the session directory.
-        if let dir = publishedDirectory(onTTY: device) {
+        if live?.command == "codex" { return nil }
+        if let dir = publishedClaudeDirectory(onTTY: device) {
             return label(forDirectory: dir)
         }
         if let (pid, _) = live, let dir = workingDirectory(ofPID: pid) {

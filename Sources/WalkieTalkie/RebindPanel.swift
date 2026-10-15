@@ -45,17 +45,24 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         let haystack: String
         /// The words to highlight inside `subtitle`, i.e. the query that found it.
         var terms: [String] = []
-        /// **The session to reopen, for a row whose terminal is gone** — id and
-        /// the folder it belongs to. Set only when there is no tty to bind to and
-        /// the folder still exists; ⏎ then resumes the exact Codex chat instead of
-        /// rebinding. See `hint`.
-        var resume: (session: String, cwd: String)?
+        /// A history result always keeps its stable Codex identity. Activation
+        /// resolves that exact ID again before deciding between bind and resume;
+        /// a bulk search miss is not proof that the chat is closed.
+        var session: (id: String, cwd: String)?
         /// **What ⏎ would do to this row, in three words**, drawn on the selected
         /// row only. the original author's ask when the resume was offered: *"cu un visual
         /// hint, să ofere și asta"* — an action nothing on screen mentions is an
         /// action nobody uses, and a hint repeated down twenty-five rows is
         /// noise. The selected row is the one ⏎ is about.
-        var hint: String? { resume != nil ? "⏎ resume it" : (enabled ? "⏎ bind" : nil) }
+        var hint: String? {
+            if session != nil { return tty == nil ? "⏎ check & open" : "⏎ bind" }
+            return enabled ? "⏎ bind" : nil
+        }
+        var selectionKey: String {
+            if let session { return "session:" + session.id }
+            if let tty { return "tty:" + tty }
+            return "row:" + title + "\n" + subtitle
+        }
     }
 
     // MARK: - The pause before the disk is touched
@@ -85,8 +92,8 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     /// Something to say on the overlay, for the moment between ⏎ and a window
     /// appearing.
     var onMessage: ((String) -> Void)?
-    /// **⏎ on a session whose terminal is gone**: open it again with
-    /// the exact Codex chat id in the folder it belongs to.
+    /// **⏎ on a history result**: freshly resolve its exact stable ID, then bind
+    /// a live owner or resume only after ownership is conclusively absent.
     var onResume: ((_ session: String, _ cwd: String) -> Void)?
 
     // MARK: - State
@@ -103,6 +110,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     private var destinations: [Row] = []
     /// The sessions the running scan has found so far, in the order they arrived.
     private var sessions: [Row] = []
+    private var sessionHits: [SessionSearch.Hit] = []
     /// What is actually on screen — destinations that match, then sessions.
     private var shown: [Row] = []
     private var selected = 0
@@ -112,6 +120,11 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     private var search: SessionSearch?
     private var searching = false
     private var query = ""
+    /// Each presentation owns its metadata request. A closed panel can be
+    /// reopened before the old subprocesses answer; their rows must never land
+    /// in the new window merely because both searches happen to have the same
+    /// text.
+    private var opening = 0
     /// A panel that has never been key must not close on *not* being key.
     private var wasKey = false
     private var clickMonitor: Any?
@@ -133,22 +146,15 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     func show(at point: NSPoint, query prefill: String = "") {
         if panel != nil { close(); return }          // the row is a toggle
 
-        // **The tty is kept even on a row that cannot be clicked** — the one
-        // already bound, a window since closed. `enabled` is what ⏎ and the
-        // click test, while the tty is also what tells a session found in the
-        // transcripts that it is already on this list: drop it from the row and
-        // the bound destination comes back a second time, as a search hit.
-        destinations = (rows?() ?? []).map { row in
-            Row(kind: .destination, tty: row.tty,
-                icon: Self.appIcon(bundleID: row.bundleID),
-                title: row.title, subtitle: "", enabled: row.enabled,
-                haystack: row.title.lowercased())
-        }
-        live = liveTitles?() ?? [:]
+        destinations = []
+        live = [:]
         sessions = []
+        sessionHits = []
         query = ""
         selected = 0
         wasKey = false
+        opening &+= 1
+        let thisOpening = opening
         // The field and its readout are the same objects every time this opens —
         // left as they were, the panel comes up showing the last search and a
         // count that belongs to a list it is not showing.
@@ -171,9 +177,47 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] _ in self?.close()
         }
+
+        // `rows` launches Terminal AppleScript and the Codex metadata helper;
+        // `liveTitles` launches another AppleScript. The panel must already be
+        // visible and taking input while those answer. Only their plain data is
+        // collected off-main; NSImage construction and view updates stay here.
+        let loadRows = rows
+        let loadLiveTitles = liveTitles
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let loadedRows = loadRows?() ?? []
+            let loadedLive = loadLiveTitles?() ?? [:]
+            DispatchQueue.main.async {
+                guard let self,
+                      Self.acceptsMetadata(expected: thisOpening,
+                                           current: self.opening,
+                                           panelOpen: self.panel != nil)
+                else { return }
+                let selectedKey = self.shown.indices.contains(self.selected)
+                    ? self.shown[self.selected].selectionKey : nil
+                // **The tty is kept even on a row that cannot be clicked** — the
+                // one already bound, a window since closed. It also joins a
+                // search hit to the destination already shown above it.
+                self.destinations = loadedRows.map { row in
+                    Row(kind: .destination, tty: row.tty,
+                        icon: Self.appIcon(bundleID: row.bundleID),
+                        title: row.title, subtitle: "", enabled: row.enabled,
+                        haystack: row.title.lowercased())
+                }
+                self.live = loadedLive
+                let terms = self.query.lowercased().split(separator: " ").map(String.init)
+                self.sessions = self.sessionHits.compactMap { self.row(for: $0, terms: terms) }
+                self.rebuild()
+                self.selected = Self.restoredSelection(key: selectedKey,
+                                                       rows: self.shown,
+                                                       fallback: self.selected)
+                self.draw()
+            }
+        }
     }
 
     func close() {
+        opening &+= 1
         debounceTimer?.invalidate(); debounceTimer = nil
         search?.cancel(); search = nil
         if let monitor = clickMonitor { NSEvent.removeMonitor(monitor); clickMonitor = nil }
@@ -182,6 +226,16 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     }
 
     var isOpen: Bool { panel != nil }
+
+    static func acceptsMetadata(expected: Int, current: Int, panelOpen: Bool) -> Bool {
+        panelOpen && expected == current
+    }
+
+    static func restoredSelection(key: String?, rows: [Row], fallback: Int) -> Int {
+        if let key, let exact = rows.firstIndex(where: { $0.selectionKey == key }) { return exact }
+        guard !rows.isEmpty else { return 0 }
+        return min(max(0, fallback), rows.count - 1)
+    }
 
     // MARK: - Building the window
 
@@ -293,6 +347,7 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         // on the keystroke because it costs nothing and because a list that does
         // not move while he types is a list that feels broken.
         sessions = []
+        sessionHits = []
         selected = 0
         rebuild()
 
@@ -352,11 +407,11 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         let i = index ?? selected
         guard shown.indices.contains(i) else { return }
         let row = shown[i]
-        // **Reopening comes first**, because a row only carries a resume when
-        // there was no tty to prefer: the two are never both true.
-        if let resume = row.resume {
+        // Search-time liveness is a hint only. The exact stable ID is resolved
+        // again after the panel closes, before any bind or resume is attempted.
+        if let session = row.session {
             close()
-            onResume?(resume.session, resume.cwd)
+            onResume?(session.id, session.cwd)
             return
         }
         guard let tty = row.tty, row.enabled else { return }
@@ -368,17 +423,27 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
 
     private func startSearch() {
         let asked = query
+        let searchOpening = opening
         setSearching(true)
         search = SessionSearch.run(query: asked, onRow: { [weak self] hit in
-            guard let self = self, self.query == asked else { return }
+            guard let self,
+                  Self.acceptsMetadata(expected: searchOpening,
+                                       current: self.opening,
+                                       panelOpen: self.panel != nil),
+                  self.query == asked else { return }
             guard let row = self.row(for: hit, terms: asked.lowercased().split(separator: " ").map(String.init))
             else { return }
             // Newest first is the helper's order and the order they arrive in;
             // appending keeps the row he is looking at where it was.
+            self.sessionHits.append(hit)
             self.sessions.append(row)
             self.rebuild()
         }, onDone: { [weak self] _ in
-            guard let self = self, self.query == asked else { return }
+            guard let self,
+                  Self.acceptsMetadata(expected: searchOpening,
+                                       current: self.opening,
+                                       panelOpen: self.panel != nil),
+                  self.query == asked else { return }
             self.setSearching(false)
             self.rebuild()
         })
@@ -409,30 +474,38 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     private func row(for hit: SessionSearch.Hit, terms: [String]) -> Row? {
         let tty = liveTTY(for: hit)
         // A session already listed above the line as a destination is not shown
-        // twice; the binding row is the better of the two, since it knows when
-        // the relay last spoke to it.
-        if let tty, destinations.contains(where: { $0.tty == tty }) { return nil }
-
-        // **A closed window is no longer a dead end.** The row knows the session
-        // id and the folder, and a Codex resume is one spawn away — so the
-        // question is only whether the folder is still there to resume *in*: a
-        // session id is scoped to it, and from anywhere else the id is not found.
-        let resumable = tty == nil && !hit.cwd.isEmpty
-            && FileManager.default.fileExists(atPath: hit.cwd)
+        // twice *when that destination is visible for this query*; the binding
+        // row is then the better of the two, since it knows when the relay last
+        // spoke to it. A body-only history match is different: its destination
+        // title is filtered out above the line, so dropping the session too
+        // would make a valid search result disappear.
+        if Self.visibleDestinationOwns(tty: tty, destinations: destinations, terms: terms) { return nil }
 
         let who = hit.role == "me" ? "you" : "Codex"
         let name = hit.title.isEmpty ? hit.label : hit.title
         var title = name
         if !hit.title.isEmpty { title += "  —  \(hit.label)" }
         title += "  ·  \(RebindHistory.elapsed(since: hit.when))"
-        if tty == nil { title += resumable ? "  ·  closed" : "  ·  window closed" }
+        if tty == nil { title += "  ·  status unverified" }
         let subtitle = "\(who): \(hit.snippet)"
-        var row = Row(kind: .session, tty: tty, icon: Self.folderIcon(hit.cwd),
+        var row = Row(kind: .session, tty: tty, icon: Self.sessionIcon(),
                       title: title, subtitle: subtitle,
-                      enabled: tty != nil || resumable,
+                      enabled: true,
                       haystack: (title + " " + subtitle).lowercased(), terms: terms)
-        if resumable { row.resume = (session: hit.session, cwd: hit.cwd) }
+        row.session = (id: hit.session, cwd: hit.cwd)
         return row
+    }
+
+    /// The same all-terms predicate `rebuild()` uses for destination rows,
+    /// combined with the stable tty identity used for deduplication. Empty terms
+    /// preserve the original behavior: an unfiltered destination suppresses its
+    /// duplicate session row.
+    static func visibleDestinationOwns(tty: String?, destinations: [Row], terms: [String]) -> Bool {
+        guard let tty else { return false }
+        return destinations.contains { destination in
+            destination.tty == tty
+                && terms.allSatisfy { destination.haystack.contains($0) }
+        }
     }
 
     /// **Is this session still in the tab it last reported?**
@@ -450,6 +523,12 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     /// is why the title is tried first and why a rebind is a reversible thing to
     /// get wrong.
     private func liveTTY(for hit: SessionSearch.Hit) -> String? {
+        // The exact binding held by this app is stronger evidence than the
+        // helper's bounded bulk owner scan. A body-only query can hide its
+        // destination row, but the matching history row remains bindable.
+        if let stableKey = Self.knownCodexTTY(session: hit.session, live: live) {
+            return stableKey
+        }
         if let device = hit.tty {
             if device.hasPrefix("codex:"), hit.ttyOwner { return device }
             let short = (device as NSString).lastPathComponent
@@ -464,6 +543,11 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
             return "/dev/" + found.key
         }
         return nil
+    }
+
+    static func knownCodexTTY(session: String, live: [String: String]) -> String? {
+        let key = "codex:" + session
+        return live[key] == nil ? nil : key
     }
 
     /// **The title as corroboration, never as the only witness.** The hook
@@ -534,8 +618,9 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         // The footer says what ⏎ does **to the row he is on**, which is not one
         // sentence any more: most rows are a terminal to point at, and a session
         // whose window is gone is a terminal to open.
-        let action = shown.indices.contains(selected) && shown[selected].resume != nil
-            ? "⏎ reopen it with codex resume"
+        let action = shown.indices.contains(selected)
+            && shown[selected].session != nil && shown[selected].tty == nil
+            ? "⏎ verify, then bind or resume"
             : "⏎ bind"
         hintLabel.stringValue = query.isEmpty
             ? "Type to search every message you and Codex exchanged   ·   ↑↓ choose   ·   \(action)   ·   esc close"
@@ -570,14 +655,11 @@ final class RebindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         return icon
     }
 
-    /// A session row is a folder, not an app: what it names is a repo. The cwd
-    /// comes off the transcript's own records, so a project outside `~/workspace`
-    /// gets its icon too; the speech bubble is for a folder that has since been
-    /// deleted or renamed.
-    private static func folderIcon(_ path: String) -> NSImage? {
-        let icon = !path.isEmpty && FileManager.default.fileExists(atPath: path)
-            ? NSWorkspace.shared.icon(forFile: path)
-            : NSImage(systemSymbolName: "text.bubble", accessibilityDescription: nil)
+    /// A generic icon keeps row construction independent of the project path.
+    /// Asking Finder for a path-specific icon can synchronously contact a file
+    /// provider or trigger protected-folder access on the main thread.
+    private static func sessionIcon() -> NSImage? {
+        let icon = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
         icon?.size = NSSize(width: 18, height: 18)
         return icon
     }

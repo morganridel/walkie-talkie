@@ -912,19 +912,24 @@ def list_threads(args):
             "backwardsCursor": None, "live": any(row["live"] for row in rows)}
 
 
-def one_thread(thread_id):
+def one_thread(thread_id, *, require_owner_state=False):
+    row = None
     try:
         with RpcClient() as client:
             result = client.request("thread/read", {"threadId": thread_id, "includeTurns": False})
             row = add_ttys([thread_row(result["thread"], live=False)])[0]
-            return row if row["live"] else enrich_desktop_owners([row])[0]
     except BridgeError as error:
         if error.code != "shared_daemon_unavailable":
             raise
-    rows = db_threads(thread_id=thread_id, limit=1)
-    if not rows:
-        raise BridgeError("Codex thread not found", code="thread_not_found")
-    row = add_ttys(rows)[0]
+    if row is None:
+        rows = db_threads(thread_id=thread_id, limit=1)
+        if not rows:
+            raise BridgeError("Codex thread not found", code="thread_not_found")
+        row = add_ttys(rows)[0]
+    if row["live"]:
+        if require_owner_state:
+            row["ownerState"] = "live"
+        return row
     try:
         with DesktopIpcClient() as client:
             owner, _ = client.find_owner(thread_id)
@@ -935,8 +940,19 @@ def one_thread(thread_id):
             row["busy"] = row["status"] == "active"
             if row.get("tty") is None:
                 row["tty"] = "codex:" + thread_id
-    except BridgeError:
-        pass
+            if require_owner_state:
+                row["ownerState"] = "live"
+    except BridgeError as error:
+        if error.code == "desktop_thread_not_owned":
+            if require_owner_state:
+                row["ownerState"] = "closed"
+        elif require_owner_state:
+            raise BridgeError(
+                "could not verify whether Codex Desktop still owns this thread",
+                code="thread_ownership_unknown",
+                details={"threadId": thread_id, "reason": str(error),
+                         "cause": error.code},
+            ) from error
     return row
 
 
@@ -1533,6 +1549,7 @@ def build_parser():
 
     thread = commands.add_parser("thread")
     thread.add_argument("--id", required=True)
+    thread.add_argument("--require-owner-state", action="store_true")
 
     send = commands.add_parser("send")
     send.add_argument("--thread", required=True)
@@ -1580,7 +1597,7 @@ def main(argv=None):
     if args.command == "list":
         print_json(list_threads(args))
     elif args.command == "thread":
-        print_json(one_thread(args.id))
+        print_json(one_thread(args.id, require_owner_state=args.require_owner_state))
     elif args.command == "send":
         print_json(send_existing(args))
     elif args.command == "resolve":
