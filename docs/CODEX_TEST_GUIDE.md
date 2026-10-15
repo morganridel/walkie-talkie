@@ -483,9 +483,10 @@ Mac. Optional hardware/provider checks remain separate and unverified.
 
 The current combined build is **15 October 2026, 14:30**. It has 297 passing
 Swift tests (299 executed, 2 opt-in skips) and 77 passing Python tests, matching
-packaged helpers, ready workers, English retained and a valid signature. Its
-changed ad-hoc signature requires renewed Accessibility and Screen Recording.
-The Mac was locked during native UI inspection. After unlocking and renewing
-the two grants, check Bind Codex chat’s unverified-row selection/project filter
-and Rebind to’s closed-session resume as described above. No additional voice
+packaged helpers, ready workers, English retained and a valid signature. The user
+renewed Accessibility and Screen Recording for this build and reopened it;
+both grants now verify, with a responding shortcut canary (0.91 ms). The native
+inspector does not expose the floating controls. User checks of Bind Codex
+chat’s unverified-row selection/project filter and Rebind to’s closed-session
+resume are pending as described above. No additional voice
 or screenshot delivery is needed to establish the owner-check behavior.

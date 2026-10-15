@@ -138,7 +138,8 @@ English persisted, packaged helpers match source, and the deep strict signature
 verifies after startup. The 14:19 package’s exact owner check already returned
 conclusive closure in 10.46 seconds; its helper is unchanged in this build.
 Swift: 299 executed, 2 opt-in skips, 0 failures (297 passed). Python: 77 passed.
-The current process reports Accessibility/event tap and Screen Recording
-unavailable after its changed ad-hoc signature. The Mac was locked during UI
-inspection. Renew the two installed-app grants and reopen it when unlocked;
-then verify picker selection and packaged closed-history resume.
+After the user renewed the installed-app grants and reopened it, Accessibility
+and Screen Recording both verify. The shortcut canary responds (0.91 ms),
+English is retained and the disposable desktop chat is bound again. The native
+inspector does not expose the floating controls; picker/project-filter and
+closed-history resume clicks are pending user confirmation.
