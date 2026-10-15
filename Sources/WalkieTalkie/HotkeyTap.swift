@@ -102,6 +102,8 @@ final class HotkeyTap {
     /// pressing Cancel on the panel a moment later, without waiting for the model
     /// to transcribe something already known to be unwanted.
     var onLocalCancel: (() -> Void)?
+    /// Cancel only: unlike the legacy cancel/Quick Ask gesture, idle is a no-op.
+    var onKeyboardCancel: (() -> Void)?
 
     /// **Wispr Flow is probably about to start listening** — its own start
     /// gesture, seen on the wire, ahead of any microphone opening.
@@ -2447,6 +2449,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         let ctrl = flags.contains(.maskControl), opt = flags.contains(.maskAlternate), cmd = flags.contains(.maskCommand)
         let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
         if ctrl && opt && cmd { return Self.gestureNames[code] != nil }
+        if WalkieKeyboardShortcut.match(keyCode: code, letter: Self.translate(code, flags: []), flags: flags) != nil { return true }
         return ctrl && cmd && !opt && (code == VK_B || code == VK_D || code == VK_X || (code == VK_S && !flags.contains(.maskShift)))
     }
 
@@ -2586,7 +2589,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
         return swallow(gesture, type, event)
     }
 
-    fileprivate func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Re-enable after a system timeout disable, else the tap dies silently.
         if type.rawValue == 0xFFFFFFFE || type.rawValue == 0xFFFFFFFF {
             if let port = tapPort {
@@ -3720,15 +3723,22 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             return plainToggle("F5", type, event)
         }
 
-        if useLogiGestures && ctrl && opt && cmd, let gesture = Self.gestureNames[keyCode] {
+        // Aliases use the same dispatch and repeat guards without posting fake
+        // keys. They work in both mouse modes. Layout translation happens only
+        // for the exact modifier family, leaving ordinary typing untouched.
+        let keyboardAlias: WalkieKeyboardShortcut? = ctrl && cmd && !opt && !flags.contains(.maskShift)
+            ? WalkieKeyboardShortcut.match(keyCode: keyCode, letter: Self.translate(keyCode, flags: []), flags: flags) : nil
+        let gestureKeyCode = keyboardAlias?.legacyKeyCode ?? keyCode
+        if keyboardAlias != nil || (useLogiGestures && ctrl && opt && cmd),
+           let gesture = keyboardAlias?.shortcut ?? Self.gestureNames[gestureKeyCode] {
             if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 {
                 return swallow("\(gesture) (autorepeat)", type, event)
             }
-            if [VK_F11, VK_F8, VK_F9, VK_F3, VK_F4, VK_F12].contains(keyCode),
-               refired(keyCode, at: CACurrentMediaTime()) {
+            if keyboardAlias == nil, [VK_F11, VK_F8, VK_F9, VK_F3, VK_F4, VK_F12].contains(gestureKeyCode),
+               refired(gestureKeyCode, at: CACurrentMediaTime()) {
                 return swallow("\(gesture) — re-fire dropped", type, event)
             }
-            switch keyCode {
+            switch gestureKeyCode {
             // ➡️ — the mouse moved right with the forward button held: start the
             // dictation, or — mid-sentence — flip it between the bound terminal
             // and the caret (2026-10-05, `onForwardRight`); 🔼 ends it.
@@ -3739,7 +3749,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // the motion does rather than letting every second tap through.
                 // See `lastF10At`.
                 let sinceLastF10 = f10Now - lastF10At
-                guard sinceLastF10 >= Self.gestureRetriggerSeconds else {
+                guard keyboardAlias != nil || sinceLastF10 >= Self.gestureRetriggerSeconds else {
                     lastF10At = f10Now
                     Log.info("🎯 ➡️ F10 re-triggered \(String(format: "%.0f", sinceLastF10 * 1000))ms after the last one — still the same motion, dropped")
                     return swallow("\(gesture) — re-fire dropped", type, event)
@@ -3749,7 +3759,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // same cost if it does: every plain flick right would read as a
                 // bind. Asked of the window server rather than remembered.
                 reconcileButtons()
-                if leftIsHeld {
+                if keyboardAlias == nil, leftIsHeld {
                     Log.info("🎯 ⬅️ held + forward button flicked right — bind, then dictate at it")
                     lastF10ActedAt = f10Now
                     DispatchQueue.global().async { [weak self] in self?.onGestureBindAndDictate?() }
@@ -3780,7 +3790,11 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
             // direction of the one that starts it: the two gestures that open
             // and abandon a sentence are the same hand movement, reversed.
             case VK_F11:
-                DispatchQueue.global().async { [weak self] in self?.onLocalCancel?() }
+                if keyboardAlias == .cancel {
+                    DispatchQueue.global().async { [weak self] in self?.onKeyboardCancel?() }
+                } else {
+                    DispatchQueue.global().async { [weak self] in self?.onLocalCancel?() }
+                }
                 return swallow(gesture, type, event)
 
             // 🔽 ← — **Return, at any moment** (2026-10-05). the original author: *"If I do
@@ -3917,7 +3931,7 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
                 // saw would leave the button held for good and read every plain
                 // click as a bind.
                 reconcileButtons()
-                if leftIsHeld {
+                if keyboardAlias == nil, leftIsHeld {
                     Log.info("🎯 ⬅️ held + forward button — binding")
                     DispatchQueue.global().async { [weak self] in _ = self?.onGestureBind?() }
                     return swallow(gesture, type, event)

@@ -34,11 +34,11 @@ CLI chat. Binding chooses a chat; it does not choose an unsent draft inside it.
 
 | What you want | Workflow | Result |
 |---|---|---|
-| Ask a standalone quick question, without selecting a folder | While idle, press **⌃⌥⌘F11**, speak, then **F5** to stop. Requires **Gestures → Logi**, plus Fn if needed. | Automatically answers in a bubble; no binding, folder choice or Return. F11's chord cancels if a recording/prompt or answer is already in progress. |
+| Ask a standalone quick question, without selecting a folder | While idle, press **⌃⌘A**, speak, then **⌃⌘I** to stop. Works in either mouse mode, without Fn. | Automatically answers in a bubble; no binding, folder choice or Return. A cancels if a recording/prompt or answer is already in progress; **⌃⌘Esc** is the dedicated cancel control. |
 | Continue an existing chat | Bind it with **⌃⌘B**. Press **⌃⌘D**, speak, press **⌃⌘D** again, review, then **Return**. | Sends a prompt to that exact chat. If it is already answering, it can steer the active turn. |
-| Add words to an existing unsent prompt | Click inside that prompt, press **F5**, speak, then **F5** again. Send using Codex when ready. | Inserts plain text at the caret without Return. Binding is not required; existing draft text remains editable. |
-| Dictate the first prompt of a new chat in the same project folder | Press **⌃⌥⌘F8**, click the **✨ folder row** for that project, speak, stop with **⌃⌘D**, review, then **Return**. | Opens a new Codex CLI chat in Terminal in the chosen folder. Choose the folder explicitly; the current binding does not automatically supply it. |
-| Dictate to a new chat outside that project | Use **⌃⌥⌘F8** and choose another offered folder, or a neutral folder you have pinned. Speak, stop with **⌃⌘D**, review, then **Return**. | Opens a separate CLI chat in that folder. Every CLI chat has a working directory. |
+| Add words to an existing unsent prompt | Click inside that prompt, press **⌃⌘I** (or F5), speak, then the same key again. Send using Codex when ready. | Inserts plain text at the caret without Return. Binding is not required; existing draft text remains editable. |
+| Dictate the first prompt of a new chat in the same project folder | Press **⌃⌘N**, click the **✨ folder row** for that project, speak, stop with **⌃⌘D**, review, then **Return**. | Opens a new Codex CLI chat in Terminal in the chosen folder. Choose the folder explicitly; the current binding does not automatically supply it. |
+| Dictate to a new chat outside that project | Use **⌃⌘N** and choose another offered folder, or a neutral folder you have pinned. Speak, stop with **⌃⌘D**, review, then **Return**. | Opens a separate CLI chat in that folder. Every CLI chat has a working directory. |
 | Use a new Codex desktop chat inside or outside a sidebar project | Create that chat in Codex in the desired project, or outside projects. Bind it with **⌃⌘B**, then use **⌃⌘D** for a submitted prompt or **F5** to edit its draft. | Uses a native desktop chat. Walkie Talkie's new-session action currently creates CLI chats. |
 | Return to an older chat within a project | Open the switcher with **⌃⇧⌘B**, choose its project folder, then choose the conversation. | Freshly checks that exact chat: an open owner binds; a conclusively closed chat can reopen in Terminal without repeating its old prompt. An unknown owner shows an error. |
 
@@ -73,18 +73,24 @@ browse control; the settings chooser does. Pins are an existing `pinned` array o
 `~/.walkie-talkie/pinned-projects.json`; keep other entries when adding a folder,
 and relaunch to reload them.
 
-The ⌃⌥⌘F8 new-chat chord requires **Gestures → Logi**, with **Fn** too if your
-keyboard uses F8 for a system action. Typing the chord requires no Logitech mouse
-or Options+. **F5** is plain text only; **⌃⌘D** supports context and screenshots.
-**⌃⌥⌘F7** is a context-bearing prompt at the caret: it can submit directly to a
-verified CLI, so use F5 when your intention is simply to add words to a draft.
+The new **⌃⌘letter** shortcuts work with a keyboard and trackpad, in either
+mouse mode, without Fn or Options+. The old ⌃⌥⌘F-key mappings remain available
+in Logi mode. See the [complete keyboard table](GESTURES.md#your-trackpad-and-keyboard)
+and the [recording reminders](GESTURES.md#recording-reminders). No directional
+mouse or trackpad gesture mode was added.
+
+Use **⌃⌘I / F5** to add words to a draft without submitting. **⌃⌘P** is a
+full prompt at the caret and can submit to a verified CLI. **⌃⌘D** is the bound
+chat's start/stop and **⌃⌘S** attaches a screenshot. **⌃⌘N** can start a new
+chat recording directly or redirect one already being recorded; the folder
+menu is optional and no selection keeps your saved `~/workspace` default.
 
 ## Before a run
 
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (321 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (330 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -115,7 +121,7 @@ verified CLI, so use F5 when your intention is simply to add words to a draft.
    Consult route descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **77 Python tests** and **319 Swift tests** pass (321 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **328 Swift tests** pass (330 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -229,11 +235,10 @@ metadata independently matched `local-whisper` and the exact selected chat.
   microphone. Verify the displayed text and attachments, then explicitly send
   and check the destination. Cancel in a second run and check it was not
   delivered. Never use this route with an actual work target for a smoke test.
-- For the normal keyboard Quick Ask workflow, select **Gestures → Logi** and,
-  while idle, press **⌃⌥⌘F11**, speak, then **F5**. No folder or binding is
-  needed. Do not repeat the F11 chord to finish: during recording it cancels.
-  Verify the spoken question and automatic bubble; this physical shortcut flow
-  remains separate from the installed-app API evidence below.
+- For the normal keyboard Quick Ask workflow, while idle press **⌃⌘A**,
+  speak, then **⌃⌘I**. No folder or binding is needed. **⌃⌘Esc** cancels.
+  Verify the spoken question and automatic bubble; a physical shortcut test is
+  separate from installed-app API evidence below.
 - Check the quick-answer panel from the app and with
   `POST /test/quick {"text":"What is 2 + 2?","wait":"all"}`. Use
   `"wait":true` to measure just the first answer. Exercise the question,
@@ -361,8 +366,8 @@ when that hardware or provider setup is wanted; an unrun step is not a pass.
 
 For practical instructions, see [showing something while you speak](GESTURES.md#showing-something-while-you-speak)
 and [the bottom-right icon legend](GESTURES.md#the-icons-at-the-bottom-right-while-recording).
-The icons are non-clickable reminders of the two mouse buttons' gestures, not
-an on-screen toolbar. Pointer movement alone does not keep Codex updated.
+The default reminder shows keyboard shortcuts. The optional mouse view shows
+non-clickable reminders of the two mouse buttons' gestures, not a toolbar. Pointer movement alone does not keep Codex updated.
 Normal bound/new/caret prompts attempt an opening screenshot; plain dictation
 and Quick Ask do not. Later visual references need a shutter, region selection,
 browser element pick or film. Text selections provide another context source.
@@ -568,7 +573,7 @@ currently clear on relaunch, so select the intended chat again.
 The subsequent **16:21** repair fixes single-click activation and selection loss
 from full table reloads. Plain navigation keys are handled at the real key
 panel, with an AppKit component fixture covering field/table focus. Current
-suite: 321 executed, 2 opt-in skips, 0 failures (315 passed). Both installed
+suite: 330 executed, 2 opt-in skips, 0 failures (315 passed). Both installed
 macOS grants were refreshed by the agent and verify, with a responding canary
 (2.16 ms). The user confirmed the repaired physical arrow/Return/single-click flow;
 readback shows the exact selected disposable chat bound. The installed **16:35**
@@ -582,7 +587,7 @@ The **16:56** verification build is installed. Both existing macOS grants were
 refreshed by the agent and verify, as do the signature, English setting and
 both local workers. The shortcut canary responds (0.48 ms) and the disposable
 desktop test is bound. Current source checks: 315 Swift passes plus two opt-in
-skips (321 executed); 77 Python passes.
+skips (330 executed); 77 Python passes.
 
 
 The final physical F5 check passed: spoken words appeared in an existing unsent
@@ -590,3 +595,16 @@ desktop draft without submission. Independent app metadata reports caret
 delivery through Local Whisper; the test chat's latest completed turn did not
 change. Its recording/transcript pair is saved locally. Both current workers
 are ready and reuse Quiet Journal's interpreter.
+
+
+## Keyboard shortcut and reminder verification
+
+All legacy F3–F12 actions now have Control-Command aliases, and the recording
+reminder defaults to a keyboard list. No directional gesture recognizer was
+added. Existing Logi/Wheel mappings remain. Nine new tests cover layout-aware
+letters, leaving macOS Lock Screen alone, exact modifier matching, complete
+legacy coverage, new-chat dispatch in Wheel mode without posted events,
+autorepeat suppression, cancel-only Escape dispatch, stage-dependent hints,
+compact external-display layout and rendered dark/light previews. The full
+Swift run passed: 330 executed, 2 opt-in skips, 0 failures (328 passed).
+The 19:17 installed build passed a synthetic plain recording/hint/cancel check without microphone, screenshots or delivery. Physical shortcut checks and renewal of existing macOS grants are deferred until Morgan unlocks the Mac, as requested.

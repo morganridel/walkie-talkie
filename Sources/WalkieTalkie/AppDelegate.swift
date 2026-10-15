@@ -1578,6 +1578,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             VoicePrep.shared.refresh()
             Log.info("🎚️ halo voice: \(voice.rawValue) — \(voice.title)")
         }
+        status.onRecordingHintsChanged = { [weak self] in self?.overlay.refreshRecordingHints() }
         status.onToggleLogiGestures = { [weak self] on in
             self?.hotkeys.useLogiGestures = on
             Log.info(on ? "🖱️ Logi gestures on — the wheel is the browser's"
@@ -2384,19 +2385,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // no microphone, no words in flight, no held panel — the flick opens a
         // clean sentence for `QuickAsk`. An answer still coming is cancelled.
         hotkeys.onLocalCancel = { [weak self] in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if self.cancelSentenceOrPanel(reason: "⬅️ a cancel flick (🔼 ←)") { return }
-                if QuickAsk.shared.cancel() {
-                    Log.info("⚡ 🔼 ← while the quick answer was coming — dropped")
-                    ReplyPanel.close()
-                    self.overlay.flash("🗑️ Cancelled", duration: 1.5)
-                    return
-                }
-                guard !self.source.phase.isWaitingForWords else { return }
-                Log.info("⚡ 🔼 ← at rest — a quick question for \(QuickAsk.shared.model)")
-                self.startDictation(paste: true, clean: true, quick: true)
-            }
+            DispatchQueue.main.async { self?.cancelOrAskQuickly(startWhenIdle: true) }
+        }
+        hotkeys.onKeyboardCancel = { [weak self] in
+            DispatchQueue.main.async { self?.cancelOrAskQuickly(startWhenIdle: false) }
         }
         // `onWisprMaybeStarting` belongs to `WisprFlowSource` now — it is the
         // source that decides what a gesture on the wire means, and it takes the
@@ -6505,6 +6497,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// counting as it always has (the panel has ⎋ and ✕ of its own).
     /// True when there was something to cancel.
     @discardableResult
+    private func cancelOrAskQuickly(startWhenIdle: Bool) {
+        if cancelSentenceOrPanel(reason: "a cancel / Quick Ask shortcut") { return }
+        if QuickAsk.shared.cancel() {
+            ReplyPanel.close()
+            overlay.flash("🗑️ Cancelled", duration: 1.5)
+            return
+        }
+        guard startWhenIdle, !source.phase.isWaitingForWords else { return }
+        Log.info("⚡ Quick Ask shortcut — \(QuickAsk.shared.model)")
+        startDictation(paste: true, clean: true, quick: true)
+    }
+
     private func cancelSentenceOrPanel(reason: String) -> Bool {
         let micOpen = listening || source.isRecording || speculative
         if held != nil, !micOpen, overlay.isHoldingPrompt {
@@ -8046,6 +8050,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "at": Outbox.iso(Date()),
             "localLanguage": WhisperLanguage.selected.rawValue,
             "newChatFolder": Self.spawnDirectory,
+            "recordingHints": overlay.recordingHintsSnapshot,
             "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
             "logiGestures": status.isLogiGestures,
             // The relay's own sentence-in-flight flag — *not* the microphone.

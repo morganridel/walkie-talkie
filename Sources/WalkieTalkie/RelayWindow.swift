@@ -4487,6 +4487,9 @@ private let heardLabel = NSTextField(labelWithString: "")
         updateHintBar()
     }
 
+    func refreshRecordingHints() { updateHintBar() }
+    var recordingHintsSnapshot: [String: Any] { hintBar.snapshot }
+
     private func updateHintBar() {
         guard ProcessInfo.processInfo.environment["RELAY_SHOOT"] == nil else { return }
         hintBar.update(.init(listening: listening, prompting: prompting, filming: filming,

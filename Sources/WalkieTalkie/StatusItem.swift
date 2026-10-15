@@ -818,6 +818,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     }
     /// The tap has to be told; `AppDelegate` owns that wire.
     var onToggleLogiGestures: ((Bool) -> Void)?
+    var onRecordingHintsChanged: (() -> Void)?
 
     // ── Wrap Wispr Flow: gone from the menu (2026-09-14) ────────────────────
     //
@@ -2482,6 +2483,35 @@ final class StatusItem: NSObject, NSMenuDelegate {
             row.image = on == logiGesturesOn ? Self.symbolIcon("checkmark") : Self.blankIcon
             gesturesSubmenu.addItem(row)
         }
+        gesturesSubmenu.addItem(.separator())
+        for mode in RecordingHintMode.allCases {
+            let row = NSMenuItem(title: "Recording hints: \(mode.title)",
+                                 action: #selector(recordingHintsPicked(_:)), keyEquivalent: "")
+            row.target = self
+            row.representedObject = mode.rawValue
+            row.image = mode == RecordingHintMode.selected ? Self.symbolIcon("checkmark") : Self.blankIcon
+            gesturesSubmenu.addItem(row)
+        }
+        gesturesSubmenu.addItem(.separator())
+        let reference = NSMenuItem(title: "Keyboard shortcuts", action: nil, keyEquivalent: "")
+        let shortcuts = NSMenu()
+        shortcuts.autoenablesItems = false
+        for (name, chord) in [("Bound prompt / stop", "⌃⌘D"), ("Screenshot", "⌃⌘S"),
+                              ("Project/chat switcher", "⌃⇧⌘B")] + WalkieKeyboardShortcut.allCases.map({ ($0.title, $0.shortcut) }) {
+            let row = NSMenuItem(title: "\(name)    \(chord)", action: nil, keyEquivalent: "")
+            row.isEnabled = false
+            shortcuts.addItem(row)
+        }
+        reference.submenu = shortcuts
+        gesturesSubmenu.addItem(reference)
+    }
+
+    @objc private func recordingHintsPicked(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String,
+              let mode = RecordingHintMode(rawValue: value) else { return }
+        RecordingHintMode.selected = mode
+        applyLogiGesturesRow()
+        onRecordingHintsChanged?()
     }
 
     /// `POST /test/autosend` (G6): the same toggle as the row, optionally not

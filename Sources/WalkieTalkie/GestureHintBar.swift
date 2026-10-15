@@ -133,12 +133,41 @@ final class GestureHintBar {
         return [front, back]
     }
 
+    struct KeyboardHint: Equatable {
+        let label: String
+        let shortcut: String
+    }
+
+    static func keyboardHints(for s: Stage) -> [KeyboardHint] {
+        guard s.listening, !s.held, s.crop == nil else { return [] }
+        func hint(_ label: String, _ action: WalkieKeyboardShortcut) -> KeyboardHint {
+            KeyboardHint(label: label, shortcut: action.shortcut)
+        }
+        if s.prompting {
+            return [KeyboardHint(label: "End recording", shortcut: "⌃⌘D"),
+                    KeyboardHint(label: "Screenshot", shortcut: "⌃⌘S"),
+                    hint(s.filming ? "Stop film" : "Start film", .film),
+                    hint(s.spawn ? "Change new-chat folder" : "New chat", .newChat),
+                    hint("Typed note", .note), hint("Switch bound / caret", .route),
+                    hint(s.kamikaze ? "Close when done: ON" : "Close when done: OFF", .finish),
+                    hint("Cancel", .cancel)]
+        }
+        if s.quick { return [hint("Stop and ask", .dictate), hint("Cancel", .cancel)] }
+        return [hint("Stop and insert", .dictate), hint("Stop + Return", .dictateAndEnter), hint("Cancel", .cancel)]
+    }
+
+    var snapshot: [String: Any] {
+        ["mode": RecordingHintMode.selected.rawValue, "visible": panel?.isVisible ?? false,
+         "items": (board?.keyboard ?? []).map { ["label": $0.label, "shortcut": $0.shortcut] }]
+    }
+
     /// A label starting with this is drawn crossed out, without it.
     static let struck = "~"
 
     private var panel: NSPanel?
     private var board: Board?
     private var shown = Stage()
+    private var shownKeyboard = true
     /// The screens as of the last `show` — read once, not on every mouse move.
     private var displays: [Display] = []
     private var placed: Spot?
@@ -169,22 +198,25 @@ final class GestureHintBar {
     static let offRetinaScale: CGFloat = 3
 
     func update(_ stage: Stage) {
-        let visible = stage.listening && !stage.held && AboutWindow.logiGesturesOn
-        guard stage != shown || (panel != nil) != visible else { return }
+        let keyboard = RecordingHintMode.selected == .keyboard
+        let visible = stage.listening && !stage.held && (keyboard || AboutWindow.logiGesturesOn)
+        guard stage != shown || shownKeyboard != keyboard || (panel != nil) != visible else { return }
         shown = stage
+        shownKeyboard = keyboard
         guard visible else { hide(); return }
         let mouse = Self.mouse(for: stage)
-        show(mouse == nil ? Self.crosses(for: stage) : [], mouse: mouse)
+        show(!keyboard && mouse == nil ? Self.crosses(for: stage) : [], mouse: mouse,
+             keyboard: keyboard ? Self.keyboardHints(for: stage) : [])
     }
 
     /// Every mouse move, from the chip's own monitors: the bar leaves the screen
     /// the pointer is on (2026-10-01).
     func pointerMoved(_ pointer: NSPoint) {
-        guard let board, !board.crosses.isEmpty || board.mouse != nil else { return }
+        guard let board, !board.crosses.isEmpty || board.mouse != nil || !board.keyboard.isEmpty else { return }
         place(board.crosses, mouse: board.mouse, pointer: pointer)
     }
 
-    private func show(_ crosses: [Cross], mouse: MouseHint? = nil) {
+    private func show(_ crosses: [Cross], mouse: MouseHint? = nil, keyboard: [KeyboardHint] = []) {
         displays = NSScreen.screens.map { s -> Display in
             let id = s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             return Display(frame: s.frame, visible: s.visibleFrame,
@@ -193,12 +225,13 @@ final class GestureHintBar {
         if let board {
             board.crosses = crosses
             board.mouse = mouse
+            board.keyboard = keyboard
             placed = nil
             place(crosses, mouse: mouse, pointer: NSEvent.mouseLocation)
             return
         }
-        guard let spot = Self.spot(base: Board.size(for: crosses, mouse: mouse), on: displays,
-                                   pointer: NSEvent.mouseLocation) else { return }
+        guard let spot = Self.spot(base: Board.size(for: crosses, mouse: mouse, keyboard: keyboard), on: displays,
+                                   pointer: NSEvent.mouseLocation, scaleOverride: shownKeyboard ? 1 : nil) else { return }
         Log.info("⌨️ hint bar ×\(Int(spot.scale)) α\(spot.opacity): \(crosses.map(Self.describe).joined(separator: " / "))")
         let p = NSPanel(contentRect: spot.rect, styleMask: [.borderless, .nonactivatingPanel],
                         backing: .buffered, defer: false)
@@ -216,6 +249,7 @@ final class GestureHintBar {
         b.opacity = spot.opacity > 0 ? spot.opacity : Self.aloneOpacity
         b.crosses = crosses
         b.mouse = mouse
+        b.keyboard = keyboard
         b.autoresizingMask = [.width, .height]
         p.contentView = b
         p.alphaValue = 0
@@ -230,7 +264,8 @@ final class GestureHintBar {
 
     private func place(_ crosses: [Cross], mouse: MouseHint? = nil, pointer: NSPoint) {
         guard let panel, let board,
-              let spot = Self.spot(base: Board.size(for: crosses, mouse: mouse), on: displays, pointer: pointer),
+              let spot = Self.spot(base: Board.size(for: crosses, mouse: mouse, keyboard: board.keyboard),
+                                   on: displays, pointer: pointer, scaleOverride: shownKeyboard ? 1 : nil),
               spot != placed else { return }
         let dodged = spot.opacity == 0, wasDodged = placed?.opacity == 0, first = placed == nil
         if placed == nil {
@@ -283,11 +318,13 @@ final class GestureHintBar {
     /// with the pointer on that same screen it flees to the Retina's side of the
     /// seam, at its small size and `fledOpacity`. The Retina alone, or the lid
     /// closed, has nowhere to flee to: it stays put.
-    static func spot(base: NSSize, on screens: [Display], pointer: NSPoint) -> Spot? {
-        let big = NSSize(width: base.width * offRetinaScale, height: base.height * offRetinaScale)
+    static func spot(base: NSSize, on screens: [Display], pointer: NSPoint,
+                     scaleOverride: CGFloat? = nil) -> Spot? {
+        let acrossScale = scaleOverride ?? offRetinaScale
+        let big = NSSize(width: base.width * acrossScale, height: base.height * acrossScale)
         guard let home = screens.first(where: \.builtIn),
               screens.contains(where: { !$0.builtIn }) else {
-            let scale = scale(on: screens)
+            let scale = scaleOverride ?? scale(on: screens)
             let size = NSSize(width: base.width * scale, height: base.height * scale)
             return placement(size: size, on: screens).map {
                 let near = NSMouseInRect(pointer, $0.insetBy(dx: -dodge, dy: -dodge), false)
@@ -297,7 +334,7 @@ final class GestureHintBar {
         guard let (across, seam) = host(on: screens),
               let rect = placement(size: big, on: screens) else { return nil }
         guard NSMouseInRect(pointer, across.frame, false) else {
-            return Spot(rect: rect, scale: offRetinaScale, opacity: acrossOpacity)
+            return Spot(rect: rect, scale: acrossScale, opacity: acrossOpacity)
         }
         let v = home.visible, m = margin
         let w = base.width, h = base.height
@@ -378,6 +415,7 @@ final class GestureHintBar {
     /// does not change width when a label does.
     final class Board: NSView {
         var crosses: [Cross] = [] { didSet { needsDisplay = true } }
+        var keyboard: [KeyboardHint] = [] { didSet { needsDisplay = true } }
         /// Set during a crop, in place of the crosses.
         var mouse: MouseHint? { didSet { needsDisplay = true } }
         /// Drawn at `size(for:)` × this; the frame is already that big.
@@ -402,7 +440,19 @@ final class GestureHintBar {
 
         /// The mouse: three buttons side by side, as tall as two boxes, over a
         /// body as tall as two more.
-        static func size(for crosses: [Cross], mouse: MouseHint?) -> NSSize {
+        static func keyboardColumnWidth(_ hints: [KeyboardHint]) -> CGFloat {
+            hints.map { hint in
+                let words = (hint.label as NSString).size(withAttributes: [.font: GestureHintBar.font]).width
+                let keys = (hint.shortcut as NSString).size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)]).width
+                return ceil(words + keys + 30)
+            }.max() ?? 160
+        }
+
+        static func size(for crosses: [Cross], mouse: MouseHint?, keyboard: [KeyboardHint] = []) -> NSSize {
+            if !keyboard.isEmpty {
+                return NSSize(width: keyboardColumnWidth(keyboard) * 2 + 6,
+                              height: CGFloat((keyboard.count + 1) / 2) * 32 - 6)
+            }
             guard let mouse else { return size(for: crosses) }
             let h = GestureHintBar.boxHeight, gap = GestureHintBar.gap
             return NSSize(width: mouseBoxWidth(for: mouse) * 3 + gap * 2, height: h * 4 + gap)
@@ -425,6 +475,10 @@ final class GestureHintBar {
             cg?.setAlpha(opacity)
             cg?.beginTransparencyLayer(auxiliaryInfo: nil)
             defer { cg?.endTransparencyLayer() }
+            if !keyboard.isEmpty {
+                drawKeyboard()
+                return
+            }
             if let mouse {
                 drawMouse(mouse)
                 return
@@ -442,6 +496,24 @@ final class GestureHintBar {
                 box(c.click, col: 1, row: 1)
                 box(c.right, col: 2, row: 1)
                 box(c.down, col: 1, row: 2)
+            }
+        }
+
+        private func drawKeyboard() {
+            let width = Self.keyboardColumnWidth(keyboard)
+            let keysFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)
+            for (index, hint) in keyboard.enumerated() {
+                let rect = NSRect(x: CGFloat(index % 2) * (width + 6), y: CGFloat(index / 2) * 32,
+                                  width: width, height: 26)
+                NSColor.black.withAlphaComponent(0.82).setFill()
+                NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: 7, yRadius: 7).fill()
+                let words = hint.label as NSString, keys = hint.shortcut as NSString
+                let keyAttributes: [NSAttributedString.Key: Any] = [.font: keysFont, .foregroundColor: NSColor.systemYellow]
+                let wordAttributes: [NSAttributedString.Key: Any] = [.font: GestureHintBar.font, .foregroundColor: NSColor.white]
+                let keySize = keys.size(withAttributes: keyAttributes)
+                let wordSize = words.size(withAttributes: wordAttributes)
+                words.draw(at: NSPoint(x: rect.minX + 9, y: rect.midY - wordSize.height / 2), withAttributes: wordAttributes)
+                keys.draw(at: NSPoint(x: rect.maxX - keySize.width - 9, y: rect.midY - keySize.height / 2), withAttributes: keyAttributes)
             }
         }
 

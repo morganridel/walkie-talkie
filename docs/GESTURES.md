@@ -1,12 +1,12 @@
 # Walkie Talkie: keyboard and mouse controls
 
-These controls describe Morgan’s Codex fork. Use the [workflow and feature guide](CODEX_TEST_GUIDE.md) for daily tasks and the [feature/evidence matrix](CODEX_PARITY.md) for implemented features, verification and limitations. Global controls require the existing macOS Accessibility grant; screenshots and film also require Screen Recording. The 18:28 rebuild's grant renewal is pending an unlocked Mac.
+These controls describe Morgan’s Codex fork. Use the [workflow and feature guide](CODEX_TEST_GUIDE.md) for daily tasks and the [feature/evidence matrix](CODEX_PARITY.md) for implemented features, verification and limitations. Global controls require the existing macOS Accessibility grant; screenshots and film also require Screen Recording. The current build's grant renewal and physical shortcut verification are recorded in the feature matrix.
 
 ## Ways to use gestures
 
 | Input | Available now? | How it works |
 |---|---|---|
-| Keyboard plus trackpad or ordinary mouse | Yes | Press the shortcuts below directly; move the pointer normally to choose screenshot context. Select **Gestures → Logi** for the ⌃⌥⌘F-key controls. No Logitech hardware or Options+ is needed to type them. |
+| Keyboard plus trackpad or ordinary mouse | Yes | Press the shortcuts below directly; move the pointer normally to choose screenshot context. The **⌃⌘letter** shortcuts work in both mouse modes. No Logitech hardware or Options+ is needed. Only the legacy ⌃⌥⌘F-key chords depend on Logi mode. |
 | Hold a keyboard key, move the pointer in a direction, then release | No | There is no keyboard modifier for a directional gesture or for the wheel-drag crop. Implementing this would require a new gesture mode. |
 | Trackpad swipes, such as three-finger left/up/right/down | No built-in support | The app does not recognize macOS trackpad swipes as these actions. |
 | Logitech thumb button held while moving the mouse | Yes, with setup | Logi Options+ recognizes the direction and sends the mapped shortcut. Walkie Talkie receives that shortcut; **Logi** mode itself does not recognize pointer directions. |
@@ -24,40 +24,62 @@ New CLI chats default to `~/workspace`. Set another default in **Walkie Talkie m
 
 See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, editing an unsent draft, new chats in the same/different folder, and native desktop chats outside sidebar projects.
 
-| Action | Control |
+| Action | Preferred keyboard shortcut |
 |---|---|
-| Open the project/chat switcher from any app | **Control + Shift + Command + B** (⌃⇧⌘B) |
-| Bind a Terminal chat / switch desktop project and chat | **Control + Command + B** (⌃⌘B) |
-| Start / stop a prompt for the bound Codex chat | **Control + Command + D** (⌃⌘D) |
-| Add a screenshot while the prompt is recording | **Control + Command + S** (⌃⌘S) |
-| Existing screenshot control, with Gestures: Logi selected | **Control + Option + Command + F6** while recording |
-| Send the held prompt after transcription | **Return** |
-| Cancel the held prompt | **Escape** |
-| Start Quick Ask while idle; also cancel a recording/held prompt or an answer still running | **Control + Option + Command + F11**; the action depends on the current state |
-| Stop recording a Quick Ask question | **F5**; the answer then appears automatically in a bubble |
-| Start / stop plain text dictation at the insertion caret | **F5**; stopping inserts words without Return |
-| Prompt at the insertion caret; click again to stop | **Control + Option + Command + F7** |
-| Dictate the first prompt for a new CLI chat; choose its folder | **Control + Option + Command + F8** |
-| Start / stop screen film during a prompt | **Control + Option + Command + F4** |
-| Pick a browser element during a prompt (extension enabled) | Hold **Command + Shift** about half a second until outlined, then click |
-| Open a small typed-note box during a local prompt | **Control + Option + Command + F12** |
+| Open the project/chat switcher from any app | **⌃⇧⌘B** |
+| Bind the foreground CLI tab / switch a desktop binding | **⌃⌘B** |
+| Start / stop a prompt for the bound chat | **⌃⌘D** |
+| Start / stop plain dictation without Return | **⌃⌘I** (I for insert); **F5** also remains available |
+| Prompt at the caret / stop it | **⌃⌘P** |
+| Quick Ask while idle; cancel active work otherwise | **⌃⌘A** (A for ask); stop the question with **⌃⌘I** |
+| New CLI chat / redirect the current recording to a new chat | **⌃⌘N**; ignore the folder menu to use the saved default |
+| Screenshot during a prompt | **⌃⌘S** |
+| Start / stop film during a prompt | **⌃⌘V** (V for video) |
+| Typed note during a prompt; disconnect while idle | **⌃⌘T**; during plain dictation it stops without Return |
+| Start a bound prompt / switch bound ⇄ caret while recording | **⌃⌘R** (R for route) |
+| Toggle the finish-and-close/archive cue | **⌃⌘K** (the existing kamikaze action) |
+| Cancel recording, held prompt or running quick answer | **⌃⌘Esc**; while idle it does nothing |
+| Plain dictation: start, or stop and insert Return | **⌃⌘E**; during a normal prompt it is another screenshot control |
+| Type a Return into the foreground app | **⌃⌘Return**; the existing rear-left action |
+| Send / cancel a held prompt | Bare **Return / Escape** |
+| Transcribe locally now | **⌃⌘X** |
+| Pick a browser element during a prompt | Hold **⌘⇧** until outlined, then click; extension required |
 
-On a keyboard whose F keys perform media/system actions, use **Fn** to send the actual F key. The ⌃⌥⌘F-key controls require **Gestures: Logi**, but do not require Options+ when typed on the keyboard. ⌃⌘D and the new ⌃⌘S work in either gesture mode.
+**⌃ is Control; ⌘ is Command.** The new letter shortcuts do not require Fn or
+Logi mode. They follow the current keyboard layout; **⌃⌘Q remains macOS Lock
+Screen**. Extra Shift/Option combinations are not claimed by the new aliases.
+The old function-key controls still work in Logi mode, with Fn when needed.
+
+### Recording reminders
+
+The default bottom-corner reminder is now a compact **Keyboard shortcuts**
+list, with the action and its actual shortcut together. During a prompt it
+shows End, Screenshot, Film, New chat, Typed note, Switch bound/caret, Close
+when done and Cancel. Film and close-cue labels update with their state.
+Plain dictation offers Stop/insert, Stop + Return and Cancel; Quick Ask offers
+Stop/ask and Cancel. These are reminders, not clickable controls.
+
+Choose **Gestures → Recording hints: Keyboard shortcuts** to restore this
+view, or **Recording hints: Mouse gestures** for the original two crosses.
+The keyboard reminder appears in either mouse mode; the original mouse legend
+is Logi-only. Both hide during right-Command/right-Option hold-to-dictate and
+get out of the pointer's way. A wheel-region selection retains its physical
+mouse instructions. **Gestures → Keyboard shortcuts** lists every alias.
 
 ### Quick Ask without a folder or binding
 
-When nothing is recording, transcribing or held for review, press **⌃⌥⌘F11**,
-say the question, then press **F5** to stop. The answer appears in the reply
+When nothing is recording, transcribing or held for review, press **⌃⌘A**,
+say the question, then press **⌃⌘I** to stop. The answer appears in the reply
 bubble without Return, a folder choice or a chat binding. It first answers,
-then checks the web, then reviews the answer. **×** stops the remaining work;
-**⌃⌥⌘F11** also cancels an answer that is still running. Pressing F11's chord
-again during the question cancels that recording; use F5 to finish it.
-Quick Ask is separate from continuing a saved project conversation.
+then checks the web, then reviews the answer. **×** or **⌃⌘Esc** stops the
+remaining work. A during an active recording/prompt or answer cancels that
+work rather than opening another question. The old **⌃⌥⌘F11 → F5** flow also
+remains available. Quick Ask is separate from a saved project conversation.
 
 For plain dictation with Local selected, **double-tap right Option** as an
-alternative to F5. Or hold **right Command + right Option**, speak, then release
-to insert plain text at the caret. These modifier controls do not turn pointer
-movement into directional gestures.
+alternative to ⌃⌘I/F5. Or hold **right Command + right Option**, speak, then
+release to insert plain text at the caret. These modifier controls do not
+turn pointer movement into directional gestures.
 
 The screenshot captures the **display containing the pointer**, with the pointer location passed as context. It does not crop automatically around the pointer. Point at the relevant item before pressing the shortcut. Check that the screenshot count or thumbnail appears before stopping; a flash alone does not prove capture succeeded.
 
@@ -69,7 +91,7 @@ Try a short prompt: open example.com, point at its heading, press ⌃⌘D, say �
 
 ## The icons at the bottom right while recording
 
-These are a **gesture legend, not clickable buttons**. The upper cross is the
+If you select **Recording hints: Mouse gestures**, these are a **gesture legend, not clickable buttons**. The default keyboard reminder is described above. The upper cross is the
 front thumb button; the lower cross is the rear thumb button. A cross's centre
 means click, and its arms mean hold that button, move the mouse in that
 direction, then release. Empty boxes mean no action at this stage. The legend
@@ -81,12 +103,12 @@ During a normal prompt, these are the actions:
 | Icon | Mouse gesture | Keyboard equivalent |
 |---|---|---|
 | 🏁 end | Front click | **⌃⌘D** to stop; review, then Return to send |
-| 🗑️ cancel | Front + left | **⌃⌥⌘F11** |
-| ✨ new | Front + up | **⌃⌥⌘F8**; redirects this recording to a new CLI chat |
-| ☠️ | Front + down | **⌃⌥⌘F9**; toggles the completion-and-close/archive cue |
+| 🗑️ cancel | Front + left | **⌃⌘Esc** |
+| ✨ new | Front + up | **⌃⌘N**; redirects this recording to a new CLI chat |
+| ☠️ | Front + down | **⌃⌘K**; toggles the completion-and-close/archive cue |
 | 📸 shot | Rear click | **⌃⌘S**, or **⌃⌥⌘F6** |
-| 🔴 / ⏹️ video | Rear + up | **⌃⌥⌘F4** |
-| ⌨️ type | Rear + down | **⌃⌥⌘F12**; adds a typed note |
+| 🔴 / ⏹️ video | Rear + up | **⌃⌘V** |
+| ⌨️ type | Rear + down | **⌃⌘T**; adds a typed note |
 
 The ☠️ cue asks the receiving agent to finish the task and then close its
 verified CLI window or archive the receiving desktop chat. While plain

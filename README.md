@@ -41,7 +41,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite executes 321 tests with 2 opt-in integration skips and no failures (319 passed). The release bundle builds, installs, launches, and loads
+suite executes 330 tests with 2 opt-in integration skips and no failures (328 passed). The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
@@ -125,6 +125,15 @@ to pick it. The extension also pauses playing browser media while dictating.
    **Mic** to select an input device. The menu also exposes local warm-up,
    live-caption, and cloud-fallback controls.
 
+Keyboard controls now use **Control + Command + a letter**, including **N**
+for a new chat, **V** for film, **T** for typed notes, **A** for Quick Ask, **I**
+for plain dictation, **P** for a caret prompt and **R** for destination switching.
+**⌃⌘Esc** cancels without starting anything while idle. The recording reminder
+shows the available keyboard shortcuts; choose the original mouse legend under
+**Gestures → Recording hints** if wanted. These aliases work in either mouse
+mode, without Fn or Options+, alongside the existing mouse/F-key mappings.
+See the [complete shortcut table](docs/GESTURES.md#your-trackpad-and-keyboard).
+
 Use **⌃⌘S** while recording a prompt to capture the display under the pointer.
 For local English recognition, choose **Engine → Local language → English**;
 Automatic remains the default. This selection applies to captions and the
@@ -168,8 +177,8 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 77 passing tests. The Swift suite has 319 passing
-tests and 2 opt-in integration skips (321 executed, no failures); those opt-in
+The current Python suite has 77 passing tests. The Swift suite has 328 passing
+tests and 2 opt-in integration skips (330 executed, no failures); those opt-in
 checks also passed separately in a disposable native CLI PTY. The finish helper verifies the exact session and closes only a window containing
 that single tab; a window with sibling tabs is refused before signaling Codex. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for
