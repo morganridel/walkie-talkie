@@ -5,6 +5,12 @@ This matrix describes the current source tree separately from runtime evidence.
 the behavior passed end to end. Record evidence here after following [the manual
 test guide](CODEX_TEST_GUIDE.md).
 
+Morgan chose **Keep Local; leave optional checks for later** on 15 October 2026.
+The installed Local/English keyboard workflow is verified. Live cloud/Wispr,
+mouse hardware, additional-device and remaining pointer/edge checks stay listed
+for later; their implementations are retained, and they are not claimed as
+passed end to end.
+
 | Area | Implementation in this fork | Verification evidence |
 |---|---|---|
 | Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 317 executed, 2 opt-in integration checks skipped, 0 failures; 315 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
@@ -22,9 +28,9 @@ test guide](CODEX_TEST_GUIDE.md).
 | Prompt/reply UI | Held prompt, edit/countdown/autosend/cancel/recover, authenticated text/image callbacks, links, and reply-back actions are present. | **Partial.** Installed hold/edit/send/cancel passed; cancel created no turn. Authentication, persistent image copies, resize/queue restoration and source handlers passed. Real spoken “What is two plus two?” automatically invoked `walkie-reply`, returned `shown`, and displayed the bubble confirmed by the user. Bubbles intentionally stay until ×; later replies queue. Pin, image opening and reply-back remain manual. |
 | Kamikaze / finish | `kamikaze` adds a completion cue. CLI finish waits for the exact turn and checks sidecar/PID/TTY/root owner. Automatic close is restricted to a window containing exactly the one verified tab; a window with sibling tabs is refused before signaling. Desktop cue uses the receiving chat’s archive tool. | **Real finish audit found and corrected an API mismatch.** Terminal rejects `close tab` (-1708); the guarded sole-tab-window implementation uses its supported close operation. A real packaged disposable CLI then passed single-tab-window close; its exact native PID exited and tty match count became zero. Desktop archive passed on the disposable chat, which was restored; the answer must precede archive because archive interrupts the active turn. |
 | Screen/context | Keyboard screenshot, wheel crop/move/cancel, accessibility selection, Chromium DOM picker, film/contact sheet, and media pause/resume are implemented. | **Partial, with real keyboard/browser/film delivery verified.** User confirmed English + ⌃⌘S; two real image inputs reached the exact desktop chat. In Microsoft Edge with the unpacked extension enabled, real ⌘⇧ hold/click outlined and picked `#pick-target`; app logged receipt and the synthetic prompt was cancelled without delivery. A fixture audio element paused on prompt open and resumed on cancel. User film delivery produced a genuine 14-frame contact sheet plus screenshot; Codex described the fixture. A second 42-frame film plus selected text correctly described the user selecting synthetic fixture sentences. Wheel crop/move, DOM drag, multi-tab media and iframe cases remain manual. |
-| Gestures and caret | ⌃⇧⌘B opens the picker globally; ⌃⌘B does too while desktop-bound and retains direct CLI binding otherwise. ⌃⌘D and ⌃⌘S work in either gesture mode. Logi/Wheel handlers, plain dictation, caret prompts, and clipboard/paste-last remain. Verified Codex caret prompts use stable-ID RPC; generic fields receive paste without Return. | **Partial.** Real keyboard voice/shutter/film and browser picker passed. Native PTY production caret dispatch passed with a real image; 7 deterministic caret tests pass and 2 opt-in tests passed separately. Physical Logi/Wheel gestures, native Terminal/VS Code focus interaction, and clipboard restoration remain manual. No Options+ is required for keyboard controls. |
+| Gestures and caret | ⌃⇧⌘B opens the picker globally; ⌃⌘B does too while desktop-bound and retains direct CLI binding otherwise. ⌃⌘D and ⌃⌘S work in either gesture mode. Logi/Wheel handlers, plain dictation, caret prompts, and clipboard/paste-last remain. Verified Codex caret prompts use stable-ID RPC; generic fields receive paste without Return. | **Partial.** Real keyboard voice/shutter/film and browser picker passed. The user also confirmed physical F5 inserted spoken words into an unsent desktop draft without submission; metadata reports caret/local-whisper and native readback shows no new chat turn. Native PTY production caret dispatch passed with a real image; 7 deterministic caret tests pass and 2 opt-in tests passed separately. Physical Logi/Wheel gestures, native Terminal/VS Code focus interaction, and clipboard restoration remain manual. No Options+ is required for keyboard controls. |
 | Outbox/restart/login/settings | Outbox records delivered events; guarded restart and menu preferences remain. | **Partial.** Graceful idle replacement/relaunch passed; the 13:53 build’s renewed grants verify, its event-tap canary is alive (0.32 ms), English persisted and both workers are ready. Chat binding is cleared on relaunch and must be selected again; exact disposable binding was restored through the owner-checked route. Login registration reports enabled; actual login, other preferences and restart under varied conditions remain manual. |
-| Voice corpus and report helper | Transcribed recordings retain WAV plus transcript whether or not delivered. Cancelled takes are staged for five minutes and can enter the corpus if recovered and transcribed; outbox records delivered prompts only. | **Retention documented; report helper not installed or scheduled.** Default preview and explicit recipient/inbox requirements pass two tests. No report email was sent. No private Quiet Journal audio was used. |
+| Voice corpus and report helper | Transcribed recordings retain WAV plus transcript whether or not delivered. Cancelled takes are staged for five minutes and can enter the corpus if recovered and transcribed; outbox records delivered prompts only. | **F5 recording/transcript retention verified; report helper not installed or scheduled.** The exact F5 capture has a nonempty transcript and a 227,946-byte WAV, timestamped 6 ms before its caret delivery. No audio was read. Default preview and explicit recipient/inbox requirements pass two tests. No report email was sent. No private Quiet Journal audio was used. |
 
 ## Evidence log
 
@@ -243,3 +249,20 @@ request/reply with final answer `fallback ok`. The default Local engine and
 English were restored. Configured live-provider transcription, cloud/local
 winner races, Wispr, additional microphones and physical mouse gestures remain
 unconfigured or unverified.
+
+
+## Final core workflow check
+
+On the installed 16:56 build, the user confirmed F5 start/stop inserted spoken
+words into an existing unsent desktop draft without submitting it. App metadata
+reports `via: local-whisper`, `to: caret`; the binding stays on the exact desktop
+test ID. Native chat readback still ends at the previous completed fallback
+turn, so the F5 check created no turn. The app is idle afterward, Local and
+English remain selected, and both current workers are ready and run in Quiet
+Journal's interpreter. The caption worker now has a replacement PID and is
+ready. Its normal close path can kill an in-flight caption decode to release
+the GPU, then warm a replacement.
+
+The saved F5 take has a nonempty transcript and a WAV larger than its header,
+with a capture timestamp 6 ms before the independent caret delivery record.
+Only that test pair's text/metadata was inspected; no recording audio was read.

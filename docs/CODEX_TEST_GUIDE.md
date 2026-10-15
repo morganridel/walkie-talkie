@@ -264,6 +264,10 @@ metadata independently matched `local-whisper` and the exact selected chat.
 
 ## Local MLX, cloud fallback, captions, and microphone
 
+Morgan selected Local and deferred optional live-provider, mouse, additional
+device and remaining pointer/edge checks. The steps below remain available for
+when that hardware or provider setup is wanted; an unrun step is not a pass.
+
 - In **Engine**, select each available local model and verify the checked model
   matches the chip/menu label. The default model is multilingual; test an
   English sample and a non-English sample without setting a language override.
@@ -541,3 +545,10 @@ refreshed by the agent and verify, as do the signature, English setting and
 both local workers. The shortcut canary responds (0.48 ms) and the disposable
 desktop test is bound. Current source checks: 315 Swift passes plus two opt-in
 skips (317 executed); 77 Python passes.
+
+
+The final physical F5 check passed: spoken words appeared in an existing unsent
+desktop draft without submission. Independent app metadata reports caret
+delivery through Local Whisper; the test chat's latest completed turn did not
+change. Its recording/transcript pair is saved locally. Both current workers
+are ready and reuse Quiet Journal's interpreter.
