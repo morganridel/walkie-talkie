@@ -1700,6 +1700,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async { self.showBound(bound) }
             }
         }
+        codexChats.onResume = { [weak self] session, cwd in
+            // The picker has already freshly verified that this exact chat is
+            // closed. Resume without replaying any historical prompt.
+            DispatchQueue.main.async { self?.resumeSession(session, in: cwd) }
+        }
         status.whisperFootprint = { [weak self] in self?.whisperSource.footprintBytes }
         // The id the overlay used to carry beside the pulse. Same shape as the
         // footprint: asked when the menu opens, because that is the one moment
@@ -2748,7 +2753,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // presses. Already off the main thread — the tap dispatches globally —
         // which this needs: it spends several subprocesses working out what it
         // is looking at.
-        hotkeys.onBindHotkey = { [weak self] in _ = self?.bindFrontmostTerminal() }
+        hotkeys.onBindHotkey = { [weak self] alwaysShowPicker in
+            guard let self else { return }
+            CodexBindShortcut.perform(bound: self.terminal.target?.handle, forcePicker: alwaysShowPicker,
+                showPicker: { DispatchQueue.main.async { [weak self] in self?.showCodexChats() } },
+                bindFrontmost: { _ = self.bindFrontmostTerminal() })
+        }
         hotkeys.onMouse5Double = { [weak self] in
             guard let self = self else { return }
             // The first click of the pair has already opened the microphone if
@@ -2977,6 +2987,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // by its own edge clamp.
         picker.onTestResumeSession = { [weak self] session, directory in
             self?.resumeSession(session, in: directory)
+        }
+        picker.onTestCodexPicker = { [weak self] snapshot in
+            var result: [String: Any] = ["ok": false]
+            DispatchQueue.main.sync {
+                guard let self else { return }
+                result = self.codexChats.testState(snapshot: snapshot)
+            }
+            return result
         }
         picker.onTestRebindPanel = { [weak self] query in
             DispatchQueue.main.async {

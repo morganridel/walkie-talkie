@@ -8,12 +8,58 @@ them at a real work chat without checking the selected target first.
 
 For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
 
+## Daily workflows
+
+The destination can be an existing chat, the draft under your caret, or a new
+CLI chat. Binding chooses a chat; it does not choose an unsent draft inside it.
+
+| What you want | Workflow | Result |
+|---|---|---|
+| Continue an existing chat | Bind it with **⌃⌘B**. Press **⌃⌘D**, speak, press **⌃⌘D** again, review, then **Return**. | Sends a prompt to that exact chat. If it is already answering, it can steer the active turn. |
+| Add words to an existing unsent prompt | Click inside that prompt, press **F5**, speak, then **F5** again. Send using Codex when ready. | Inserts plain text at the caret without Return. Binding is not required; existing draft text remains editable. |
+| Dictate the first prompt of a new chat in the same project folder | Press **⌃⌥⌘F8**, click the **✨ folder row** for that project, speak, stop with **⌃⌘D**, review, then **Return**. | Opens a new Codex CLI chat in Terminal in the chosen folder. Choose the folder explicitly; the current binding does not automatically supply it. |
+| Dictate to a new chat outside that project | Use **⌃⌥⌘F8** and choose another offered folder, or a neutral folder you have pinned. Speak, stop with **⌃⌘D**, review, then **Return**. | Opens a separate CLI chat in that folder. Every CLI chat has a working directory. |
+| Use a new Codex desktop chat inside or outside a sidebar project | Create that chat in Codex in the desired project, or outside projects. Bind it with **⌃⌘B**, then use **⌃⌘D** for a submitted prompt or **F5** to edit its draft. | Uses a native desktop chat. Walkie Talkie's new-session action currently creates CLI chats. |
+| Return to an older chat within a project | Open the switcher with **⌃⇧⌘B**, choose its project folder, then choose the conversation. | Freshly checks that exact chat: an open owner binds; a conclusively closed chat can reopen in Terminal without repeating its old prompt. An unknown owner shows an error. |
+
+**⌃⇧⌘B opens the switcher from any app, whether or not a chat is already
+bound.** Once bound to Codex desktop, **⌃⌘B** does too. Open the project
+switcher, type to search, use **↑/↓** and
+**Return**, then choose the chat. Go back to projects using the back control or
+**Escape**; Escape at the project list dismisses the switcher. You do not need
+to foreground Codex again. For the initial desktop binding, use ⌃⇧⌘B, or
+**Bind Codex chat…**. With a CLI binding, ⌃⌘B retains direct binding
+of the foreground Terminal tab; pressing it again on that same tab disconnects.
+Mouse binding continues to target the focused terminal.
+
+Here, a switcher project means the chat's **recorded working folder**. It is
+not a promise of membership in a Codex desktop sidebar group. Choosing a folder
+for a new CLI chat does not automatically inherit the bound desktop chat's
+sidebar project. For an actual new projectless desktop chat, use Codex's normal
+new-chat flow and then bind it as above.
+
+The new-chat folder menu offers pinned/recent folders and their open chats.
+Click **✨ the folder** for a new chat; clicking an indented chat selects that
+existing conversation instead. Keep the pointer over the menu to stop its fade.
+If you choose nothing, this Mac uses `~/syncthing/projects` (or `WT_PROJECT_ROOT`
+when configured), which may differ from the folder you are currently bound to.
+Check the destination label before Send. The chooser has no arbitrary-folder
+browse control. Pins are an existing `pinned` array of absolute paths in
+`~/.walkie-talkie/pinned-projects.json`; keep other entries when adding a folder,
+and relaunch to reload them.
+
+The ⌃⌥⌘F8 new-chat chord requires **Gestures → Logi**, with **Fn** too if your
+keyboard uses F8 for a system action. Typing the chord requires no Logitech mouse
+or Options+. **F5** is plain text only; **⌃⌘D** supports context and screenshots.
+**⌃⌥⌘F7** is a context-bearing prompt at the caret: it can submit directly to a
+verified CLI, so use F5 when your intention is simply to add words to a draft.
+
 ## Before a run
 
 1. For a debug build, run `./tools/swift-build.sh build`. This succeeds with the
    official Swift 6.2.3 toolchain cached under the user Library cache and a
    compiler workaround; it does not change system Command Line Tools. Release
-   packaging and the Swift suite passes (299 executed, 2 opt-in skips, 0 failures). Launch an already
+   packaging and the Swift suite passes (304 executed, 2 opt-in skips, 0 failures). Launch an already
    installed app with `open "/Applications/Walkie Talkie.app"` only when that
    is the build under test. Complete Accessibility, Microphone, and Screen
    Recording permission prompts.
@@ -37,10 +83,14 @@ For everyday keyboard and mouse controls, see [GESTURES.md](GESTURES.md).
    ```
 
    `/up`, `/target`, `/engine`, and `/test/state` are useful checks. Other
-   `/test/*` routes can change UI or state. Consult their descriptions in
+   `/test/*` routes can change UI or state. `GET /test/codex-picker` is a
+   read-only exception: it reports the new switcher's mode, query, selected ID,
+   and loading state. `POST /test/codex-picker {"snapshot":true}` saves one PNG
+   of only that visible picker into the app cache, without capturing the desktop.
+   Consult route descriptions in
    `Sources/WalkieTalkie/ElementPicker.swift` before invoking unfamiliar routes.
 
-Current evidence: all **77 Python tests** and **297 Swift tests** pass (299 executed, 2 opt-in skips, 0 failures). The release
+Current evidence: all **77 Python tests** and **302 Swift tests** pass (304 executed, 2 opt-in skips, 0 failures). The release
 app builds, installs, launches, and loads both local transcription workers; its
 local API and installed Codex helper discovery respond. Its signature remains
 valid after model startup. Native CLI tests passed first-prompt exactly-once
@@ -98,55 +148,53 @@ metadata independently matched `local-whisper` and the exact selected chat.
 
 ## Codex binding and chat selection
 
-- Open the menu and choose **Bind Codex chat…**. Verify chat titles and project
-  paths load, search matches both title and project, the project filter narrows
-  the list, Refresh reloads it, and selecting/double-clicking a live row binds the
-  intended chat. Rows missed by the quick scan should say status unverified, not definitely
-  saved. Select one and Bind: the exact ID must be checked on demand. A live
-  owner binds; a conclusive closed result shows open-in-Codex/Rebind guidance;
-  unknown ownership shows an error without binding or resuming. Select a live CLI row and confirm its Terminal identity is
-  retained when using the reply bubble’s bring-forward action. Confirm the selected target with `GET /target`.
-- Switch among projects and bind a second disposable chat. Confirm that the
-  picker does not confuse a chat with another open chat or rely on frontmost
-  window focus. Use **Disconnect** and confirm `/target` reports no target.
-- Re-open **Rebind to…** after sending a test prompt and verify recent targets
-  can be selected. Search for a phrase from a disposable Codex session; verify
-  matching user and Codex turns, project/title context, live-session binding,
-  and closed-session resume. The helper reads the Codex local metadata/history
-  SQLite stores read-only. Verify app restart/relaunch behavior separately; do
-  not infer persistence from a single in-process rebind.
-- Test the Codex CLI binding and picker independently from Codex desktop. The
-  desktop bridge has a same-user native IPC adapter with owner discovery, but
-  text, images, and active-turn steering have passed in a disposable desktop
-  chat. Repeat with a harmless marker and confirm it reaches the intended chat
-  exactly once. Treat this internal, version-coupled IPC as a compatibility risk;
-  ownership discovery alone does not establish delivery after an app update.
-- Run **Prompt to new** against a disposable folder and verify the expected
-  Codex CLI process opens with the initial prompt. The `walkie-codex` launcher
-  starts the shared daemon idempotently, creates or resumes the exact
-  conversation, persists the initial prompt once over RPC, and records its tty
-  sidecar before attaching the CLI TUI. A new launch without an initial prompt is
-  deliberately rejected; `--resume` attaches to an existing exact conversation.
-  Test resume only with a disposable Codex session. In **Rebind to…**, verify
-  closed sessions reopen in their recorded project folder and a live session
-  binds to its tty.
-- Open a saved desktop chat in Codex before binding it, then refresh the picker.
-  A metadata row is not proof the desktop owns it live. Change the selected row,
-  project filter, or close/reopen the panel while its exact owner check is in
-  flight: the stale result must not bind the old selection. Sending to a chat
-  with no live owner must fail clearly without opening a second private copy.
-- For CLI bridge evidence, a native PTY smoke has already confirmed first-prompt
-  exactly-once delivery, a direct follow-up, reading a synthetic red image, and
-  steering an active turn without changing its turn ID. These protocol results
-  do not verify app-picker/UI behavior. Desktop bridge delivery was tested
-  separately as described above. Repeat UI steps
-  only with a disposable Codex CLI conversation.
-- `POST /test/spawn` enters the new-session prompt flow with supplied text;
-  it can open a Terminal session after Send/countdown. Its early HTTP
-  acknowledgement does not prove that the preview appeared or delivery occurred.
-  `POST /test/spawn-folders` opens the folder chooser; `POST /test/spawn-pick`
-  selects an explicit tty. These hooks can open a session or change a destination; they are not proof of
-  successful Codex CLI launch. Use `/test/rebind-panel` only to inspect the legacy panel.
+- While a safe browser/editor is in front, press **⌃⇧⌘B**. The floating
+  switcher should appear near the pointer, within the display bounds, with
+  search focused and project folders shown first. Type a folder name, use ↑/↓
+  and Return, and check that only that folder's chats appear. Search their
+  titles; use Escape or ‹ to return to projects, and Escape again to dismiss.
+  Clicking outside dismisses it and returns the keyboard to the previous app.
+- Repeat once bound to a desktop chat using **⌃⌘B** without foregrounding
+  Codex. Initial/unbound and CLI sessions can always use ⌃⇧⌘B. Cached folders
+  should appear promptly on subsequent openings while metadata refreshes.
+- Choose the open disposable desktop chat. Even an unverified row must be
+  checked by exact stable ID before binding. Confirm `GET /target` contains that
+  ID. Switching a binding alone must not send a prompt or create a turn.
+- Choose an older, non-archived disposable chat in the same project folder.
+  A fresh live owner binds; conclusive closure permits reopening that same chat
+  in Terminal in its recorded folder, without repeating an old prompt. Allow
+  around twelve seconds for a negative owner check. Unknown ownership must
+  leave the switcher open with an error and open no second copy.
+- Test a project and conversation beyond the latest 100 global records where
+  available. The shared-daemon catalog follows metadata pages and deduplicates
+  stable IDs. Archived chats are excluded; restore one in Codex before using it.
+  If the shared daemon is unavailable, the metadata fallback is bounded rather
+  than a guarantee of complete history. Rebind's message-body search is separate
+  from this switcher's project-name and chat-title search.
+- Change the selected row, type another query, go back, or close/reopen while an
+  owner check is pending. The stale result must never activate the old selection.
+  Repeated Return must not create duplicate resumes. Check closed, unknown and
+  wrong-ID results independently of successful binding.
+- Test direct CLI binding separately: focus a disposable Terminal tab and press
+  **⌃⌘B**. The target must retain its verified native CLI identity; repeating
+  that key on the same CLI tab disconnects. Physical mouse binding is a separate
+  check: hold left-click then press the configured front thumb button (Logi), or
+  the wheel (Wheel mode). Hovering alone does not change the binding.
+- **Rebind to…** also searches message bodies and recent destinations. This panel
+  existed upstream and now uses Codex history; the project-first picker is new.
+  Search a body-only marker, activate the matching test chat, and verify the
+  same exact live ID binds without a new turn. Closed sessions use the same
+  guarded resume path; metadata drawing must not run Git or probe project paths.
+- Run **Prompt to new** (⌃⌥⌘F8) against an explicitly chosen disposable folder.
+  Verify a native Codex CLI opens with the initial prompt exactly once, and the
+  app binds that same ID/TTY. The launcher starts the shared daemon idempotently,
+  persists the first prompt before attaching the TUI, and records its owner.
+  A new launch without an initial prompt is rejected. Saved resume supplies
+  only the conversation ID and never replays the initial prompt.
+- Native CLI PTY checks already passed first-prompt exactly-once delivery,
+  follow-up text, a genuine red-image input, and steering the same active turn.
+  Desktop delivery passed those checks separately. Neither substitutes for the
+  switcher's physical keyboard/pointer checks. Repeat only with disposable chats.
 
 ## Prompt delivery, quick answers, and reply UI
 
@@ -426,67 +474,32 @@ verified only after checking the visible UI or destination.
 
 ## Latest observed results
 
-Real ⌃⌘D speech, English captions/transcript, ⌃⌘S image delivery, automatic
-question reply bubble, Edge picker outline/receipt, fixture media pause/resume,
-and two film/contact-sheet deliveries passed on 15 October 2026. The first film
-contained 14 frames over 2.7 seconds; the second contained 42 frames over 8.3
-seconds and included captured synthetic text selections. Both reached the exact
-disposable chat as actual image inputs and were described correctly.
+On 15 October 2026, real ⌃⌘D speech, English captions/transcript, ⌃⌘S image
+delivery, an automatic reply bubble, Edge picker outline/receipt, fixture media
+pause/resume, and two film/contact-sheet deliveries passed. The film sheets had
+14 frames over 2.7 seconds and 42 frames over 8.3 seconds; Codex described the
+fixture and captured synthetic selections from actual image inputs.
 
-A production Codex caret dispatch also passed in an isolated native CLI PTY with
-an actual red image. This verifies target resolution and RPC dispatch, while
-physical Terminal/VS Code focus and mouse gestures remain manual. Full Swift
-checks executed 299 cases with 2 opt-in integration skips and no failures;
-those opt-in checks passed separately in the disposable PTY. All 77 Python tests
-passed. Optional cloud/Wispr providers, other microphones, multi-tab CLI closing,
-wheel crops/moves, DOM dragging/iframes, and remaining pointer controls have not
-been claimed as passed.
+Native CLI text/image/steering and production caret dispatch passed. The full
+current Swift suite executed 304 cases: 302 passed, 2 opt-in skips, no failures.
+Those opt-in PTY checks passed separately. All 77 Python tests passed. Physical
+Terminal/VS Code focus, mouse controls, optional providers and other devices
+remain separate manual checks.
 
-The 13:35 release started both local workers and preserved English. Its real
-packaged Start New test opened Terminal, delivered the prompt exactly once,
-received the requested marker, and bound that same CLI ID. The missing
-AppleEvents purpose description and AppleScript syntax error found during the
-audit are corrected; exact open/tiling scripts compile in the suite.
+The packaged Start New test opened Terminal, delivered its initial prompt once,
+and bound its exact CLI identity. The user also confirmed the 14:30 build's
+native title/project-filter binding and its closed-history Rebind activation.
+Saved resume records pointed to the original CLI ID; independent readback still
+contained only its original completed prompt/reply. By cleanup its CLI had
+already exited, so no process was signalled or Terminal window touched. Only
+that disposable chat was archived, and the reusable desktop test binding was
+restored. The earlier real guarded finish test closed its verified single-tab
+window; multi-tab windows are refused before signalling.
 
-Installed Rebind body search displayed the disposable live chat exactly once
-and Return rebound that ID without a new turn. Its metadata loads after the
-panel appears; stale callbacks cannot populate another opening. Project icons
-and Codex labels no longer run Git or probe project paths. Test closed-history
-resume separately: live ownership binds, conclusive absence permits resume,
-and unknown/unavailable ownership must show an error without opening a copy.
-
-The real finish test exposed Terminal’s unsupported `close tab` operation
-(-1708). The corrected helper closes only a window whose sole tab is the exact
-verified tty. It refuses a window with other tabs before terminating Codex.
-A real disposable single-tab close passed, with the exact PID gone and zero tty
-matches afterward. Test this using disposable sessions only; never count a dry-run or an early
-HTTP acknowledgement as delivery/closure evidence.
-
-The earlier 13:53 release had matching packaged helper hashes,
-ready local workers, English retained, and a valid deep strict signature.
-The user refreshed both grants and reopened it. Accessibility and Screen
-Recording now verify; the shortcut canary is alive (0.32 ms), and the exact
-disposable desktop chat is bound again. Later code rebuilds can require renewed
-grants because the app uses ad-hoc signing. Select the intended chat again after relaunch;
-binding currently clears on restart. About publishes 12 real gesture rows.
-
-The closed-history audit found that the bridge’s five-second socket deadline
-expired before Codex’s ten-second peer-discovery deadline. Strict exact history
-activation now waits up to twelve seconds, showing “checking Codex chat…”.
-A real read of the closed disposable CLI chat returned conclusive closure in
-10.13 seconds. Sends, ordinary metadata and bulk scans retain their prior
-budgets, and no send is retried automatically. Timeout still means unknown.
-After installing this fix, test a disposable closed chat through Rebind to…;
-verify the same ID/project reopens with no repeated initial prompt, then finish
-only its verified single-tab window. This packaged check requires an unlocked
-Mac. Optional hardware/provider checks remain separate and unverified.
-
-The current combined build is **15 October 2026, 14:30**. It has 297 passing
-Swift tests (299 executed, 2 opt-in skips) and 77 passing Python tests, matching
-packaged helpers, ready workers, English retained and a valid signature. The user
-renewed Accessibility and Screen Recording for this build and reopened it;
-both grants now verify, with a responding shortcut canary (0.91 ms). The native
-inspector does not expose the floating controls. User checks of Bind Codex
-chat’s unverified-row selection/project filter and Rebind to’s closed-session
-resume are pending as described above. No additional voice
-or screenshot delivery is needed to establish the owner-check behavior.
+The project-first floating switcher replaces the earlier picker. Source checks
+cover grouping, metadata pagination/deduplication, global shortcut routing,
+fresh owner checks, wrong-ID/unknown rejection, and stale/duplicate callbacks.
+Its new visual and physical interaction require the installed-build pass above.
+Ad-hoc code rebuilds can require renewed macOS grants. Check the running app's
+Accessibility/event tap and Screen Recording state after install; bindings
+currently clear on relaunch, so select the intended chat again.

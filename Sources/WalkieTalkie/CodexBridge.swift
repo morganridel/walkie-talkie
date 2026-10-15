@@ -52,8 +52,49 @@ enum CodexBridge {
 
     /// Off the main thread. Reads metadata only; it does not start or alter a chat.
     static func conversations(liveOnly: Bool = false) throws -> [Conversation] {
-        let result = try invoke(["list", "--limit", "100"] + (liveOnly ? ["--live-only"] : []))
-        return (result["threads"] as? [[String: Any]] ?? []).compactMap(Conversation.init)
+        try conversationPage(liveOnly: liveOnly).conversations
+    }
+
+    struct ConversationPage {
+        let conversations: [Conversation]
+        let nextCursor: String?
+    }
+
+    /// The picker walks every page exposed by the active metadata transport so
+    /// a project whose available chats are older than the newest global 100 is
+    /// still reachable. Other callers keep the intentionally small single-page
+    /// `conversations()` behavior.
+    static func conversationPage(limit: Int = 100, cursor: String? = nil,
+                                 liveOnly: Bool = false) throws -> ConversationPage {
+        var arguments = ["list", "--limit", String(limit)]
+        if let cursor, !cursor.isEmpty { arguments += ["--cursor", cursor] }
+        if liveOnly { arguments.append("--live-only") }
+        let result = try invoke(arguments)
+        return ConversationPage(
+            conversations: (result["threads"] as? [[String: Any]] ?? [])
+                .compactMap(Conversation.init),
+            nextCursor: (result["nextCursor"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    static func conversationCatalog(
+        load: (String?) throws -> ConversationPage = {
+            try CodexBridge.conversationPage(cursor: $0)
+        }
+    ) throws -> [Conversation] {
+        var cursor: String?
+        var seenCursors: Set<String> = []
+        var seenIDs: Set<String> = []
+        var conversations: [Conversation] = []
+        repeat {
+            let page = try load(cursor)
+            for chat in page.conversations where seenIDs.insert(chat.id).inserted {
+                conversations.append(chat)
+            }
+            cursor = page.nextCursor
+            if let cursor, !seenCursors.insert(cursor).inserted { break }
+        } while cursor != nil
+        return conversations
     }
     static func conversation(_ id: String, timeout: TimeInterval = 25,
                              requireOwnerState: Bool = false) throws -> Conversation? {
@@ -81,14 +122,14 @@ enum CodexBridge {
 
     enum PickerDisposition: Equatable {
         case bind(Conversation)
-        case closed
+        case resume(session: String, cwd: String)
     }
 
     /// Bulk owner discovery is deliberately bounded, so a list miss is not
     /// evidence that a chat is closed. Re-check the selected stable ID and
     /// carry forward only the freshly verified row.
     static func pickerDisposition(
-        session: String,
+        session: String, recordedCWD: String,
         load: (String) throws -> Conversation? = {
             try CodexBridge.conversation($0, requireOwnerState: true)
         }
@@ -99,7 +140,12 @@ enum CodexBridge {
         guard chat.id == session else {
             throw failure("Codex ownership check returned a different chat")
         }
-        return chat.live ? .bind(chat) : .closed
+        if chat.live { return .bind(chat) }
+        let cwd = chat.cwd.isEmpty ? recordedCWD : chat.cwd
+        guard !cwd.isEmpty else {
+            throw failure("Codex chat project folder is unavailable")
+        }
+        return .resume(session: session, cwd: cwd)
     }
 
     /// Re-check one stable ID at activation time. A saved metadata row is never
@@ -246,151 +292,712 @@ final class CodexPickerCheckGate {
     }
 }
 
+/// A desktop binding remains addressable while the user works in another app.
+/// Mouse binding still names the frontmost terminal; only the keyboard shortcut
+/// uses the existing desktop binding to open the chat switcher globally.
+enum CodexBindShortcut {
+    static func perform(bound: TerminalBinding.Handle?, forcePicker: Bool = false,
+                        showPicker: () -> Void, bindFrontmost: () -> Void) {
+        if forcePicker { showPicker(); return }
+        if case .codex(_, nil)? = bound { showPicker() }
+        else { bindFrontmost() }
+    }
+}
+
 /// Explicit chat selection prevents a background dictation being sent to a different chat.
+/// One project-like group in the picker. Codex metadata gives us a recorded
+/// working directory, not authoritative sidebar project membership, so the UI
+/// calls these project folders and never probes the path on disk.
+struct CodexPickerProject: Equatable {
+    let cwd: String
+    let title: String
+    let conversations: [CodexBridge.Conversation]
+    var liveCount: Int { conversations.filter(\.live).count }
+}
+
+enum CodexPickerCatalog {
+    static func projects(from conversations: [CodexBridge.Conversation]) -> [CodexPickerProject] {
+        Dictionary(grouping: conversations, by: \.cwd).map { cwd, chats in
+            let leaf = (cwd as NSString).lastPathComponent
+            let title = cwd.isEmpty ? "No recorded folder" : (leaf.isEmpty ? cwd : leaf)
+            return CodexPickerProject(cwd: cwd, title: title, conversations: chats)
+        }.sorted {
+            let titleOrder = $0.title.localizedCaseInsensitiveCompare($1.title)
+            return titleOrder == .orderedSame ? $0.cwd < $1.cwd : titleOrder == .orderedAscending
+        }
+    }
+
+    static func projects(_ projects: [CodexPickerProject], matching query: String) -> [CodexPickerProject] {
+        let terms = words(in: query)
+        guard !terms.isEmpty else { return projects }
+        return projects.filter { project in
+            let haystack = (project.title + " " + project.cwd).lowercased()
+            return terms.allSatisfy(haystack.contains)
+        }
+    }
+
+    static func conversations(in project: CodexPickerProject,
+                              matching query: String) -> [CodexBridge.Conversation] {
+        let terms = words(in: query)
+        guard !terms.isEmpty else { return project.conversations }
+        return project.conversations.filter { chat in
+            let haystack = (chat.title + " " + chat.source + " " + chat.locationLabel).lowercased()
+            return terms.allSatisfy(haystack.contains)
+        }
+    }
+
+    private static func words(in query: String) -> [String] {
+        query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+    }
+}
+
+/// Project-first Codex chat selection. The panel owns the keyboard without
+/// activating Walkie Talkie, like RebindPanel, so the app behind it regains the
+/// keyboard as soon as this closes.
 final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegate,
-                             NSSearchFieldDelegate, NSWindowDelegate {
-    private var panel: NSPanel?
-    private let search = NSSearchField()
-    private let projects = NSPopUpButton()
+                             NSTextFieldDelegate, NSWindowDelegate {
+    private enum Mode {
+        case projects
+        case conversations(cwd: String)
+    }
+
+    private enum Selection {
+        case project(cwd: String)
+        case conversation(id: String)
+    }
+
+    private let width: CGFloat = 640
+    private let rowHeight: CGFloat = 52
+    private let visibleRows: CGFloat = 7
+
+    private var panel: CodexPickerKeyPanel?
+    private let search = NSTextField()
+    private let glass = NSTextField(labelWithString: "⌕")
+    private let backButton = NSButton(title: "‹", target: nil, action: nil)
+    private let spinner = NSProgressIndicator()
+    private let countLabel = NSTextField(labelWithString: "")
+    private let footer = NSTextField(labelWithString: "")
     private let table = NSTableView()
-    private let bindButton = NSButton(title: "Bind selected chat", target: nil, action: nil)
-    private let message = NSTextField(labelWithString: "Loading Codex chats…")
+    private let scroll = NSScrollView()
+
     private var all: [CodexBridge.Conversation] = []
-    private var visible: [CodexBridge.Conversation] = []
-    private let ownerCheck = CodexPickerCheckGate()
+    private var projects: [CodexPickerProject] = []
+    private var visibleProjects: [CodexPickerProject] = []
+    private var visibleConversations: [CodexBridge.Conversation] = []
+    private var mode: Mode = .projects
+    private var hasLoadedCatalog = false
+    private var isRefreshing = false
+    private var pendingCatalog: [CodexBridge.Conversation]?
+    private var statusMessage: String?
+    private var refreshError: String?
     private var reloadGeneration: UInt64 = 0
-    private var isReloading = false
+    private var wasKey = false
+    private var clickMonitor: Any?
+    private let ownerCheck = CodexPickerCheckGate()
+
     var onPick: ((CodexBridge.Conversation) -> Void)?
+    /// Called only after the exact stable ID has been freshly and conclusively
+    /// found closed. The receiver may open that historical chat in Terminal.
+    var onResume: ((_ session: String, _ cwd: String) -> Void)?
 
     func show() {
-        if let panel {
-            ownerCheck.invalidate()
-            panel.makeKeyAndOrderFront(nil)
-            reload()
-            return
-        }
-        let p = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 650, height: 420),
-                        styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-        p.title = "Bind a Codex chat"
-        p.isReleasedWhenClosed = false
-        p.delegate = self
-        let view = NSView(frame: p.contentView!.bounds)
-        p.contentView = view
-        search.placeholderString = "Search chats by name or project"
-        search.delegate = self
-        projects.target = self; projects.action = #selector(filterChanged)
-        projects.addItem(withTitle: "All projects")
-        let scroll = NSScrollView(); scroll.hasVerticalScroller = true
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("chat")); column.width = 600
-        table.addTableColumn(column); table.headerView = nil; table.rowHeight = 48
-        table.delegate = self; table.dataSource = self; table.target = self; table.doubleAction = #selector(bindSelected)
-        scroll.documentView = table
-        bindButton.target = self; bindButton.action = #selector(bindSelected); bindButton.keyEquivalent = "\r"
-        bindButton.isEnabled = false
-        let refresh = NSButton(title: "Refresh", target: self, action: #selector(reload))
-        for v in [search, projects, scroll, message, bindButton, refresh] { v.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(v) }
-        NSLayoutConstraint.activate([
-            search.topAnchor.constraint(equalTo: view.topAnchor, constant: 16), search.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16), search.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            projects.topAnchor.constraint(equalTo: search.bottomAnchor, constant: 10), projects.leadingAnchor.constraint(equalTo: search.leadingAnchor), projects.trailingAnchor.constraint(equalTo: search.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: projects.bottomAnchor, constant: 10), scroll.leadingAnchor.constraint(equalTo: search.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: search.trailingAnchor), scroll.bottomAnchor.constraint(equalTo: message.topAnchor, constant: -10),
-            message.leadingAnchor.constraint(equalTo: search.leadingAnchor), message.bottomAnchor.constraint(equalTo: bindButton.topAnchor, constant: -12),
-            bindButton.trailingAnchor.constraint(equalTo: search.trailingAnchor), bindButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -14), refresh.leadingAnchor.constraint(equalTo: search.leadingAnchor), refresh.centerYAnchor.constraint(equalTo: bindButton.centerYAnchor)
-        ])
-        panel = p; p.center(); p.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
-        reload()
-    }
-    @objc private func reload() {
+        if panel != nil { close(); return }
+
+        visibleProjects = []
+        visibleConversations = []
+        mode = .projects
+        wasKey = false
+        statusMessage = nil
+        search.stringValue = ""
+        isRefreshing = true
+        refreshError = nil
         ownerCheck.invalidate()
         reloadGeneration &+= 1
         let generation = reloadGeneration
-        isReloading = true
-        message.stringValue = "Loading Codex chats…"
-        updateBindButton()
+
+        let panel = buildPanel()
+        self.panel = panel
+        place(panel)
+        applyFilter()
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeFirstResponder(search)
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+            [weak self] _ in DispatchQueue.main.async { self?.close() }
+        }
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try CodexBridge.conversations() }
+            let result = Result { try CodexBridge.conversationCatalog() }
             DispatchQueue.main.async {
-                guard let self, self.reloadGeneration == generation,
-                      self.panel?.isVisible == true else { return }
-                self.isReloading = false
-                self.updateBindButton()
+                guard let self, self.panel != nil, self.reloadGeneration == generation else { return }
+                self.isRefreshing = false
                 switch result {
-                case .success(let rows):
-                    self.all = rows
-                    self.projects.removeAllItems(); self.projects.addItem(withTitle: "All projects")
-                    for path in Set(rows.map(\.cwd)).sorted() where !path.isEmpty { self.projects.addItem(withTitle: path) }
-                    self.filterChanged()
-                case .failure(let error): self.message.stringValue = error.localizedDescription
+                case .success(let conversations):
+                    self.refreshError = nil
+                    if self.ownerCheck.isChecking {
+                        // A bulk refresh is metadata only. It must not move the
+                        // exact row whose owner check is already in flight.
+                        self.pendingCatalog = conversations
+                        self.refreshChrome()
+                    } else {
+                        let selection = self.currentSelection()
+                        self.replaceCatalog(conversations, selection: selection, redraw: true)
+                    }
+                case .failure(let error):
+                    self.refreshError = "Could not refresh chats: \(error.localizedDescription)"
+                    self.refreshChrome()
                 }
             }
         }
     }
-    func controlTextDidChange(_ obj: Notification) { filterChanged() }
-    @objc private func filterChanged() {
+
+    func close() {
         ownerCheck.invalidate()
-        let query = search.stringValue.lowercased(), project = projects.indexOfSelectedItem > 0 ? projects.titleOfSelectedItem : nil
-        visible = all.filter { (project == nil || $0.cwd == project) && (query.isEmpty || ($0.title + " " + $0.cwd).lowercased().contains(query)) }
+        installPendingCatalog(redraw: false)
+        reloadGeneration &+= 1
+        spinner.stopAnimation(nil)
+        if let clickMonitor { NSEvent.removeMonitor(clickMonitor); self.clickMonitor = nil }
+        panel?.orderOut(nil)
+        panel = nil
+    }
+
+    var isOpen: Bool { panel != nil }
+
+    /// Read-only native QA state. The optional image is rendered from this
+    /// picker's own content view; it never asks WindowServer for a screenshot.
+    func testState(snapshot: Bool = false) -> [String: Any] {
+        guard Thread.isMainThread else {
+            return ["error": "Codex picker testState must run on the main thread"]
+        }
+
+        let selectedRow = table.selectedRow
+        var selectedProjectCWD: Any = NSNull()
+        var selectedChatID: Any = NSNull()
+        let modeName: String
+        switch mode {
+        case .projects:
+            modeName = "projects"
+            if visibleProjects.indices.contains(selectedRow) {
+                selectedProjectCWD = visibleProjects[selectedRow].cwd
+            }
+        case .conversations:
+            modeName = "chats"
+            if visibleConversations.indices.contains(selectedRow) {
+                selectedChatID = visibleConversations[selectedRow].id
+            }
+        }
+
+        let frame: Any = panel.map {
+            ["x": $0.frame.minX, "y": $0.frame.minY,
+             "w": $0.frame.width, "h": $0.frame.height]
+        } ?? NSNull()
+        var state: [String: Any] = [
+            "open": panel?.isVisible == true,
+            "mode": modeName,
+            "query": search.stringValue,
+            "rowCount": numberOfRows(in: table),
+            "selectedProjectCWD": selectedProjectCWD,
+            "selectedChatID": selectedChatID,
+            "cached": hasLoadedCatalog,
+            "loading": isRefreshing,
+            "checking": ownerCheck.isChecking,
+            "frame": frame,
+        ]
+
+        if snapshot {
+            guard let panel, panel.isVisible, let view = panel.contentView else {
+                state["snapshotError"] = "Codex picker is not visible"
+                return state
+            }
+            let bounds = view.bounds
+            guard !bounds.isEmpty,
+                  let png = view.bitmapImageRepForCachingDisplay(in: bounds).flatMap({ representation in
+                      view.cacheDisplay(in: bounds, to: representation)
+                      return representation.representation(using: .png, properties: [:])
+                  }) else {
+                state["snapshotError"] = "Could not render Codex picker content"
+                return state
+            }
+            let url = Outbox.cacheRoot.appendingPathComponent("codex-picker-test.png")
+            do {
+                try FileManager.default.createDirectory(
+                    at: Outbox.cacheRoot, withIntermediateDirectories: true)
+                try png.write(to: url, options: .atomic)
+                state["snapshotPath"] = url.path
+            } catch {
+                state["snapshotError"] = error.localizedDescription
+            }
+        }
+        return state
+    }
+
+    private func buildPanel() -> CodexPickerKeyPanel {
+        let height = 58 + 1 + rowHeight * visibleRows + 30
+        let panel = CodexPickerKeyPanel(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.title = "Bind a Codex chat"
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .floating
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.delegate = self
+
+        let blur = NSVisualEffectView(frame: panel.contentView?.bounds
+                                      ?? NSRect(x: 0, y: 0, width: width, height: height))
+        blur.material = .menu
+        blur.state = .active
+        blur.blendingMode = .behindWindow
+        blur.wantsLayer = true
+        blur.layer?.cornerRadius = 12
+        blur.layer?.masksToBounds = true
+        blur.autoresizingMask = [.width, .height]
+        panel.contentView = blur
+
+        glass.frame = NSRect(x: 17, y: height - 43, width: 22, height: 22)
+        glass.font = .systemFont(ofSize: 18, weight: .medium)
+        glass.textColor = .secondaryLabelColor
+        blur.addSubview(glass)
+
+        backButton.frame = NSRect(x: 10, y: height - 47, width: 32, height: 30)
+        backButton.isBordered = false
+        backButton.font = .systemFont(ofSize: 26, weight: .regular)
+        backButton.contentTintColor = .secondaryLabelColor
+        backButton.target = self
+        backButton.action = #selector(back)
+        blur.addSubview(backButton)
+
+        search.frame = NSRect(x: 44, y: height - 44, width: width - 44 - 180, height: 26)
+        search.isBordered = false
+        search.drawsBackground = false
+        search.focusRingType = .none
+        search.font = .systemFont(ofSize: 16)
+        search.textColor = .labelColor
+        search.delegate = self
+        search.cell?.usesSingleLineMode = true
+        blur.addSubview(search)
+
+        spinner.frame = NSRect(x: width - 31, y: height - 39, width: 16, height: 16)
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.isDisplayedWhenStopped = false
+        blur.addSubview(spinner)
+
+        countLabel.frame = NSRect(x: width - 174, y: height - 38, width: 132, height: 16)
+        countLabel.alignment = .right
+        countLabel.font = .systemFont(ofSize: 11)
+        countLabel.textColor = .tertiaryLabelColor
+        blur.addSubview(countLabel)
+
+        let rule = NSView(frame: NSRect(x: 0, y: height - 58, width: width, height: 1))
+        rule.wantsLayer = true
+        rule.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.6).cgColor
+        blur.addSubview(rule)
+
+        if table.tableColumns.isEmpty {
+            let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("codex-picker"))
+            column.width = width
+            table.addTableColumn(column)
+        }
+        table.headerView = nil
+        table.rowHeight = rowHeight
+        table.intercellSpacing = .zero
+        table.backgroundColor = .clear
+        table.usesAlternatingRowBackgroundColors = false
+        table.selectionHighlightStyle = .regular
+        table.delegate = self
+        table.dataSource = self
+        table.target = self
+        table.doubleAction = #selector(activateSelected)
+
+        scroll.frame = NSRect(x: 0, y: 30, width: width, height: rowHeight * visibleRows)
+        scroll.drawsBackground = false
+        scroll.contentView.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.scrollerStyle = .overlay
+        scroll.documentView = table
+        blur.addSubview(scroll)
+
+        footer.frame = NSRect(x: 16, y: 8, width: width - 32, height: 16)
+        footer.font = .systemFont(ofSize: 11)
+        footer.textColor = .tertiaryLabelColor
+        footer.lineBreakMode = .byTruncatingTail
+        blur.addSubview(footer)
+        return panel
+    }
+
+    private func place(_ panel: NSPanel) {
+        let point = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        let area = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = panel.frame.size
+        var origin = NSPoint(x: point.x - 40, y: point.y - size.height - 8)
+        origin.x = min(max(origin.x, area.minX + 12), area.maxX - size.width - 12)
+        origin.y = min(max(origin.y, area.minY + 12), area.maxY - size.height - 12)
+        panel.setFrameOrigin(origin)
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+        cancelOwnerCheck()
+        statusMessage = nil
+        applyFilter()
+    }
+
+    func control(_ control: NSControl, textView: NSTextView,
+                 doCommandBy selector: Selector) -> Bool {
+        guard control === search else { return false }
+        switch selector {
+        case #selector(NSResponder.moveDown(_:)):
+            moveSelection(by: 1)
+        case #selector(NSResponder.moveUp(_:)):
+            moveSelection(by: -1)
+        case #selector(NSResponder.insertNewline(_:)):
+            if let event = NSApp.currentEvent, event.type == .keyDown,
+               event.cgEvent?.getIntegerValueField(.eventSourceUserData) == HotkeyTap.backButtonStamp {
+                return true
+            }
+            activateSelected()
+        case #selector(NSResponder.cancelOperation(_:)):
+            back()
+        case #selector(NSResponder.scrollPageDown(_:)), #selector(NSResponder.pageDown(_:)):
+            moveSelection(by: Int(visibleRows))
+        case #selector(NSResponder.scrollPageUp(_:)), #selector(NSResponder.pageUp(_:)):
+            moveSelection(by: -Int(visibleRows))
+        default:
+            return false
+        }
+        return true
+    }
+
+    private func moveSelection(by delta: Int) {
+        let count = numberOfRows(in: table)
+        guard count > 0 else { return }
+        let current = table.selectedRow
+        let next = current < 0 ? (delta > 0 ? 0 : count - 1)
+            : min(count - 1, max(0, current + delta))
+        table.selectRowIndexes(IndexSet(integer: next), byExtendingSelection: false)
+        table.scrollRowToVisible(next)
+    }
+
+    private func applyFilter(preferredProjectCWD: String? = nil) {
+        applyFilter(preferredProjectCWD: preferredProjectCWD, preferredConversationID: nil)
+    }
+
+    private func applyFilter(preferredProjectCWD: String?, preferredConversationID: String?) {
+        switch mode {
+        case .projects:
+            visibleProjects = CodexPickerCatalog.projects(projects, matching: search.stringValue)
+            visibleConversations = []
+        case .conversations(let cwd):
+            visibleProjects = []
+            if let project = projects.first(where: { $0.cwd == cwd }) {
+                visibleConversations = CodexPickerCatalog.conversations(
+                    in: project, matching: search.stringValue)
+            } else {
+                visibleConversations = []
+            }
+        }
         table.reloadData()
         table.deselectAll(nil)
-        if let preferred = visible.firstIndex(where: \.live) ?? visible.indices.first {
-            table.selectRowIndexes(IndexSet(integer: preferred), byExtendingSelection: false)
+        let count = numberOfRows(in: table)
+        if count > 0 {
+            var row = 0
+            if case .projects = mode, let preferredProjectCWD,
+               let preferred = visibleProjects.firstIndex(where: { $0.cwd == preferredProjectCWD }) {
+                row = preferred
+            } else if case .conversations = mode, let preferredConversationID,
+                      let preferred = visibleConversations.firstIndex(where: { $0.id == preferredConversationID }) {
+                row = preferred
+            }
+            table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            table.scrollRowToVisible(row)
         }
-        updateBindButton()
-        updateStatusSummary()
+        refreshChrome()
     }
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        let cancelledCheck = ownerCheck.isChecking
-        ownerCheck.invalidate()
-        updateBindButton()
-        if cancelledCheck { updateStatusSummary() }
+
+    private func currentSelection() -> Selection? {
+        let row = table.selectedRow
+        switch mode {
+        case .projects:
+            guard visibleProjects.indices.contains(row) else { return nil }
+            return .project(cwd: visibleProjects[row].cwd)
+        case .conversations:
+            guard visibleConversations.indices.contains(row) else { return nil }
+            return .conversation(id: visibleConversations[row].id)
+        }
     }
-    func numberOfRows(in tableView: NSTableView) -> Int { visible.count }
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard visible.indices.contains(row) else { return nil }
-        let chat = visible[row]
-        let label = NSTextField(wrappingLabelWithString: "\(chat.busy ? "⏳ " : "")\(chat.title) · \(chat.locationLabel)\n\(chat.cwd)")
-        label.font = .systemFont(ofSize: 13)
-        return label
+
+    private func replaceCatalog(_ conversations: [CodexBridge.Conversation],
+                                selection: Selection?, redraw: Bool) {
+        all = conversations
+        projects = CodexPickerCatalog.projects(from: conversations)
+        hasLoadedCatalog = true
+        pendingCatalog = nil
+        guard redraw else { return }
+        switch selection {
+        case .project(let cwd):
+            applyFilter(preferredProjectCWD: cwd, preferredConversationID: nil)
+        case .conversation(let id):
+            applyFilter(preferredProjectCWD: nil, preferredConversationID: id)
+        case nil:
+            applyFilter()
+        }
     }
-    @objc private func bindSelected() {
-        guard !isReloading, panel?.isVisible == true,
-              visible.indices.contains(table.selectedRow) else { return }
-        let selected = visible[table.selectedRow]
+
+    private func installPendingCatalog(redraw: Bool, selection: Selection? = nil,
+                                       preferredConversationID: String? = nil) {
+        guard let pendingCatalog else { return }
+        let preferred = selection
+            ?? preferredConversationID.map { Selection.conversation(id: $0) }
+            ?? currentSelection()
+        replaceCatalog(pendingCatalog, selection: preferred, redraw: redraw)
+    }
+
+    @objc private func back() {
+        cancelOwnerCheck()
+        statusMessage = nil
+        switch mode {
+        case .projects:
+            close()
+        case .conversations(let cwd):
+            mode = .projects
+            search.stringValue = ""
+            applyFilter(preferredProjectCWD: cwd)
+            panel?.makeFirstResponder(search)
+        }
+    }
+
+    @objc private func activateSelected() {
+        guard panel != nil else { return }
+        let row = table.selectedRow
+        switch mode {
+        case .projects:
+            guard visibleProjects.indices.contains(row) else { return }
+            let project = visibleProjects[row]
+            mode = .conversations(cwd: project.cwd)
+            search.stringValue = ""
+            statusMessage = nil
+            applyFilter()
+            panel?.makeFirstResponder(search)
+        case .conversations:
+            guard visibleConversations.indices.contains(row) else { return }
+            verifyAndActivate(visibleConversations[row])
+        }
+    }
+
+    private func verifyAndActivate(_ selected: CodexBridge.Conversation) {
         guard let token = ownerCheck.begin(threadID: selected.id) else { return }
-        updateBindButton()
-        message.stringValue = "Checking…"
+        statusMessage = nil
+        refreshChrome()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try CodexBridge.pickerDisposition(session: token.threadID) }
+            let result = Result {
+                try CodexBridge.pickerDisposition(
+                    session: token.threadID, recordedCWD: selected.cwd)
+            }
             DispatchQueue.main.async {
-                guard let self, self.ownerCheck.accept(token) else { return }
-                self.updateBindButton()
+                guard let self, self.ownerCheck.accept(token), self.panel != nil else { return }
+                self.installPendingCatalog(
+                    redraw: true, preferredConversationID: token.threadID)
+                self.refreshChrome()
                 switch result {
                 case .success(.bind(let chat)):
-                    self.reloadGeneration &+= 1
-                    self.panel?.orderOut(nil)
-                    self.panel = nil
+                    self.close()
                     self.onPick?(chat)
-                case .success(.closed):
-                    self.message.stringValue = "This chat is closed. Open it in Codex, or use Rebind to… to resume it."
+                case .success(.resume(let session, let cwd)):
+                    self.close()
+                    self.onResume?(session, cwd)
                 case .failure(let error):
-                    self.message.stringValue = "Could not verify this chat: \(error.localizedDescription)"
+                    self.statusMessage = "Could not verify this chat: \(error.localizedDescription)"
+                    self.refreshChrome()
                 }
             }
         }
     }
 
-    func windowWillClose(_ notification: Notification) {
+    private func cancelOwnerCheck() {
+        guard ownerCheck.isChecking else { return }
+        let selection = currentSelection()
         ownerCheck.invalidate()
-        reloadGeneration &+= 1
-        updateBindButton()
+        installPendingCatalog(redraw: true, selection: selection)
+        refreshChrome()
     }
 
-    private func updateBindButton() {
-        bindButton.title = ownerCheck.isChecking ? "Checking…" : "Bind selected chat"
-        bindButton.isEnabled = !isReloading && !ownerCheck.isChecking
-            && visible.indices.contains(table.selectedRow)
+    private func refreshChrome() {
+        let checking = ownerCheck.isChecking
+        if isRefreshing || checking { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
+        backButton.isHidden = {
+            if case .projects = mode { return true }
+            return false
+        }()
+        glass.isHidden = !backButton.isHidden
+
+        switch mode {
+        case .projects:
+            search.placeholderString = "Search project folders…"
+            countLabel.stringValue = !hasLoadedCatalog && isRefreshing ? "loading history…" :
+                "\(visibleProjects.count) folder\(visibleProjects.count == 1 ? "" : "s")"
+        case .conversations(let cwd):
+            let title = projects.first(where: { $0.cwd == cwd })?.title ?? "Project"
+            search.placeholderString = "Search chats in \(title)…"
+            countLabel.stringValue = "\(visibleConversations.count) chat\(visibleConversations.count == 1 ? "" : "s")"
+        }
+        if let statusMessage {
+            footer.stringValue = statusMessage
+            footer.textColor = .systemRed
+        } else if checking {
+            footer.textColor = .tertiaryLabelColor
+            footer.stringValue = "Checking the exact Codex owner…"
+        } else if !hasLoadedCatalog && isRefreshing {
+            footer.textColor = .tertiaryLabelColor
+            footer.stringValue = "Loading available, non-archived chats across recorded project folders…"
+        } else if let refreshError {
+            footer.textColor = .systemRed
+            footer.stringValue = refreshError
+        } else {
+            footer.textColor = .tertiaryLabelColor
+            switch mode {
+            case .projects:
+                footer.stringValue = "Projects are grouped by recorded folder   ·   ↑↓ choose   ·   ⏎ open   ·   esc close"
+            case .conversations:
+                footer.stringValue = "Past chats reopen in Terminal   ·   ↑↓ choose   ·   ⏎ check & open   ·   esc projects"
+            }
+        }
+        table.reloadData()
     }
 
-    private func updateStatusSummary() {
-        message.stringValue = "\(visible.filter(\.live).count) verified live · \(visible.count) total · Other statuses are checked when binding"
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        switch mode {
+        case .projects: return visibleProjects.count
+        case .conversations: return visibleConversations.count
+        }
+    }
+
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        let cancelled = ownerCheck.isChecking
+        let clearedMessage = statusMessage != nil
+        let selection = currentSelection()
+        if cancelled {
+            ownerCheck.invalidate()
+            installPendingCatalog(redraw: true, selection: selection)
+        }
+        statusMessage = nil
+        if cancelled || clearedMessage { refreshChrome() }
+        else { table.reloadData() }
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        CodexPickerTableRowView()
+    }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?,
+                   row: Int) -> NSView? {
+        let identifier = NSUserInterfaceItemIdentifier("codex-picker-cell")
+        let cell = tableView.makeView(withIdentifier: identifier, owner: self)
+            as? CodexPickerCellView ?? CodexPickerCellView()
+        cell.identifier = identifier
+        switch mode {
+        case .projects:
+            guard visibleProjects.indices.contains(row) else { return nil }
+            let project = visibleProjects[row]
+            let chats = project.conversations.count
+            let path = project.cwd.isEmpty ? "Working folder was not recorded" : project.cwd
+            let status = "\(chats) chat\(chats == 1 ? "" : "s") · \(path)"
+            cell.configure(title: project.title, subtitle: status,
+                           symbol: "folder.fill",
+                           action: tableView.selectedRow == row ? "⏎  open" : "")
+        case .conversations:
+            guard visibleConversations.indices.contains(row) else { return nil }
+            let chat = visibleConversations[row]
+            let status: String
+            let action: String
+            let symbol: String
+            if chat.live, let tty = chat.terminalTTY {
+                status = "Terminal · \((tty as NSString).lastPathComponent) · live"
+                action = "⏎  bind"
+                symbol = "terminal.fill"
+            } else if chat.live {
+                status = "Codex Desktop · live"
+                action = "⏎  bind"
+                symbol = "bubble.left.and.bubble.right.fill"
+            } else {
+                status = "Not checked yet · closed chats reopen in Terminal"
+                action = "⏎  check"
+                symbol = "clock.arrow.circlepath"
+            }
+            cell.configure(title: (chat.busy ? "In progress · " : "") + chat.title,
+                           subtitle: status, symbol: symbol,
+                           action: tableView.selectedRow == row ? action : "")
+        }
+        return cell
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) { wasKey = true }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard wasKey else { return }
+        close()
+    }
+}
+
+private final class CodexPickerKeyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
+private final class CodexPickerTableRowView: NSTableRowView {
+    override func drawSelection(in dirtyRect: NSRect) {
+        NSColor.labelColor.withAlphaComponent(0.10).setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 6, dy: 3), xRadius: 7, yRadius: 7).fill()
+        NSColor.controlAccentColor.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 6, y: 6, width: 3, height: bounds.height - 12),
+                     xRadius: 1.5, yRadius: 1.5).fill()
+    }
+}
+
+private final class CodexPickerCellView: NSTableCellView {
+    private let symbolView = NSImageView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+    private let actionLabel = NSTextField(labelWithString: "")
+
+    override var isFlipped: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        symbolView.imageScaling = .scaleProportionallyDown
+        symbolView.contentTintColor = .secondaryLabelColor
+        titleLabel.font = .systemFont(ofSize: 12.5, weight: .medium)
+        titleLabel.textColor = .labelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+        subtitleLabel.font = .systemFont(ofSize: 11.5)
+        subtitleLabel.textColor = .secondaryLabelColor
+        subtitleLabel.lineBreakMode = .byTruncatingTail
+        actionLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        actionLabel.textColor = .controlAccentColor
+        actionLabel.alignment = .right
+        for view in [symbolView, titleLabel, subtitleLabel, actionLabel] { addSubview(view) }
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func configure(title: String, subtitle: String, symbol: String, action: String) {
+        symbolView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        titleLabel.stringValue = title
+        subtitleLabel.stringValue = subtitle
+        actionLabel.stringValue = action
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        let actionWidth: CGFloat = 92
+        let reserved = actionLabel.stringValue.isEmpty ? 0 : actionWidth + 10
+        symbolView.frame = NSRect(x: 17, y: 17, width: 18, height: 18)
+        actionLabel.frame = NSRect(x: bounds.width - actionWidth - 16, y: 18,
+                                   width: actionWidth, height: 16)
+        let textWidth = max(0, bounds.width - 60 - reserved)
+        titleLabel.frame = NSRect(x: 44, y: 7, width: textWidth, height: 17)
+        subtitleLabel.frame = NSRect(x: 44, y: 27, width: textWidth, height: 16)
     }
 }

@@ -1075,15 +1075,17 @@ final class HotkeyTap {
     }
     private var useLogiGesturesFlag = true
 
-    /// ⌘⌃B — point the relay at the terminal in front, or end the session when it
-    /// is already pointed there. On **B for bind** since 2026-09-01, having been
+    /// ⌘⌃B — while bound to Codex desktop, open its project/chat switcher
+    /// from any app. Otherwise bind the terminal in front (or unbind that same
+    /// terminal). Mouse binding always keeps its direct frontmost route.
+    /// On **B for bind** since 2026-09-01, having been
     /// ⌘⌃D before that: D is now the key that dictates.
     ///
     /// Owned here since 2026-08-26; it used to live in
     /// the original author Addons, which had to launch this app before it could ask it to
     /// bind. Now that the relay starts at login there is nothing to launch, and
     /// the key belongs to the app it acts on.
-    var onBindHotkey: (() -> Void)?
+    var onBindHotkey: ((_ alwaysShowCodexPicker: Bool) -> Void)?
     // ⌘⇧P (the last dictation, again — ⌘⌃P until 2026-09-19) is **gone since
     // 2026-09-28** (Q17): the clipboard always holds the finished sentence, so
     // ⌘V is the re-paste, and ⌘⇧P is the Command Palette in VS Code again.
@@ -3630,7 +3632,8 @@ private let VK_ESCAPE: CGKeyCode = 0x35        // esc
 
         if keyCode == VK_B && cmd && ctrl && !opt {
             if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 { return swallow("⌘⌃B (autorepeat)", type, event) }
-            DispatchQueue.global().async { [weak self] in self?.onBindHotkey?() }
+            let alwaysShowPicker = flags.contains(.maskShift)
+            DispatchQueue.global().async { [weak self] in self?.onBindHotkey?(alwaysShowPicker) }
             return swallow("⌘⌃B bind", type, event)
         }
 

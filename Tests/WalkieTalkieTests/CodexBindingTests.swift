@@ -2,6 +2,48 @@ import XCTest
 @testable import WalkieTalkie
 
 final class CodexBindingTests: XCTestCase {
+    func testDesktopKeyboardSwitchDoesNotConsultOrBindTheForegroundApp() {
+        var pickerOpenings = 0
+        var foregroundBindings = 0
+        CodexBindShortcut.perform(bound: .codex(threadID: "desktop-chat", tty: nil),
+            showPicker: { pickerOpenings += 1 },
+            bindFrontmost: { foregroundBindings += 1 })
+        XCTAssertEqual(pickerOpenings, 1)
+        XCTAssertEqual(foregroundBindings, 0)
+    }
+
+    func testExplicitPickerShortcutWorksWithoutABindingOrWithACLI() {
+        let targets: [TerminalBinding.Handle?] = [
+            nil, .codex(threadID: "cli-chat", tty: "/dev/ttys009"),
+            .terminalApp(tty: "/dev/ttys009")
+        ]
+        for target in targets {
+            var pickerOpenings = 0
+            var foregroundBindings = 0
+            CodexBindShortcut.perform(bound: target, forcePicker: true,
+                showPicker: { pickerOpenings += 1 },
+                bindFrontmost: { foregroundBindings += 1 })
+            XCTAssertEqual(pickerOpenings, 1)
+            XCTAssertEqual(foregroundBindings, 0)
+        }
+    }
+
+    func testKeyboardBindingPreservesDirectTerminalAndUnboundRoutes() {
+        let targets: [TerminalBinding.Handle?] = [
+            nil, .codex(threadID: "cli-chat", tty: "/dev/ttys009"),
+            .terminalApp(tty: "/dev/ttys009")
+        ]
+        for target in targets {
+            var pickerOpenings = 0
+            var foregroundBindings = 0
+            CodexBindShortcut.perform(bound: target,
+                showPicker: { pickerOpenings += 1 },
+                bindFrontmost: { foregroundBindings += 1 })
+            XCTAssertEqual(pickerOpenings, 0)
+            XCTAssertEqual(foregroundBindings, 1)
+        }
+    }
+
     func testDesktopBindingRestoresTheConversationWithoutATerminal() {
         let handle = TerminalBinding.Handle.codex(threadID: "chat-a", tty: nil)
         XCTAssertEqual(handle.restoreKey, "codex:chat-a")
@@ -95,7 +137,8 @@ final class CodexBindingTests: XCTestCase {
         ])!
         var loadedID: String?
 
-        let result = try CodexBridge.pickerDisposition(session: listed.id) { id in
+        let result = try CodexBridge.pickerDisposition(
+            session: listed.id, recordedCWD: listed.cwd) { id in
             loadedID = id
             return fresh
         }
@@ -108,18 +151,27 @@ final class CodexBindingTests: XCTestCase {
     func testPickerActivationRejectsClosedUnknownAndWrongConversation() throws {
         let closed = CodexBridge.Conversation(["id": "chat-a", "live": false])!
         XCTAssertEqual(try CodexBridge.pickerDisposition(
-            session: "chat-a", load: { _ in closed }), .closed)
+            session: "chat-a", recordedCWD: "/recorded/project", load: { _ in closed }),
+            .resume(session: "chat-a", cwd: "/recorded/project"))
+        let moved = CodexBridge.Conversation([
+            "id": "chat-a", "cwd": "/fresh/project", "live": false,
+        ])!
+        XCTAssertEqual(try CodexBridge.pickerDisposition(
+            session: "chat-a", recordedCWD: "/recorded/project", load: { _ in moved }),
+            .resume(session: "chat-a", cwd: "/fresh/project"))
 
         let unknown = NSError(domain: "test", code: 9,
                               userInfo: [NSLocalizedDescriptionKey: "owner lookup timed out"])
         XCTAssertThrowsError(try CodexBridge.pickerDisposition(
-            session: "chat-a", load: { _ in throw unknown })) {
+            session: "chat-a", recordedCWD: "/recorded/project",
+            load: { _ in throw unknown })) {
             XCTAssertEqual(($0 as NSError).localizedDescription, "owner lookup timed out")
         }
 
         let wrong = CodexBridge.Conversation(["id": "chat-b", "live": true])!
         XCTAssertThrowsError(try CodexBridge.pickerDisposition(
-            session: "chat-a", load: { _ in wrong })) {
+            session: "chat-a", recordedCWD: "/recorded/project",
+            load: { _ in wrong })) {
             XCTAssertTrue(($0 as NSError).localizedDescription.contains("different chat"))
         }
     }
@@ -136,6 +188,39 @@ final class CodexBindingTests: XCTestCase {
         XCTAssertFalse(gate.accept(first))
         XCTAssertTrue(gate.accept(reopened))
         XCTAssertFalse(gate.isChecking)
+    }
+
+    func testPickerCatalogGroupsEveryChatByRecordedWorkingFolder() {
+        let chats = [
+            CodexBridge.Conversation(["id": "a", "title": "Newest", "cwd": "/work/alpha", "live": true])!,
+            CodexBridge.Conversation(["id": "b", "title": "Past", "cwd": "/work/alpha", "live": false])!,
+            CodexBridge.Conversation(["id": "c", "title": "No folder", "cwd": "", "live": false])!,
+        ]
+        let projects = CodexPickerCatalog.projects(from: chats)
+        let alpha = projects.first { $0.cwd == "/work/alpha" }
+        XCTAssertEqual(alpha?.title, "alpha")
+        XCTAssertEqual(alpha?.conversations.map(\.id), ["a", "b"])
+        XCTAssertEqual(alpha?.liveCount, 1)
+        XCTAssertEqual(projects.first { $0.cwd.isEmpty }?.title, "No recorded folder")
+        XCTAssertEqual(CodexPickerCatalog.projects(projects, matching: "work alpha").map(\.cwd),
+                       ["/work/alpha"])
+    }
+
+    func testPickerCatalogWalksOlderPagesWithoutDuplicatingChats() throws {
+        let a = CodexBridge.Conversation(["id": "a", "cwd": "/new"] )!
+        let b = CodexBridge.Conversation(["id": "b", "cwd": "/old"] )!
+        var cursors: [String?] = []
+        let chats = try CodexBridge.conversationCatalog { cursor in
+            cursors.append(cursor)
+            if cursor == nil {
+                return .init(conversations: [a], nextCursor: "older")
+            }
+            return .init(conversations: [a, b], nextCursor: nil)
+        }
+        XCTAssertEqual(cursors.count, 2)
+        XCTAssertNil(cursors[0])
+        XCTAssertEqual(cursors[1], "older")
+        XCTAssertEqual(chats.map(\.id), ["a", "b"])
     }
 
     func testCropKeepsContextAndFilmCarriesItsContactSheet() throws {

@@ -41,7 +41,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite executes 299 tests with 2 opt-in integration skips and no failures (297 passed). The release bundle builds, installs, launches, and loads
+suite executes 304 tests with 2 opt-in integration skips and no failures (302 passed). The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
@@ -114,9 +114,10 @@ to pick it. The extension also pauses playing browser media while dictating.
 
 ## First use
 
-1. Open the menu-bar app and choose **Bind Codex chat…**. Search by chat title or
-   project, select the intended chat, and bind it. Confirm the binding in the
-   app's target row before dictating.
+1. Press **⌃⇧⌘B from any app** for the project/chat switcher (also available
+   as **Bind Codex chat…** in the menu). Choose a project, then a chat.
+   Once bound to desktop, ⌃⌘B opens it too; in Terminal, ⌃⌘B binds the active CLI tab directly.
+   Confirm the selected chat in the target row before dictating.
 2. Start a prompt with **⌘⌃D** or from the menu. Speak, optionally capture a
    screenshot or select context, then press **⌘⌃D again to stop**. Review the prompt and attachments;
    send or cancel it in the held-prompt panel.
@@ -129,7 +130,7 @@ For local English recognition, choose **Engine → Local language → English**;
 Automatic remains the default. This selection applies to captions and the
 final transcript without reloading the model.
 
-The [keyboard and mouse guide](docs/GESTURES.md) covers trackpad use, the
+The [daily workflows](docs/CODEX_TEST_GUIDE.md#daily-workflows) compare continuing a chat, editing a draft with F5, and starting a new CLI or desktop chat. The [keyboard and mouse guide](docs/GESTURES.md) covers trackpad use, the
 optional one-time Options+ mappings, and Wheel mode. The app's menu lists current gestures and actions. Use **Disconnect** to clear a
 binding. **Rebind to…** offers recent destinations and searches Codex session
 history. New Codex chats can be launched through the Codex CLI from **Prompt to
@@ -163,8 +164,8 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 70 passing tests. The Swift suite has 297 passing
-tests and 2 opt-in integration skips (299 executed, no failures); those opt-in
+The current Python suite has 77 passing tests. The Swift suite has 302 passing
+tests and 2 opt-in integration skips (304 executed, no failures); those opt-in
 checks also passed separately in a disposable native CLI PTY. The finish helper verifies the exact session and closes only a window containing
 that single tab; a window with sibling tabs is refused before signaling Codex. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for

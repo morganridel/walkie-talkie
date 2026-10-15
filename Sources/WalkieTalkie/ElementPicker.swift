@@ -535,6 +535,9 @@ final class ElementPicker {
     /// row and typing into a window that takes the keyboard away from whatever
     /// is asking.
     var onTestRebindPanel: ((String) -> Void)?
+    /// Read-only inspection of our own picker; optional PNG renders only its
+    /// content view, never the desktop or another application.
+    var onTestCodexPicker: ((_ snapshot: Bool) -> [String: Any])?
 
     /// Ask every connected Chrome extension to reload itself; the answer is how
     /// many were listening. Wired to `MusicBridge.reloadExtensions`.
@@ -1016,6 +1019,13 @@ final class ElementPicker {
             let query = body?["query"] as? String ?? ""
             onTestRebindPanel?(query)
             respond(conn, 200, ["ok": true, "query": query])
+
+        case ("GET", "/test/codex-picker"), ("POST", "/test/codex-picker"):
+            let body = (try? JSONSerialization.jsonObject(with: request.body)) as? [String: Any]
+            guard let inspect = onTestCodexPicker else {
+                return respond(conn, 503, ["ok": false, "error": "no picker inspector"])
+            }
+            respond(conn, 200, inspect(body?["snapshot"] as? Bool ?? false))
 
         // The mode behind the forward button — see `onTestReplaceWispr`.
         case ("POST", "/test/replace-wispr"):

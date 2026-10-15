@@ -4,10 +4,14 @@ These controls describe Morgan’s Codex fork. Keyboard controls work with a tra
 
 ## Your trackpad and keyboard
 
-Bind the intended Codex chat once with **Bind Codex chat…**. You can then work in a browser or editor while the prompt still goes to that selected chat.
+Press **⌃⇧⌘B from any app** for the project/chat switcher. Choose a project, then an open or historical chat. Once bound to Codex desktop, **⌃⌘B** opens it too. In Terminal, ⌃⌘B binds the active Codex CLI tab directly. The menu's **Bind Codex chat…** opens the same switcher.
+
+See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, editing an unsent draft, new chats in the same/different folder, and native desktop chats outside sidebar projects.
 
 | Action | Control |
 |---|---|
+| Open the project/chat switcher from any app | **Control + Shift + Command + B** (⌃⇧⌘B) |
+| Bind a Terminal chat / switch desktop project and chat | **Control + Command + B** (⌃⌘B) |
 | Start / stop a prompt for the bound Codex chat | **Control + Command + D** (⌃⌘D) |
 | Add a screenshot while the prompt is recording | **Control + Command + S** (⌃⌘S) |
 | Existing screenshot control, with Gestures: Logi selected | **Control + Option + Command + F6** while recording |
@@ -16,6 +20,7 @@ Bind the intended Codex chat once with **Bind Codex chat…**. You can then work
 | Cancel a recording using the existing Logi chord | **Control + Option + Command + F11** |
 | Start / stop plain text dictation at the insertion caret | **F5**; stopping inserts words without Return |
 | Prompt at the insertion caret; click again to stop | **Control + Option + Command + F7** |
+| Dictate the first prompt for a new CLI chat; choose its folder | **Control + Option + Command + F8** |
 | Start / stop screen film during a prompt | **Control + Option + Command + F4** |
 | Pick a browser element during a prompt (extension enabled) | Hold **Command + Shift** about half a second until outlined, then click |
 | Open a small typed-note box during a local prompt | **Control + Option + Command + F12** |
@@ -51,13 +56,15 @@ Every shortcut below uses **Control + Option + Command**, plus the listed F key.
 | Rear: hold + move up | F4 | Start / stop screen film during a prompt |
 | Rear: hold + move down | F12 | During a local prompt, open typed notes; during plain dictation, stop without Return; otherwise disconnect |
 
+To bind a focused Terminal session, **hold left-click, then press the front thumb button**. Hold left-click and make the front-right gesture to bind and start dictating together. Hovering alone does not change the binding. The keyboard shortcut's desktop-switcher behavior does not change these direct mouse bindings.
+
 For a prompt to the bound chat: **front + right → speak → rear click for screenshots → front click to stop → review → Return**. Repeating front + right during recording changes the destination, so check the overlay.
 
 During a prompt, **press and hold the scroll wheel, drag a rectangle, then release** for a region capture. Command moves the box; Option draws from its centre; Escape cancels. Right-click while dragging locks the source box; release the wheel, then wheel-drag a destination to describe a move. The wheel crop needs a physical pressable wheel. A normal trackpad has no equivalent built into this version.
 
 ## Any mouse with a pressable wheel
 
-Choose **Gestures → Wheel** once. A wheel click starts/stops a prompt; holding it for two seconds during recording cancels. A wheel drag during a prompt captures a region. This mode takes over middle-click while Walkie Talkie is running, so it changes the usual middle-click behavior in browsers/editors. The richer side-button directions above still need their Options+ mappings.
+Choose **Gestures → Wheel** once. Hold left-click and press the wheel to bind the focused Terminal session; hold right-click and press the wheel to disconnect. A wheel click alone starts/stops a prompt; holding it for two seconds during recording cancels. A wheel drag during a prompt captures a region. This mode takes over middle-click while Walkie Talkie is running, so it changes the usual middle-click behavior in browsers/editors. The richer side-button directions above still need their Options+ mappings.
 
 ## Current test status
 
