@@ -89,6 +89,11 @@ ready, 2.61 s to first delta, and 2.71 s total; web mode measured 5.24 s to firs
 delta and 5.36 s total. These are observations from one run, not performance
 guarantees.
 
+Quick answers default to `gpt-6-luna` with low reasoning effort for latency.
+This changes the model from upstream and does not promise identical answer
+quality. Set `WT_QUICK_MODEL` and `WT_QUICK_EFFORT` in the launch environment
+or `~/.walkie-talkie/elevenlabs.env` to choose another available Codex model.
+
 Optional ElevenLabs credentials can be stored in the local
 `~/.walkie-talkie/elevenlabs.env` configuration file. The Chrome extension is
 loaded from `chrome-extension/` using `chrome://extensions` → Developer mode →
