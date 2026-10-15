@@ -351,6 +351,32 @@ enum CodexPickerCatalog {
     }
 }
 
+/// Hardware-key routing shared by the field editor and the table. AppKit moves
+/// first responder to an NSTableView after a click, so relying only on
+/// `NSTextFieldDelegate` leaves Return and paging keys stranded there.
+enum CodexPickerNavigationCommand: Equatable {
+    case move(Int)
+    case page(Int)
+    case activate
+    case back
+
+    static func command(keyCode: UInt16, modifiers: NSEvent.ModifierFlags,
+                        hasMarkedText: Bool) -> Self? {
+        guard !hasMarkedText else { return nil }
+        let disallowed: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
+        guard modifiers.intersection(disallowed).isEmpty else { return nil }
+        switch keyCode {
+        case 125: return .move(1)       // Down arrow
+        case 126: return .move(-1)      // Up arrow
+        case 121: return .page(1)       // Page Down
+        case 116: return .page(-1)      // Page Up
+        case 36, 76: return .activate   // Return, keypad Enter
+        case 53: return .back           // Escape
+        default: return nil
+        }
+    }
+}
+
 /// Project-first Codex chat selection. The panel owns the keyboard without
 /// activating Walkie Talkie, like RebindPanel, so the app behind it regains the
 /// keyboard as soon as this closes.
@@ -420,7 +446,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         place(panel)
         applyFilter()
         panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(search)
+        focusSearch(in: panel)
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] _ in DispatchQueue.main.async { self?.close() }
         }
@@ -543,6 +569,10 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
+        panel.onNavigationKey = { [weak self, weak panel] event in
+            guard let self, let panel, self.panel === panel else { return false }
+            return self.handleNavigation(event, in: panel)
+        }
 
         let blur = NSVisualEffectView(frame: panel.contentView?.bounds
                                       ?? NSRect(x: 0, y: 0, width: width, height: height))
@@ -574,9 +604,13 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         search.focusRingType = .none
         search.font = .systemFont(ofSize: 16)
         search.textColor = .labelColor
+        search.isEditable = true
+        search.isSelectable = true
+        search.isEnabled = true
         search.delegate = self
         search.cell?.usesSingleLineMode = true
         blur.addSubview(search)
+        panel.initialFirstResponder = search
 
         spinner.frame = NSRect(x: width - 31, y: height - 39, width: 16, height: 16)
         spinner.style = .spinning
@@ -606,10 +640,14 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         table.backgroundColor = .clear
         table.usesAlternatingRowBackgroundColors = false
         table.selectionHighlightStyle = .regular
+        // This is a search-driven menu. Keep typing in the search field even
+        // after a mouse selection; the panel still handles list navigation.
+        table.refusesFirstResponder = true
         table.delegate = self
         table.dataSource = self
         table.target = self
-        table.doubleAction = #selector(activateSelected)
+        table.action = #selector(activateSelected)
+        table.doubleAction = nil
 
         scroll.frame = NSRect(x: 0, y: 30, width: width, height: rowHeight * visibleRows)
         scroll.drawsBackground = false
@@ -653,10 +691,6 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         case #selector(NSResponder.moveUp(_:)):
             moveSelection(by: -1)
         case #selector(NSResponder.insertNewline(_:)):
-            if let event = NSApp.currentEvent, event.type == .keyDown,
-               event.cgEvent?.getIntegerValueField(.eventSourceUserData) == HotkeyTap.backButtonStamp {
-                return true
-            }
             activateSelected()
         case #selector(NSResponder.cancelOperation(_:)):
             back()
@@ -668,6 +702,32 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
             return false
         }
         return true
+    }
+
+    private func handleNavigation(_ event: NSEvent, in panel: NSPanel) -> Bool {
+        let hasMarkedText = (panel.firstResponder as? NSTextView)?.hasMarkedText() == true
+        guard let command = CodexPickerNavigationCommand.command(
+            keyCode: event.keyCode, modifiers: event.modifierFlags,
+            hasMarkedText: hasMarkedText) else { return false }
+        switch command {
+        case .move(let delta): moveSelection(by: delta)
+        case .page(let direction): moveSelection(by: direction * Int(visibleRows))
+        case .activate: activateSelected()
+        case .back: back()
+        }
+        return true
+    }
+
+    private func focusSearch(in expectedPanel: NSPanel? = nil) {
+        guard let panel, expectedPanel == nil || panel === expectedPanel else { return }
+        if !panel.makeFirstResponder(search) {
+            // A newly ordered nonactivating panel can create its field editor
+            // one run-loop turn later. Retry only while this opening survives.
+            DispatchQueue.main.async { [weak self, weak panel] in
+                guard let self, let panel, self.panel === panel else { return }
+                _ = panel.makeFirstResponder(self.search)
+            }
+        }
     }
 
     private func moveSelection(by delta: Int) {
@@ -764,7 +824,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
             mode = .projects
             search.stringValue = ""
             applyFilter(preferredProjectCWD: cwd)
-            panel?.makeFirstResponder(search)
+            focusSearch()
         }
     }
 
@@ -779,7 +839,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
             search.stringValue = ""
             statusMessage = nil
             applyFilter()
-            panel?.makeFirstResponder(search)
+            focusSearch()
         case .conversations:
             guard visibleConversations.indices.contains(row) else { return }
             verifyAndActivate(visibleConversations[row])
@@ -863,7 +923,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
                 footer.stringValue = "Past chats reopen in Terminal   ·   ↑↓ choose   ·   ⏎ check & open   ·   esc projects"
             }
         }
-        table.reloadData()
+        redrawVisibleRows()
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
@@ -883,7 +943,7 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         }
         statusMessage = nil
         if cancelled || clearedMessage { refreshChrome() }
-        else { table.reloadData() }
+        else { redrawVisibleRows() }
     }
 
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
@@ -938,11 +998,25 @@ final class CodexChatPicker: NSObject, NSTableViewDataSource, NSTableViewDelegat
         guard wasKey else { return }
         close()
     }
+
+    private func redrawVisibleRows() {
+        let rows = numberOfRows(in: table)
+        guard rows > 0, !table.tableColumns.isEmpty else { return }
+        table.reloadData(forRowIndexes: IndexSet(integersIn: 0..<rows),
+                         columnIndexes: IndexSet(integersIn: 0..<table.tableColumns.count))
+    }
 }
 
-private final class CodexPickerKeyPanel: NSPanel {
+final class CodexPickerKeyPanel: NSPanel {
+    var onNavigationKey: ((NSEvent) -> Bool)?
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, onNavigationKey?(event) == true { return }
+        super.sendEvent(event)
+    }
 }
 
 private final class CodexPickerTableRowView: NSTableRowView {

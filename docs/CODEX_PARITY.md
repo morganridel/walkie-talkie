@@ -7,9 +7,9 @@ test guide](CODEX_TEST_GUIDE.md).
 
 | Area | Implementation in this fork | Verification evidence |
 |---|---|---|
-| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 304 executed, 2 opt-in integration checks skipped, 0 failures; 302 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
+| Build and identity | SwiftPM and packaging use `local.walkie-talkie`. Fresh-profile engine default is Local Whisper; microphone discovery is system-based with automatic selection. Packaged Python helpers suppress bytecode writes inside the signed bundle. | **Verified build/install/startup.** Release bundle installed and launched; local API responds; final signature verified after workers started. Full Swift suite: 306 executed, 2 opt-in integration checks skipped, 0 failures; 304 passed. The opt-in native PTY checks also passed in a separate disposable run. Cached official Swift 6.2.3 leaves system CLT unchanged. Ad-hoc signing means macOS may require permissions again after rebuilding. |
 | Codex CLI discovery | `CodexBridge` resolves the helper and bundled native CLI executable; `CODEX_BIN` can override the binary. | **Verified.** Native CLI connected in PTY E2E; installed helper doctor resolves the native binary and version. |
-| Chat picker | Compact project-first floating panel. Project-folder search leads to that folder’s current and historical chats; keyboard search/arrows/Return/Escape and outside dismissal. Shared-daemon metadata pages are followed; exact stable-ID ownership is checked at activation. Live binds, conclusively closed resumes in Terminal, unknown/wrong ID refuses. | **Source verified and installed; physical/visual pass pending.** Grouping and pagination/deduplication regressions pass. The earlier 14:30 picker’s native title search/project-filter selection was confirmed by the user and bound the exact desktop test. The new switcher retains owner and stale-callback safeguards. Groups are recorded cwd folders, not authoritative sidebar project membership; archived chats are excluded and the offline metadata fallback is bounded. |
+| Chat picker | Compact project-first floating panel. Project-folder search leads to that folder’s current and historical chats; keyboard search/arrows/Return/Escape and outside dismissal. Shared-daemon metadata pages are followed; exact stable-ID ownership is checked at activation. Live binds, conclusively closed resumes in Terminal, unknown/wrong ID refuses. | **Installed; physical shortcut passed, navigation failed.** Grouping and pagination/deduplication regressions pass. The earlier 14:30 picker’s native title search/project-filter selection was confirmed by the user and bound the exact desktop test. The new switcher retains owner and stale-callback safeguards. Groups are recorded cwd folders, not authoritative sidebar project membership; archived chats are excluded and the offline metadata fallback is bounded. |
 | CLI chat sending | Codex target is represented in `TerminalBinding`; bound and verified caret delivery call the bridge with text and actual screenshot/crop/film-sheet image inputs. Busy sends can steer the exact active turn. | **Verified in native CLI PTY E2E.** Initial prompt exactly once; follow-up send; synthetic red image read as red; busy follow-up steered the same turn. A separate production caret dispatch resolved the exact foreground CLI ID, displayed `[Image #1]`, and answered `CARET_RPC_RED`. Exited TUIs/shells fail caret ownership checks; attempted RPC failures never fall back to paste or retry. Physical Terminal/VS Code caret interaction remains manual. |
 | Codex desktop delivery | Same-user native desktop IPC adapter preserves protocol version and verifies owner discovery for desktop threads. | **Verified in a disposable desktop chat.** Text delivered with the expected reply, a synthetic red image was interpreted as red, and a busy update steered the same active turn and reached the expected marker. Installed-app bind/hold/edit/send also reached that chat; cancel caused no delivery or new turn. Tested with Desktop 26.1007.30912 and native CLI 0.162.0-alpha.17.2. IPC remains internal and version-coupled. Desktop completion uses the receiving model's `set_thread_archived` tool; exact-window closing is unsupported. Completion cue archived only the disposable chat; it was subsequently restored. Archiving interrupts the active turn, so a result must be provided before the archive action. |
 | New/resumed sessions | `walkie-codex` starts the shared daemon idempotently, persists the initial prompt through RPC before attaching the CLI TUI, creates/resumes the exact conversation, and writes a tty sidecar. `SpawnTerminal` uses this launcher. | **Packaged new launch verified.** The installed app opened Terminal, delivered one initial prompt, received the exact requested marker, and bound the same CLI thread with a verified PID/TTY sidecar. Native PTY new/resume tests also passed. Packaging now validates capability descriptions, and exact open/tiling scripts compile offline. The user confirmed visible Rebind closed-history resume. Launch records retained the same stable CLI ID; readback still held only its original completed prompt/reply. It had exited by cleanup and was archived without signalling a process or touching Terminal windows. |
@@ -35,7 +35,7 @@ for future runs. Redact private chat content, audio, tokens, paths, and credenti
 
 | Date/build | Area and method | Result/evidence |
 |---|---|---|
-| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 304 executed, 2 skipped, 0 failures (302 passed). |
+| Current debug build | `./tools/swift-build.sh build` using cached official Swift 6.2.3 toolchain and compiler workaround; system CLT unchanged. | Debug application build succeeds; full XCTest suite: 306 executed, 2 skipped, 0 failures (304 passed). |
 | 2026-10-15 release | Signed bundle build, install, launch, local API, and signature verification after model startup. | Passed. Both transcription workers ready using Quiet Journal runtime/cache; Quiet Journal health remains good. Microphone and Screen Recording are enabled. After removing/re-adding the current app in Accessibility and reopening, startup reports trusted=true/eventTap=true; the harmless canary is alive (about 0.14 ms). The earlier stale grant is resolved. Real spoken start/stop/send subsequently passed; other physical gestures remain separate checks. |
 | 2026-10-15 CLI identity follow-up | Real native CLI and isolated cold-start tests. | Native daemon symlink accepted with ownership checks; shared read and TTY resolve retain the same verified CLI identity; initial prompt completed exactly once; exited CLI disappears from live rows; synthetic test archived. Isolated cold start installed daemon, initialized RPC and attached TUI successfully, then stopped/cleaned only its own daemon. |
 | Current Python tests | Full Python test suite. | 77 tests pass. |
@@ -157,7 +157,7 @@ activate; Escape returns to projects or dismisses. Saved chats explicitly reopen
 in Terminal after a conclusive fresh owner check. This does not automatically
 create native desktop chats or assign sidebar project membership.
 
-Current source suite: 304 executed, 2 opt-in skips, 0 failures (302 passed).
+Initial switcher source suite: 304 executed, 2 opt-in skips, 0 failures (302 passed).
 Python helper source is unchanged with 77 passing checks. The updated daily
 workflow guide distinguishes editing a draft with F5, sending to a bound chat,
 new CLI chats in the same/different folder, and native desktop projectless chats.
@@ -168,5 +168,34 @@ Accessibility/event tap and Screen Recording enabled; its shortcut canary is
 alive (0.43 ms), English persists, both workers are ready, the reusable desktop
 test is bound and the deep strict signature verifies. The read-only picker
 inspector is available. Native automation keypresses did not open the picker;
-the menu-bar automation then timed out. The physical shortcut/visual check is
-pending user confirmation, not claimed as passed.
+the menu-bar automation then timed out. The user physically confirmed that ⌃⇧⌘B opens the switcher, but keyboard
+navigation and clicking a project did not work. This contradicts a full UI
+pass: single-click was not wired, and selection/focus refresh is under repair.
+The navigation fix and a repeated native interaction check remain required.
+
+## Picker navigation repair
+
+The physical global shortcut opened the 15:47 switcher, but the user could not
+navigate with keys or open a project with a single click. Rows had only a
+double-click action, and full table reloads during chrome/selection updates
+cleared selection. Keyboard commands handled only by the search field also
+missed table focus.
+
+The repair uses single-click activation, keeps focus in the editable search,
+handles plain navigation keys at the key panel, and redraws row content without
+clearing selection. Modified keys and marked-text composition remain editor
+input. Exact stable-ID ownership checks and stale-callback gates are unchanged.
+Full source suite: 306 executed, 2 opt-in skips, no failures (304 passed).
+An AppKit fixture drives the real key panel's event dispatch with field-editor
+and table focus; this is component evidence, not a physical end-to-end UI pass.
+The **16:21** navigation-repair build is installed. Both existing permission
+entries were refreshed through System Settings by the agent; Accessibility/event
+tap and Screen Recording verify, the canary is alive (2.16 ms), English and both
+local workers are ready, and the reusable desktop test is bound. Deep strict
+signature verification passed. The repeated physical navigation check is pending.
+
+A narrowly scoped native metadata query found both disposable test-project chats
+in 0.31 seconds. All 37 file-backed Mach-O sections of the 15:47 installed
+binary matched its release output; raw hashes differ because of signing data,
+and the installed deep strict signature verifies. Automatic approval review
+rejected a broader private-thread metadata audit; no workaround was used.

@@ -1,7 +1,70 @@
 import XCTest
+import AppKit
 @testable import WalkieTalkie
 
 final class CodexBindingTests: XCTestCase {
+    func testPickerHardwareNavigationWorksOutsideTheSearchFieldEditor() {
+        let plain: NSEvent.ModifierFlags = []
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 125, modifiers: plain, hasMarkedText: false), .move(1))
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 126, modifiers: plain, hasMarkedText: false), .move(-1))
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 121, modifiers: plain, hasMarkedText: false), .page(1))
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 116, modifiers: plain, hasMarkedText: false), .page(-1))
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 36, modifiers: plain, hasMarkedText: false), .activate)
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 76, modifiers: plain, hasMarkedText: false), .activate)
+        XCTAssertEqual(CodexPickerNavigationCommand.command(
+            keyCode: 53, modifiers: plain, hasMarkedText: false), .back)
+
+        // Ordinary typing and editor shortcuts must still reach the field
+        // editor, and marked text must remain under the input method's control.
+        XCTAssertNil(CodexPickerNavigationCommand.command(
+            keyCode: 0, modifiers: plain, hasMarkedText: false))
+        XCTAssertNil(CodexPickerNavigationCommand.command(
+            keyCode: 125, modifiers: .shift, hasMarkedText: false))
+        XCTAssertNil(CodexPickerNavigationCommand.command(
+            keyCode: 36, modifiers: plain, hasMarkedText: true))
+    }
+
+    func testPickerKeyPanelRoutesNavigationForFieldAndTableFirstResponders() throws {
+        let panel = CodexPickerKeyPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let field = NSTextField(frame: NSRect(x: 0, y: 60, width: 200, height: 30))
+        let table = NSTableView(frame: NSRect(x: 0, y: 0, width: 200, height: 50))
+        panel.contentView?.addSubview(field)
+        panel.contentView?.addSubview(table)
+        var commands: [CodexPickerNavigationCommand] = []
+        panel.onNavigationKey = { event in
+            guard let command = CodexPickerNavigationCommand.command(
+                keyCode: event.keyCode, modifiers: event.modifierFlags,
+                hasMarkedText: false) else { return false }
+            commands.append(command)
+            return true
+        }
+
+        XCTAssertTrue(panel.makeFirstResponder(field))
+        let down = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: panel.windowNumber, context: nil,
+            characters: "\u{F701}", charactersIgnoringModifiers: "\u{F701}",
+            isARepeat: false, keyCode: 125))
+        panel.sendEvent(down)
+
+        XCTAssertTrue(panel.makeFirstResponder(table))
+        let enter = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: panel.windowNumber, context: nil,
+            characters: "\r", charactersIgnoringModifiers: "\r",
+            isARepeat: false, keyCode: 36))
+        panel.sendEvent(enter)
+        XCTAssertEqual(commands, [.move(1), .activate])
+    }
+
     func testDesktopKeyboardSwitchDoesNotConsultOrBindTheForegroundApp() {
         var pickerOpenings = 0
         var foregroundBindings = 0
