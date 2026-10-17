@@ -179,6 +179,8 @@ final class TerminalBinding {
         /// the stranger. nil for every other kind of target, and for a tab whose
         /// owner could not be read (the check then degrades to the old one).
         var owner: TTYOwner? = nil
+        /// Full verified Codex cwd; `folder` is only a display label.
+        var workingDirectory: String? = nil
 
         /// `bound-tty` and the Dock-restart handoff: `Handle.restoreKey`, plus
         /// the owner **on a second line** for a Terminal.app tab. Not beside the
@@ -443,7 +445,7 @@ final class TerminalBinding {
                       folder: chat.cwd.isEmpty ? nil : chat.folder, title: chat.title,
                       // The IPC owner is a chat, not the currently focused desktop window.
                       // AX lookup here both guesses the wrong window and can block binding.
-                      sourceFrame: frame, boundAt: Date())
+                      sourceFrame: frame, boundAt: Date(), workingDirectory: chat.cwd)
     }
 
     /// `ttys014` → `/dev/ttys014`; anything already a path is left alone.
@@ -1065,7 +1067,7 @@ final class TerminalBinding {
     private static func frontTerminalTab(pid: pid_t? = nil, verbose: Bool = false)
         -> (tab: (tty: String, title: String?)?, failure: String?) {
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             set n to count of windows
             set out to "windows\t" & n & linefeed
             repeat with i from 1 to n
@@ -1164,7 +1166,7 @@ final class TerminalBinding {
     /// and without the guard one closing tab would cost the whole list.
     static func liveTitles() -> [String: String] {
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             set out to ""
             repeat with w in windows
                 try
@@ -1279,7 +1281,7 @@ final class TerminalBinding {
     /// very often not the one in front.
     private static func title(forTTY tty: String) -> String? {
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 repeat with t in tabs of w
                     try
@@ -1343,7 +1345,7 @@ final class TerminalBinding {
                 _ = tmux(["select-pane", "-t", pane])
             }
             let script = """
-            tell application "Terminal"
+            tell application id "com.apple.Terminal"
                 repeat with w in windows
                     try
                         repeat with t in tabs of w
@@ -1454,7 +1456,7 @@ final class TerminalBinding {
         let left = Int(v.minX), top = Int(primary.frame.maxY - v.maxY)
         let right = Int(v.maxX), bottom = Int(primary.frame.maxY - v.minY)
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 try
                     repeat with t in tabs of w
@@ -1505,7 +1507,7 @@ final class TerminalBinding {
     /// `do script` handed back.
     static func terminalWindowFrame(tty: String) -> CGRect? {
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 try
                     repeat with t in tabs of w
@@ -1819,7 +1821,7 @@ final class TerminalBinding {
     /// ask must not be pressed again.
     private static func writeToTerminalApp(_ text: String, tty: String) -> Bool {
         let script = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 repeat with t in tabs of w
                     try
@@ -1863,7 +1865,7 @@ final class TerminalBinding {
         // showed nothing is logged, squashed, so a stalled sentence leaves
         // the screen it stalled on in `relay.log`.
         let read = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 repeat with t in tabs of w
                     try
@@ -1879,7 +1881,7 @@ final class TerminalBinding {
         end tell
         """
         let again = """
-        tell application "Terminal"
+        tell application id "com.apple.Terminal"
             repeat with w in windows
                 repeat with t in tabs of w
                     try

@@ -1,4 +1,5 @@
 import AppKit
+import ObjCTry
 
 /// **The gestures that work right now, bottom right of the screen** (2026-09-29).
 ///
@@ -264,7 +265,7 @@ final class GestureHintBar {
 
     private func place(_ crosses: [Cross], mouse: MouseHint? = nil, pointer: NSPoint) {
         guard let panel, let board,
-              let spot = Self.spot(base: Board.size(for: crosses, mouse: mouse, keyboard: board.keyboard),
+              let spot = Self.spot(base: board.baseSize,
                                    on: displays, pointer: pointer, scaleOverride: shownKeyboard ? 1 : nil),
               spot != placed else { return }
         let dodged = spot.opacity == 0, wasDodged = placed?.opacity == 0, first = placed == nil
@@ -414,10 +415,35 @@ final class GestureHintBar {
     /// boxes line up; every box is as wide as the widest label, so the board
     /// does not change width when a label does.
     final class Board: NSView {
-        var crosses: [Cross] = [] { didSet { needsDisplay = true } }
-        var keyboard: [KeyboardHint] = [] { didSet { needsDisplay = true } }
+        var crosses: [Cross] = [] { didSet { updateLayout() } }
+        var keyboard: [KeyboardHint] = [] { didSet { updateLayout() } }
         /// Set during a crop, in place of the crosses.
-        var mouse: MouseHint? { didSet { needsDisplay = true } }
+        var mouse: MouseHint? { didSet { updateLayout() } }
+        private(set) var baseSize = NSSize.zero
+        private var keyboardWidth: CGFloat = 160
+        // Use the same system font family as the labels. The 15 October crash
+        // reports abort inside CoreText applying the previous monospaced font
+        // during a pointer event; keep font work out of that hot path too.
+        private static let keysFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+
+        private func updateLayout() {
+            keyboardWidth = Self.keyboardColumnWidth(keyboard)
+            baseSize = Self.size(for: crosses, mouse: mouse, keyboard: keyboard)
+            needsDisplay = true
+        }
+
+        /// Font fallback can raise an Objective-C exception, which Swift's
+        /// do/catch cannot handle. Keep the recording alive with a conservative
+        /// size if AppKit cannot measure a label.
+        static func textSize(_ text: String, font: NSFont, measure: (() -> NSSize)? = nil) -> NSSize {
+            let fallback = NSSize(width: CGFloat(text.count) * font.pointSize, height: font.pointSize * 1.5)
+            var size = fallback
+            if let error = WTTry({ size = measure?() ?? (text as NSString).size(withAttributes: [.font: font]) }) {
+                Log.error("⌨️ recording hint font measurement failed: \(error.localizedDescription)")
+                return fallback
+            }
+            return size
+        }
         /// Drawn at `size(for:)` × this; the frame is already that big.
         var scale: CGFloat = 1 { didSet { needsDisplay = true } }
         /// The whole board's alpha; at 1 the boxes are solid too ("fully opaque").
@@ -442,8 +468,8 @@ final class GestureHintBar {
         /// body as tall as two more.
         static func keyboardColumnWidth(_ hints: [KeyboardHint]) -> CGFloat {
             hints.map { hint in
-                let words = (hint.label as NSString).size(withAttributes: [.font: GestureHintBar.font]).width
-                let keys = (hint.shortcut as NSString).size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)]).width
+                let words = textSize(hint.label, font: GestureHintBar.font).width
+                let keys = textSize(hint.shortcut, font: keysFont).width
                 return ceil(words + keys + 30)
             }.max() ?? 160
         }
@@ -500,8 +526,8 @@ final class GestureHintBar {
         }
 
         private func drawKeyboard() {
-            let width = Self.keyboardColumnWidth(keyboard)
-            let keysFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)
+            let width = keyboardWidth
+            let keysFont = Self.keysFont
             for (index, hint) in keyboard.enumerated() {
                 let rect = NSRect(x: CGFloat(index % 2) * (width + 6), y: CGFloat(index / 2) * 32,
                                   width: width, height: 26)
@@ -510,10 +536,14 @@ final class GestureHintBar {
                 let words = hint.label as NSString, keys = hint.shortcut as NSString
                 let keyAttributes: [NSAttributedString.Key: Any] = [.font: keysFont, .foregroundColor: NSColor.systemYellow]
                 let wordAttributes: [NSAttributedString.Key: Any] = [.font: GestureHintBar.font, .foregroundColor: NSColor.white]
-                let keySize = keys.size(withAttributes: keyAttributes)
-                let wordSize = words.size(withAttributes: wordAttributes)
-                words.draw(at: NSPoint(x: rect.minX + 9, y: rect.midY - wordSize.height / 2), withAttributes: wordAttributes)
-                keys.draw(at: NSPoint(x: rect.maxX - keySize.width - 9, y: rect.midY - keySize.height / 2), withAttributes: keyAttributes)
+                let keySize = Self.textSize(hint.shortcut, font: keysFont)
+                let wordSize = Self.textSize(hint.label, font: GestureHintBar.font)
+                if let error = WTTry({
+                    words.draw(at: NSPoint(x: rect.minX + 9, y: rect.midY - wordSize.height / 2), withAttributes: wordAttributes)
+                    keys.draw(at: NSPoint(x: rect.maxX - keySize.width - 9, y: rect.midY - keySize.height / 2), withAttributes: keyAttributes)
+                }) {
+                    Log.error("⌨️ recording hint drawing failed: \(error.localizedDescription)")
+                }
             }
         }
 

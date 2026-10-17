@@ -1,32 +1,8 @@
 import AppKit
 import Foundation
 
-/// **The destination that does not exist yet.** Shift + the wheel opens a fresh
-/// Terminal.app window, starts an interactive Claude Code in it, and hands it
-/// the dictation as its first prompt.
-///
-/// It exists because every other destination in this app has to be *pointed at*:
-/// ⌘⌃B, the mouse-5 double click and the left-plus-wheel chord all say "that
-/// terminal, the one already on screen". The one thing they cannot express is
-/// the most common way a session actually begins — the original author has a thought, and
-/// there is no window for it yet. Making him open a terminal, `cd` somewhere,
-/// type `claude`, wait for it to come up and *then* start talking is four steps
-/// in front of the sentence he already has in his head.
-///
-/// **The prompt travels as an argument, not as typing.** `claude "<prompt>"`
-/// starts the interactive session with that prompt already submitted, which
-/// removes the entire class of bug this app has been bitten by twice: there is
-/// no window to wait for, no caret to land in, no shell prompt to be executed
-/// at, and no race between "the process is up" and "the process is ready to
-/// read". The words are in the process's `argv` before it has drawn anything.
-///
-/// **Two files on disk, and that is deliberate too.** The prompt is a
-/// transcript of the original author speaking freely — quotes, apostrophes, semicolons,
-/// backticks, `$` — and it would otherwise have to survive a trip through
-/// AppleScript's string literals *and* a shell command line, which is two
-/// escapings stacked and the exact place a dictation turns into a command. So
-/// AppleScript is only ever handed a path this app generated, and the shell only
-/// ever reads the words from a file.
+/// Creates a prompted CLI chat, reusing an untouched idle Walkie terminal first.
+/// Prompts are staged privately and never typed into a shell or an existing TUI.
 enum SpawnTerminal {
 
     /// Scratch space for the two files above — beside the shots, and in Caches
@@ -41,6 +17,7 @@ enum SpawnTerminal {
     /// loud, since the outbox already has the words.
     enum Outcome {
         case opened(tty: String)
+        case reused(CodexBridge.Conversation)
         case failed(String)
     }
 
@@ -66,21 +43,59 @@ enum SpawnTerminal {
     ///
     /// Runs subprocesses — call it off the main thread.
     static func launchClaude(prompt: String, directory: String, near: CGPoint? = nil) -> Outcome {
-        let stamp = Self.stamp()
-        let promptFile = dir.appendingPathComponent("prompt-\(stamp).txt")
         do {
-            // The built-in default must also work on a fresh Mac. Custom or
-            // historical folders are never silently recreated.
             if directory == NewChatFolder.workspace.path {
                 try FileManager.default.createDirectory(at: NewChatFolder.workspace, withIntermediateDirectories: true)
             }
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try prompt.write(to: promptFile, atomically: true, encoding: .utf8)
+            let chat = try CodexBridge.createBackground(prompt: prompt, directory: directory)
+            return .reused(chat)
         } catch {
-            return .failed("could not stage the new session — \(error.localizedDescription)")
+            return .failed(error.localizedDescription)
         }
-        return open(script(prompt: promptFile.path, directory: directory),
-                    stamp: stamp, directory: directory, near: near, what: "new Codex session")
+    }
+
+    /// Attach a view to an existing chat, without replaying its prompt or binding it.
+    /// The caller verifies the current owner through prepare-open first.
+    static func openChat(session: String, directory: String, near: CGPoint? = nil) -> Outcome {
+        if let reason = resumeDirectoryFailure(directory) { return .failed(reason) }
+        if let chat = try? CodexBridge.conversation(session), let tty = chat.terminalTTY,
+           CodexBridge.resolve(tty: tty)?.id == session {
+            return .reused(chat)
+        }
+        let requestFile = dir.appendingPathComponent("attach-\(Self.stamp()).json")
+        defer { try? FileManager.default.removeItem(at: requestFile) }
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            let data = try JSONSerialization.data(withJSONObject: [
+                "resume": session, "directory": directory, "prompt": "", "images": [String]()
+            ])
+            try data.write(to: requestFile, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: requestFile.path)
+            guard let helper = CodexBridge.launcherPath else { throw reuseFailure("Codex launcher is unavailable") }
+            let result = TerminalBinding.runOutcome("/usr/bin/python3", [helper, "--reuse-request", requestFile.path], timeout: 110)
+            guard case .ok(let output) = result,
+                  let data = output.data(using: .utf8),
+                  let reply = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw reuseFailure("Terminal attachment outcome is unknown; it was not retried")
+            }
+            switch reply["status"] as? String {
+            case "unavailable": break
+            case "reused":
+                guard reply["threadId"] as? String == session,
+                      let chat = try CodexBridge.conversation(session) else {
+                    throw reuseFailure("Terminal attachment could not be verified")
+                }
+                return .reused(chat)
+            default: throw reuseFailure(reply["error"] as? String ?? "Terminal attachment outcome is unknown")
+            }
+        } catch { return .failed(error.localizedDescription) }
+        return open(resumeScript(session: session, directory: directory),
+                    stamp: Self.stamp(), directory: directory, near: near, what: "Codex chat")
+    }
+
+    private static func reuseFailure(_ message: String) -> NSError {
+        NSError(domain: "SpawnTerminal", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
     /// **A session that already exists, opened again in a window of its own** —
@@ -125,7 +140,7 @@ enum SpawnTerminal {
     }
 
     /// **Everything both of them do once the launcher exists**: open the window,
-    /// find out which tty it landed on, tile it, and give the front back.
+    /// find out which tty it landed on, and tile it without activating Terminal.
     ///
     /// The two callers differ only in the script they stage — one starts a
     /// session with a prompt in its `argv`, the other reopens one by id — and the
@@ -147,10 +162,12 @@ enum SpawnTerminal {
         // displays around the Retina one, the one the pointer is on first, and
         // otherwise opened behind.
         let screens = board(preferring: near)
-        // Taken **before** anything is asked of Terminal, and in every branch:
-        // see the restore below for why the spawn is not allowed to keep the
-        // front it may take on the way.
-        let previous = NSWorkspace.shared.frontmostApplication
+        // A cold launch must also stay behind the current application.
+        if NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Terminal").isEmpty {
+            // Launch hidden and without activation before sending Apple events.
+            let launch = TerminalBinding.runOutcome("/usr/bin/open", ["-g", "-j", "-b", "com.apple.Terminal"])
+            guard case .ok = launch else { return .failed("Could not launch Terminal in the background") }
+        }
 
         // `do script` with no `in` clause opens a **new window**, which is the
         // whole request: a second session beside the one he is in, not a line
@@ -215,26 +232,6 @@ enum SpawnTerminal {
             }
         }
 
-        // **Put the front back, if Terminal took it.** Nothing above asks for the
-        // front any more, but a Terminal that was **not running** is launched by
-        // `do script` and comes forward on its own. The quarter second is that
-        // launch settling: restoring into the middle of it is a swap the window
-        // server undoes a moment later.
-        //
-        // In every branch since 2026-09-08, not only when there was nowhere to
-        // tile: a spawn is by definition the window the original author did not ask to look at
-        // — he is mid-sentence, looking somewhere else — so the app he *was* in
-        // keeps the keyboard whatever else happened.
-        //
-        // This only restores **focus**. It cannot un-raise windows: an app that
-        // was activated keeps its windows where the activation put them, which is
-        // the whole reason `activate` had to go rather than be undone here.
-        if let previous = previous {
-            Thread.sleep(forTimeInterval: 0.25)
-            if NSWorkspace.shared.frontmostApplication?.processIdentifier != previous.processIdentifier {
-                previous.activate(options: [])
-            }
-        }
         Log.info("✨ \(what) in \(directory) on \((tty as NSString).lastPathComponent) — \(placed)")
         return .opened(tty: tty)
     }
@@ -463,7 +460,7 @@ enum SpawnTerminal {
           echo "$prompt"
           exec /bin/zsh -l
         fi
-        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --cd \(quote(directory))\(images) -- "$prompt"
+        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --managed --cd \(quote(directory))\(images) -- "$prompt"
         """
     }
 
@@ -481,7 +478,7 @@ enum SpawnTerminal {
           echo "walkie: Codex executable is unavailable — could not resume \(session)"
           exec /bin/zsh -l
         fi
-        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --cd \(quote(directory)) --resume \(quote(session))
+        exec /usr/bin/python3 \(quote(CodexBridge.launcherPath ?? "")) --managed --cd \(quote(directory)) --resume \(quote(session))
         """
     }
 

@@ -57,7 +57,9 @@ enum RingDown {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var replyInbox: ReplyInbox?
     private let codexChats = CodexChatPicker()
+    private let codexActivity = CodexActivityMonitor()
 
     private var overlay: RelayWindow!
     private var status: StatusItem!
@@ -1070,6 +1072,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// — the panel holds a prompt for seconds, and the next dictation may have
     /// started by the time this one is delivered.
     private var spawnFolder: String?
+    private var spawnClient: NewChatClient = .background
 
     /// **Replace Wispr — the relay as a way to type, not a way to talk to an
     /// agent.** Ticked in the menu, the forward side button opens the microphone
@@ -1369,6 +1372,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         /// off `spawnFolder` at delivery: the menu that sets it is long gone by
         /// then, and a second dictation may have chosen differently since.
         var directory: String = AppDelegate.spawnDirectory
+        var newChatClient: NewChatClient = .background
         /// **Which route the recogniser delivered by** (`DictationResult.via`),
         /// carried here for the same reason `spawn` is: the outbox line is
         /// written at `commit`, seconds after the words arrived, and by then the
@@ -1422,6 +1426,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // does not pay its ~4 s start-up (`QuickAsk`).
         QuickAsk.shared.warm()
         overlay = RelayWindow()
+        codexActivity.start(boundID: { [weak self] in
+            guard case .codex(let id, _)? = self?.terminal.target?.handle else { return nil }
+            return id
+        })
 
         // **The ✕ cancels the dictation before it ends anything.** It ended the
         // session outright until 2026-09-12, which is the wrong verb at the one
@@ -1451,7 +1459,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // hands back an id. The preference lives in `InputDevice` beside the
         // matching table, because the thing that resolves a pick into a device
         // is the only thing that can say whether the pick is still possible.
-        status.micAvailable = { InputDevice.availableIds() }
         status.micCurrentLabel = { InputDevice.currentShortLabel() }
         status.onPickMic = { [weak self] id in self?.setMicrophone(id) }
         status.setMic(InputDevice.chosenId)
@@ -1695,16 +1702,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.onRebind = { [weak self] tty in self?.rebindFromMenu(tty: tty) }
         status.onBindCodexChat = { [weak self] in self?.showCodexChats() }
         codexChats.onPick = { [weak self] chat in
-            DispatchQueue.global(qos: .userInitiated).async {
-                guard let self else { return }
-                let bound = self.terminal.bind(chat: chat)
-                DispatchQueue.main.async { self.showBound(bound) }
-            }
+            guard let self else { return }
+            self.showBound(self.terminal.bind(chat: chat))
+            self.codexActivity.refresh()
         }
-        codexChats.onResume = { [weak self] session, cwd in
-            // The picker has already freshly verified that this exact chat is
-            // closed. Resume without replaying any historical prompt.
-            DispatchQueue.main.async { self?.resumeSession(session, in: cwd) }
+        codexChats.onOpen = { [weak self] session, cwd, destination, stillWanted, completion in
+            guard let self else { completion("Walkie is no longer available"); return }
+            self.openCodexChat(session, in: cwd, destination: destination, stillWanted: stillWanted, completion: completion)
         }
         status.whisperFootprint = { [weak self] in self?.whisperSource.footprintBytes }
         // The id the overlay used to carry beside the pulse. Same shape as the
@@ -2011,7 +2015,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         picker.onTestMic = { [weak self] id in
             guard let self else { return [:] }
-            let ids = ["auto"] + InputDevice.known.map(\.id)
+            let ids = ["auto"] + InputDevice.known.map(\.id) + InputDevice.choices().map(\.id)
             if !id.isEmpty {
                 guard ids.contains(id) else {
                     return ["changed": false, "why": "unknown id", "ids": ids]
@@ -2103,6 +2107,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ReplyPanel.show(text, from: label, tty: (body["tty"] as? String).flatMap { $0.isEmpty ? nil : $0 },
                             images: images)
             return (200, ["ok": true, "chars": text.count, "images": images.count, "from": label ?? NSNull()])
+        }
+        if let reply = picker.onReply {
+            do {
+                replyInbox = try ReplyInbox(home: Outbox.defaultHome, handler: reply)
+                replyInbox?.start()
+                Log.info("💬 local reply inbox ready — no localhost permission needed")
+            } catch {
+                Log.error("💬 local reply inbox unavailable: \(error.localizedDescription)")
+            }
         }
         // **The 🔽 ↓ typing box from a desk**: opens it at the pointer as the
         // gesture would; `text` types into it, `submit: true` presses Return.
@@ -2439,7 +2452,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The menu's copy of the spawn chord. The same call, so the window it opens
         // and the destination it arms cannot drift from the gesture's.
         status.onNewSession = { [weak self] in
-            DispatchQueue.main.async { self?.startDictation(spawn: true) }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if !self.convertDictationToSpawn() { self.startDictation(spawn: true) }
+            }
         }
         // The menu's shutter row. **After a beat**, because the menu is dismissed
         // by AppKit and the screen redrawn a frame or two later — a capture fired
@@ -2980,10 +2996,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         picker.onTestResumeSession = { [weak self] session, directory in
             self?.resumeSession(session, in: directory)
         }
-        picker.onTestCodexPicker = { [weak self] snapshot in
+        picker.onTestCodexPicker = { [weak self] snapshot, browse, cwd, threadID, query in
             var result: [String: Any] = ["ok": false]
             DispatchQueue.main.sync {
                 guard let self else { return }
+                if browse { self.codexChats.testBrowse(cwd: cwd, threadID: threadID, query: query) }
                 result = self.codexChats.testState(snapshot: snapshot)
             }
             return result
@@ -5739,7 +5756,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         spawnPending = spawn
         // Latch the default for this sentence; changing the setting while it
         // transcribes must not redirect an already-recorded prompt.
-        spawnFolder = spawn ? Self.spawnDirectory : nil
+        spawnFolder = spawn ? NewChatPlan.first(boundDirectory: terminal.target?.workingDirectory,
+                                                   defaultDirectory: Self.spawnDirectory).directory : nil
+        spawnClient = NewChatClient.preferred()
         pasteMode = paste
         // Every caller that passes `paste` is the forward click (or its route
         // from a desk) — the caret **prompt** (2026-09-23). A relay-started
@@ -5811,10 +5830,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         if offerFolders {
-            overlay.setSpawnDestination("✨ \(Self.spawnFolderName)", mark: "✨")
+            updateNewChatDestination()
             // **As early as the press allows** — the original author's ask, 2026-09-04. Its
             // clock is his reading time, which starts at the accepted start.
-            offerSpawnFolders()
+            if terminal.target?.workingDirectory == nil { offerSpawnFolders() }
         }
         // **And now nothing happens until the microphone is open.** For the local
         // model that is this same turn; for Wispr Flow it is Electron waking up.
@@ -6067,7 +6086,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func convertDictationToSpawn() -> Bool {
         guard listening else { return false }
         if spawnPending {
-            Log.info("✨ 🔼 ↑ on a sentence already headed for a new session — folder menu again")
+            Log.info("✨ new-chat gesture repeated — default folder and picker")
+            spawnFolder = Self.spawnDirectory
+            updateNewChatDestination()
             offerSpawnFolders()
             return true
         }
@@ -6077,21 +6098,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.info("✨ 🔼 ↑ on a caret sentence — off the caret, into a new session")
         }
         spawnPending = true
-        spawnFolder = Self.spawnDirectory
-        overlay.setSpawnDestination("✨ \(Self.spawnFolderName)", mark: "✨")
+        spawnFolder = NewChatPlan.first(boundDirectory: terminal.target?.workingDirectory,
+                                        defaultDirectory: Self.spawnDirectory).directory
+        spawnClient = NewChatClient.preferred()
+        updateNewChatDestination()
         // The ring's halo is per destination — it stops saying *caret* now.
         syncBorrowedGestures()
-        offerSpawnFolders()
+        if terminal.target?.workingDirectory == nil { offerSpawnFolders() }
         return true
+    }
+
+    private func updateNewChatDestination() {
+        let folder = ((spawnFolder ?? Self.spawnDirectory) as NSString).lastPathComponent
+        overlay.setSpawnDestination("\(folder) · \(spawnClient.label)", mark: "✨",
+                                    icon: RelayWindow.sparkleGlyph)
     }
 
     private func offerSpawnFolders() {
         SpawnFolderMenu.show(at: NSEvent.mouseLocation,
-                             bound: terminal.target?.handle.tty) { [weak self] choice in
+                             bound: terminal.target?.handle.tty,
+                             directory: spawnFolder ?? Self.spawnDirectory, client: spawnClient,
+                             boundDirectory: terminal.target?.workingDirectory) { [weak self] choice in
             // **A late pick is refused, terminal rows included**: `send` clears
             // `spawnPending` as it takes the words, so a click after that
             // belongs to a sentence already delivered.
             guard let self = self, self.spawnPending else { return }
+            if let client = choice.client {
+                self.spawnClient = client
+                self.updateNewChatDestination()
+                self.offerSpawnFolders()
+                return
+            }
             // **A row from *Active Terminals* is not a folder: it is the session
             // he wants, already running** (2026-09-23, *"a submenu opens that
             // lets me bind this prompt to that terminal"*).
@@ -6107,7 +6144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // there instead of that console icon"*). The ✨ then leaves
             // `Listening...`: it says *not yet running* once, on the row that
             // names the folder. See `RelayWindow.spawnCollapsed`.
-            self.overlay.setSpawnDestination(choice.name, mark: "✨", icon: RelayWindow.sparkleGlyph)
+            self.updateNewChatDestination()
             Log.info("✨ spawn folder chosen — \(choice.path)")
         }
     }
@@ -6142,6 +6179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func redirectSpawn(toTTY tty: String) {
         Log.info("🖥️ spawn → \(tty), picked from Active Terminals (\(listening ? "mid-sentence" : "during the settle"))")
         let folder = spawnFolder
+        let client = spawnClient
         clearSpawn()
         spawnPickInFlight = tty
         pickHeld = false
@@ -6152,7 +6190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let held = self.pickHeld
                 if self.spawnPickInFlight == tty { self.spawnPickInFlight = nil; self.pickHeld = false }
                 guard let bound = bound else {
-                    self.spawnAfterFailedPick(tty: tty, folder: folder, held: held)
+                    self.spawnAfterFailedPick(tty: tty, folder: folder, client: client, held: held)
                     return
                 }
                 Log.info("📍 re-bound to \(bound.address) from Active Terminals")
@@ -6167,7 +6205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The fallback `redirectSpawn` promises: the spawn back, however far the
     /// sentence has got — held (its words arrived during the pick), still being
     /// spoken or being transcribed, or already gone somewhere (nothing to do).
-    private func spawnAfterFailedPick(tty: String, folder: String?, held: Bool) {
+    private func spawnAfterFailedPick(tty: String, folder: String?, client: NewChatClient, held: Bool) {
         Log.error("🖥️ \(tty) could not be bound — the sentence stays a new session")
         // The held sentence is the pick's own — the newest in the queue; any
         // older ones keep waiting for a bind.
@@ -6176,6 +6214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var m = h.m
             m.spawn = true
             m.directory = folder ?? Self.spawnDirectory
+            m.newChatClient = client
             overlay.flash("⚠️ no terminal on \(tty) — opened a new session", duration: 4)
             commit(m)
             return
@@ -6186,6 +6225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         spawnPending = true
         spawnFolder = folder
+        spawnClient = client
         if let folder = folder {
             overlay.setSpawnDestination((folder as NSString).lastPathComponent, mark: "✨",
                                         icon: RelayWindow.sparkleGlyph)
@@ -8050,6 +8090,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "at": Outbox.iso(Date()),
             "localLanguage": WhisperLanguage.selected.rawValue,
             "newChatFolder": Self.spawnDirectory,
+            "newChatClient": spawnClient.rawValue,
+            "automaticTerminal": NewChatClient.preferred() == .cli,
+            "codexActivity": codexActivity.describe(),
+            "newChatRecordingFolder": spawnFolder ?? "",
             "recordingHints": overlay.recordingHintsSnapshot,
             "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
             "logiGestures": status.isLogiGestures,
@@ -8262,40 +8306,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return obj
     }
 
-    /// **Open the destination and hand it the words in one gesture.** ⇧ + the
-    /// wheel ends here: a new Terminal window, an interactive Claude Code in the
-    /// folder that was current when he started talking, and the dictation as its
-    /// first prompt.
-    ///
-    /// **The prompt goes in `argv`, not through the keyboard.** Every other
-    /// delivery in this app types into a session that already exists and has to
-    /// prove first that a shell is not sitting at the prompt (`wouldRunAsShell`).
-    /// Here there is nothing to prove and nothing to wait for — the words are an
-    /// argument to the process being started, so they cannot be executed by a
-    /// shell, cannot land in an editor window, and cannot arrive before the agent
-    /// is ready to read them. That is also why this does not wait for the session
-    /// to come up before reporting: there is no readiness to wait for.
-    ///
-    /// **The binding moves to the new window, since 2026-09-01.** It used to
-    /// stay where it was — a spawn was a one-shot destination — and the case
-    /// that killed that rule is the commonest one there is: the app starts
-    /// unbound, a double click opens a session, the words land, and the relay
-    /// is still pointing at nothing, so the next sentence has nowhere to go and
-    /// the wheel is inert (*Unbound is inert*). Reported 2026-09-01: *"nu s-a
-    /// autolegat de acel terminal … a rămas idle"*.
-    ///
-    /// Always, not only when unbound — the original author's call. A spawn is him saying the
-    /// session he wants does not exist yet, which is the same sentence as "the
-    /// one I am pointed at is not it" — the thing the right chord says by
-    /// letting the binding go. Two spawns in a row still
-    /// each get their own window; the relay ends up on the second, which is the
-    /// one he is talking to.
-    ///
-    /// **A restart blocker from the launch to the bind** (2026-09-26, TD25):
-    /// `spawnsInFlight` is up from here until the adoption's bind has been
-    /// shown, and the outbox row and `lastDelivery` are written there too — the
-    /// window exists by then, which is what the receipt claims (TR22). Main
-    /// thread: `commit` hops the quit path's call here.
     private func spawnClaude(_ m: Message, line: String) {
         guard Thread.isMainThread else {
             return DispatchQueue.main.async { [weak self] in self?.spawnClaude(m, line: line) }
@@ -8319,6 +8329,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // is in front with the session running in it, which is a whole
                 // screen of evidence, and a flash would be a panel thrown over
                 // his work to repeat what it already shows.
+                case .reused(let chat):
+                    let bound = self.terminal.bind(chat: chat)
+                    self.showBound(bound, deliberate: false)
+                    self.codexActivity.refresh()
+                    if m.newChatClient == .cli {
+                        self.openCodexChat(chat.id, in: chat.cwd, destination: .cli, activate: false)
+                    }
+                    if let serial {
+                        self.offerKamikaze(already: Self.endsInKamikaze(m.text), at: "spawn:\(bound.address)", serial: serial) { [weak self] in
+                            self?.sendKamikazeOnceStarted(to: bound, directory: m.directory, since: launched)
+                        }
+                    }
+                    let delivery = m.kind == "dictation"
+                        ? self.recordDelivery(via: m.via, kind: m.deliveryKind,
+                                              to: self.destinationLabel(atCaret: false, spawn: true, directory: m.directory)) : nil
+                    self.writeOutbox(m, line: line, delivery: delivery)
+                    self.overlay.promptFarewell = nil
+                    self.overlay.releaseSpawnPanel(fadeOver: 0.2)
+                    self.spawnsInFlight -= 1
                 case .opened(let tty):
                     self.adoptSpawnedWindow(tty: tty, session: (m.directory, launched)) { [weak self] bound in
                         guard let self = self else { return }
@@ -8356,33 +8385,98 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// A history hit is not proof that a chat is closed. Resolve its stable ID
-    /// one more time at activation: bind a verified live owner, resume only a
-    /// conclusively unowned chat, and leave an unknown outcome untouched.
-    private func activateSearchSession(_ session: String, recordedCWD: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.overlay.flash("📍 checking Codex chat…", duration: 13)
+    /// Desktop opens its history view directly; CLI attachment verifies ownership.
+    /// The picker dismisses only after the target app accepts the open.
+    private func openCodexChat(_ session: String, in directory: String,
+                               destination: CodexBridge.OpenDestination, activate: Bool = true,
+                               stillWanted: (() -> Bool)? = nil,
+                               completion: ((String?) -> Void)? = nil) {
+        guard Thread.isMainThread else {
+            return DispatchQueue.main.async { [weak self] in
+                self?.openCodexChat(session, in: directory, destination: destination,
+                                    activate: activate, stillWanted: stillWanted, completion: completion)
+            }
         }
+        let finish: (String?) -> Void = { [weak self] error in
+            DispatchQueue.main.async {
+                if let completion { completion(error) }
+                else if let error { self?.overlay.flash("⚠️ \(error)", duration: 8) }
+            }
+        }
+        let near = NSEvent.mouseLocation
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { finish("Walkie is no longer available"); return }
+            do {
+                let wanted: () -> Bool = { DispatchQueue.main.sync { stillWanted?() ?? true } }
+                guard wanted() else { return }
+                try CodexBridge.prepareOpen(id: session, destination: destination)
+                guard wanted() else { return }
+                if destination == .desktop {
+                    guard let url = URL(string: "codex://threads/" + session) else {
+                        finish("The selected chat has an invalid address"); return
+                    }
+                    DispatchQueue.main.async {
+                        guard stillWanted?() ?? true else { return }
+                        guard let app = NSWorkspace.shared.urlForApplication(toOpen: url) else {
+                            finish("Codex Desktop is not registered to open this chat"); return
+                        }
+                        let config = NSWorkspace.OpenConfiguration()
+                        config.activates = activate
+                        NSWorkspace.shared.open([url], withApplicationAt: app, configuration: config) { _, error in
+                            finish(error.map { "Could not open Codex Desktop: " + $0.localizedDescription })
+                        }
+                    }
+                } else {
+                    switch SpawnTerminal.openChat(session: session, directory: directory, near: near) {
+                    case .failed(let why): finish(why)
+                    case .reused(let chat):
+                        guard wanted() else { return }
+                        guard let tty = chat.terminalTTY else {
+                            finish("The CLI view opened, but its terminal could not be verified"); return
+                        }
+                        finish(activate && !self.raiseCLIChat(session, tty: tty, stillWanted: wanted)
+                               ? "The CLI view is running, but its window could not be brought forward" : nil)
+                    case .opened(let tty):
+                        guard wanted() else { return }
+                        finish(activate && !self.raiseCLIChat(session, tty: tty, stillWanted: wanted)
+                               ? "The terminal opened, but Codex did not attach to this chat" : nil)
+                    }
+                }
+            } catch { finish(error.localizedDescription) }
+        }
+    }
+
+    /// Verify the exact session after attachment. Never silently accept a failed raise.
+    private func raiseCLIChat(_ session: String, tty: String, stillWanted: () -> Bool = { true }) -> Bool {
+        let deadline = Date().addingTimeInterval(15)
+        repeat {
+            guard stillWanted() else { return false }
+            if let chat = CodexBridge.resolve(tty: tty), chat.id == session {
+                guard stillWanted() else { return false }
+                return TerminalBinding.bringToFront(TerminalBinding.Target(
+                    handle: chat.handle, label: chat.folder, address: chat.key,
+                    appName: "Terminal", bundleID: "com.apple.Terminal", folder: chat.folder,
+                    title: chat.title, sourceFrame: nil, boundAt: Date()))
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
+    }
+
+    /// Binding a saved chat does not open a view or redirect focus.
+    private func activateSearchSession(_ session: String, recordedCWD: String) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             do {
-                switch try CodexBridge.rebindDisposition(session: session,
-                                                         recordedCWD: recordedCWD) {
-                case .bind(let chat):
-                    let bound = self.terminal.bind(chat: chat)
-                    DispatchQueue.main.async { self.showBound(bound) }
-                    TerminalBinding.bringToFront(bound)
-                case .resume(let id, let cwd):
-                    // `resumeSession` latches NSEvent.mouseLocation before it
-                    // dispatches the spawn, so enter it on AppKit's thread.
-                    DispatchQueue.main.async { self.resumeSession(id, in: cwd) }
+                guard let chat = try CodexBridge.conversation(session), chat.id == session else {
+                    throw NSError(domain: "CodexBind", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Codex chat no longer exists"])
                 }
+                let bound = self.terminal.bind(chat: chat)
+                DispatchQueue.main.async { self.showBound(bound) }
             } catch {
                 let reason = error.localizedDescription
-                Log.error("📍 could not verify Codex chat \(session): \(reason)")
-                DispatchQueue.main.async {
-                    self.overlay.flash("⚠️ could not verify Codex chat — \(reason)", duration: 8)
-                }
+                DispatchQueue.main.async { self.overlay.flash("⚠️ \(reason)", duration: 8) }
             }
         }
     }
@@ -8413,6 +8507,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             switch SpawnTerminal.resumeClaude(session: session, directory: directory, near: near) {
             case .opened(let tty):
                 DispatchQueue.main.async { self.adoptSpawnedWindow(tty: tty) }
+            case .reused(let chat):
+                DispatchQueue.main.async { self.showBound(self.terminal.bind(chat: chat), deliberate: false) }
             case .failed(let why):
                 Log.error("✨ resume failed: \(why)")
                 DispatchQueue.main.async { self.overlay.flash("⚠️ \(why)", duration: 8) }
@@ -8800,6 +8896,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let delivery = m.kind == "dictation"
                         ? self.recordDelivery(via: m.via, kind: m.deliveryKind, to: to) : nil
                     self.writeOutbox(m, line: line, delivery: delivery)
+                    self.codexActivity.refresh()
                     if let serial {
                         self.offerKamikaze(already: Self.endsInKamikaze(m.text), at: to, serial: serial) { [weak self] in
                             self?.sendKamikaze(to: target)
@@ -8974,7 +9071,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// task. Then, minutes later, narrower still: *"exclusiv când eu întreb
     /// ceva. Atât. … Niciodată să nu fie folosit ca să mă întrebe Claude pe mine
     /// ceva."* — his question in, its answer out; nothing else rides it.
-    static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done. In Codex, run this local helper with permission to access its localhost listener (request sandbox escalation when required). If the helper reports a timeout or unknown delivery, check the bubble and do not automatically retry.]"
+    static let questionHint = "[If I asked you a question, also run: walkie-reply \"<the answer in ≤2 short sentences>\" [--image <path> when a small picture says it better]. Only to answer me — never to ask me something, never to report work done. Run the helper normally: it uses Walkie Talkie's local file inbox and needs no network permission. If the helper reports a timeout or unknown delivery, check the bubble and do not automatically retry.]"
 
     /// **`[Transcribed by <engine>]`** (2026-10-12, the original author: *"let's
     /// call it transcribed in RO or EN, and then you place the name of the engine
@@ -11522,6 +11619,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // here the folder travels on the `Message`. Nil is the default it has
         // always had, so a dictation that never saw the menu is unchanged.
         let directory = spawnFolder ?? Self.spawnDirectory
+        let newChatClient = spawnClient
         // Taken and cleared with the flags beside them, and for their reason: the
         // route the words arrived by belongs to *this* sentence, and the panel
         // holds it for seconds.
@@ -11641,7 +11739,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               mice: mice, areas: areas, sizes: sizes, sources: sources,
                               shotNumbers: markerNumbers,
                               app: app, elements: picks, startedAt: since, spawn: spawn,
-                              directory: directory, via: via, engine: engine,
+                              directory: directory, newChatClient: newChatClient, via: via, engine: engine,
                               deliveryKind: deliveryKind, target: spawn ? nil : target,
                               affect: affect)
 
@@ -12400,6 +12498,7 @@ extension AppDelegate {
         var localRecordingApp: String?
         var kamikaze = false, contextAtWheelRelease = false
         var spawnPending = false, spawnFolder: String?
+        var spawnClient: NewChatClient = .background
         var pasteMode = false, caretPrompt = false, cleanSentence = false, submitAfterClean = false
         var quickAsk = false
         var latchedAtCaret = false, cleanRedirected = false
@@ -12440,7 +12539,7 @@ extension AppDelegate {
         e.transcriptDisowned = transcriptDisowned
         e.localRecordingApp = localRecordingApp
         e.kamikaze = kamikaze
-        e.spawnPending = spawnPending; e.spawnFolder = spawnFolder
+        e.spawnPending = spawnPending; e.spawnFolder = spawnFolder; e.spawnClient = spawnClient
         e.pasteMode = pasteMode; e.caretPrompt = caretPrompt; e.cleanSentence = cleanSentence
         e.submitAfterClean = submitAfterClean; e.quickAsk = quickAsk
         e.latchedAtCaret = latchedAtCaret; e.cleanRedirected = cleanRedirected
@@ -12498,7 +12597,7 @@ extension AppDelegate {
         transcriptDisowned = e.transcriptDisowned
         localRecordingApp = e.localRecordingApp
         kamikaze = e.kamikaze
-        spawnPending = e.spawnPending; spawnFolder = e.spawnFolder
+        spawnPending = e.spawnPending; spawnFolder = e.spawnFolder; spawnClient = e.spawnClient
         pasteMode = e.pasteMode; caretPrompt = e.caretPrompt; cleanSentence = e.cleanSentence
         submitAfterClean = e.submitAfterClean; quickAsk = e.quickAsk
         latchedAtCaret = e.latchedAtCaret; cleanRedirected = e.cleanRedirected

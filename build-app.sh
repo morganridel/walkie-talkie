@@ -172,6 +172,9 @@ cp "$DIR/helpers/recent_projects.py" "$CONTENTS/Resources/recent_projects.py"
 # The search field on `Rebind to…` runs this one, on a pause in his typing, over
 # Claude Code's session journals. Same two-place lookup as the two above.
 cp "$DIR/helpers/session_search.py" "$CONTENTS/Resources/session_search.py"
+cp "$DIR/helpers/codex_terminal.py" "$CONTENTS/Resources/codex_terminal.py"
+cp "$DIR/helpers/codex_background.py" "$CONTENTS/Resources/codex_background.py"
+cp "$DIR/helpers/codex_catalog.py" "$CONTENTS/Resources/codex_catalog.py"
 cp "$DIR/helpers/codex_bridge.py" "$CONTENTS/Resources/codex_bridge.py"
 cp "$DIR/helpers/walkie-reply" "$CONTENTS/Resources/walkie-reply"
 cp "$DIR/helpers/walkie-codex" "$CONTENTS/Resources/walkie-codex"

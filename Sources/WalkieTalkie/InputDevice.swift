@@ -1,75 +1,11 @@
 import AVFoundation
 import CoreAudio
 
-/// Which microphone the relay records through.
-///
-/// ## The DJI receiver wins whenever it is plugged in
-///
-/// the original author teaches with a DJI lavalier: the transmitter is on his collar and the
-/// receiver hangs off the Mac's USB-C. The built-in microphone is two feet away
-/// across a desk, in a room with a projector fan, an audience and often his own
-/// voice coming back off the far wall — and Whisper hears exactly that
-/// difference. So when the receiver is there, it is the one that records, and
-/// the system's default input is what he gets when it is not.
-///
-/// **The system default is not consulted for this**, deliberately. macOS points
-/// the default input wherever the last thing to arrive claims it: plugging in
-/// the DJI usually does select it, but so does joining a Zoom call, waking a
-/// Bluetooth headset, or any of the four virtual devices (Loopback, Wave Link,
-/// Iriun, Teams) that live on this Mac and can quietly become the default while
-/// he is not looking. A relay that follows the default would record a sentence
-/// through Loopback's silence and hand back an empty transcript. Choosing the
-/// device by name, per recording, is what makes the gesture mean the same thing
-/// every time.
-///
-/// ## Per recording, never cached
-///
-/// The receiver goes in and out of the port between sessions, and the numeric
-/// `AudioDeviceID` is reassigned every time it does. Nothing here is remembered
-/// across a dictation: each `select` enumerates and matches afresh, which is
-/// also what makes unplugging the receiver mid-workshop degrade to the built-in
-/// microphone rather than to an error.
+/// Microphone discovery and selection. Device UIDs survive reconnects; numeric
+/// CoreAudio IDs do not. Automatic follows the macOS default input. The named
+/// roster supplies icons and preserves choices saved by older versions.
 enum InputDevice {
 
-    /// **The microphones the original author names by their picture** (four on 2026-09-19,
-    /// the Bluetooth transmitter added 2026-09-22).
-    ///
-    /// He asked for the chip to say which one is open — `Listening(🎙️/E)...` —
-    /// and for the menu to let him pick between them, with the ones that are not
-    /// plugged in greyed out. That is two features and one list: a picture, a
-    /// name and the strings CoreAudio answers with, in one place, because a
-    /// glyph on the chip that disagreed with the tick in the menu would be worse
-    /// than neither.
-    ///
-    /// **Matched on name *and* manufacturer**, joined into one haystack. The DJI
-    /// receiver is the reason and is still the hardest case: its USB product
-    /// name is `Wireless Mic Rx` and the only place the brand appears is the
-    /// manufacturer string, which is what keeps it matching across the
-    /// Mic 2 / Mic Mini / Mic 3 line. The Elgato is the mirror case — `Wave XLR`
-    /// is the product and `Elgato Systems` the maker, while `Wave Link
-    /// MicrophoneFX` and `Wave Link Stream` are the *virtual* devices its driver
-    /// installs and are made by `Corsair Memory, Inc.`, so neither needle
-    /// reaches them.
-    ///
-    /// **The order is the preference, and it is the same order in both places
-    /// the list is used** (the original author, 2026-09-19: *"the preference of mic to use is:
-    /// XLR>DJI>BOSE>MAC … order them like this in menu and impl
-    /// autoselection"*). One array is the menu's rows top to bottom **and** the
-    /// ladder `resolve()` walks for *automatic*: a menu whose order disagreed
-    /// with the automatic pick would be teaching the wrong thing every time he
-    /// opened it.
-    ///
-    /// It is a quality ranking, not a convenience one — the XLR on his desk is a
-    /// condenser through a preamp, the DJI is a lavalier on his collar, the Bose
-    /// is a headset, and the built-in is two feet away across a desk with a
-    /// projector fan in the room. So the built-in is last: it is what is left
-    /// when nothing he brought is plugged in.
-    /// **Two names each, and that is `Engine`'s rule applied here**: the
-    /// top-level menu row is read out of the corner of the eye while the menu is
-    /// open over his work, so it gets `short`; the list under the arrow is where
-    /// the question *which device exactly* is actually asked, so it gets
-    /// `label`. `Engine` learnt this the expensive way, by stretching the whole
-    /// menu to the width of `mlx-community/whisper-large-v3-turbo`.
     struct Known {
         let id: String
         let glyph: String
@@ -106,18 +42,6 @@ enum InputDevice {
               needles: ["macbook", "built-in microph"]),
     ]
 
-    /// The ladder, spelled with the glyphs, for the `Automatic` row — the menu
-    /// says what automatic *does* rather than asking him to remember it.
-    static var ladder: String { known.map(\.glyph).joined(separator: " ▸ ") }
-
-    /// **Microphones this app never records through, whatever else happens**
-    /// (2026-09-23, the original author: *"niciodata nu voi folosi mic de pe WH casti bt"* —
-    /// *"e f prost"*). The Sony WH-1000XM3's microphone is a Bluetooth HFP
-    /// capsule at 16 kHz, and opening it also drags the headphones' playback
-    /// down to the same 16 kHz mono. None of `known` matches it, so the ladder
-    /// never picks it; the one door left open was the system default, which
-    /// macOS hands to the headphones the moment they connect. Lowercased
-    /// substrings of the CoreAudio name.
     static let neverRecord: [String] = []
 
     static func isNeverRecord(_ device: Device) -> Bool {
@@ -125,17 +49,7 @@ enum InputDevice {
         return neverRecord.contains { name.contains($0) }
     }
 
-    // MARK: - Which one he picked
-
-    /// **`auto`, or one of `known`'s ids** — stored beside `dictationSource`,
-    /// and for its reason: a microphone is a setting of the room he is in, and a
-    /// room outlives a launch.
-    ///
-    /// **`auto` is the default and stays the documented behaviour** (the DJI if
-    /// it is there, otherwise the system's input). A picker with no *automatic*
-    /// would have quietly retired the rule that makes the receiver work without
-    /// anybody touching a menu — the whole point of which is that in a workshop
-    /// the only thing he does is plug it in.
+    /// Legacy roster IDs and stable `uid:` selections share the same preference.
     static let preferenceKey = "micDevice"
 
     /// **On disk, not in `UserDefaults`, since 2026-09-22** — see `MicChoice`
@@ -162,33 +76,33 @@ enum InputDevice {
         }
     }
 
-    /// Which of `known` this Mac can see right now. Asked at every menu open,
-    /// never cached: a receiver is plugged in *while* the menu is up at least as
-    /// often as before it.
-    static func availableIds() -> Set<String> {
-        let devices = inputs()
-        return Set(known.filter { k in devices.contains { matches($0, k) } }.map(\.id))
+    struct Choice {
+        let id: String
+        let label: String
     }
 
-    /// **The device this recording will actually use, and which of `known` it
-    /// is** — the one answer the chip, the menu and `select` all read, so they
-    /// cannot disagree.
-    ///
-    /// A pick that is not plugged in **falls back to automatic** rather than to
-    /// silence: the menu greys those rows, but a receiver can be unplugged after
-    /// it was picked, and a dictation that records nothing because a setting
-    /// outlived a cable is the failure this whole file exists to prevent. The
-    /// glyph follows the fallback, so the chip says what he is actually being
-    /// heard through and not what he once asked for.
-    /// **A device named by the harness, for this process only** (2026-09-26,
-    /// test-plan gap G1): `POST /test/mic {"device": "<CoreAudio name
-    /// substring>"}`. Checked before the choice file and the ladder, never
-    /// written to `mic/choice` (which the original author Addons shares), gone at the next
-    /// launch. It exists because the built-in microphone is always on the
-    /// ladder, so without it the relay's own recorder could never be pointed at
-    /// a Loopback device carrying a corpus WAV — every real-audio test had to go
-    /// through the speaker. A name that matches nothing is logged once and
-    /// ignored, so a stale override cannot silence a real dictation.
+    static func selectionID(for device: Device) -> String {
+        "uid:" + Data(device.uid.utf8).base64EncodedString()
+    }
+
+    /// Rebuilt whenever the menu opens, including unfamiliar USB microphones.
+    static func choices(devices: [Device]) -> [Choice] {
+        devices.filter { !$0.uid.isEmpty && !isNeverRecord($0) }.map { device in
+            let glyph = known.first { matches(device, $0) }?.glyph ?? "🎙️"
+            return Choice(id: selectionID(for: device), label: "\(glyph) \(device.name)")
+        }.sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+    }
+
+    static func choices() -> [Choice] { choices(devices: inputs()) }
+
+    static func availableIds() -> Set<String> {
+        let devices = inputs()
+        return Set(choices(devices: devices).map(\.id))
+            .union(known.filter { k in devices.contains { matches($0, k) } }.map(\.id))
+    }
+
+    /// Test-only, process-local name override; never changes the saved choice.
+    /// A missing match is logged once and ignored.
     static var testOverride: String? {
         get { overrideLock.withLock { _testOverride } }
         set { overrideLock.withLock { _testOverride = newValue; overrideMissed = false } }
@@ -207,34 +121,25 @@ enum InputDevice {
                 if !overrideMissed { Log.error("mic: test override \"\(want)\" matches no input — ignored"); overrideMissed = true }
             }
         }
-        if chosenId != "auto", let want = known.first(where: { $0.id == chosenId }),
-           let device = devices.first(where: { matches($0, want) }) {
-            return (want, device)
+        return resolve(devices: devices, defaultDevice: systemDefault(), choice: chosenId)
+    }
+
+    /// A missing explicit device falls back for this take; its UID stays saved
+    /// so reconnecting it restores the choice without matching another unit by name.
+    static func resolve(devices: [Device], defaultDevice: Device?, choice: String)
+        -> (known: Known?, device: Device?) {
+        let usable = devices.filter { !isNeverRecord($0) }
+        let explicit: Device?
+        if let uid = MicChoice.deviceUID(choice) {
+            explicit = usable.first { $0.uid == uid }
+        } else if let legacy = known.first(where: { $0.id == choice }) {
+            explicit = usable.first { matches($0, legacy) }
+        } else {
+            explicit = nil
         }
-        // **Automatic, and the fallback for a pick that is not plugged in: the
-        // first of `known` that is here, in its order.** It was *the DJI
-        // whenever it is there, otherwise the system default* until 2026-09-19;
-        // what that rule could not express is a desk with both the XLR and the
-        // receiver on it, which is his ordinary desk.
-        for k in known {
-            if let device = devices.first(where: { matches($0, k) }) { return (k, device) }
-        }
-        // **None of his own — only then the system's own choice**, which is the
-        // last line of defence and deliberately not a rung on the ladder: macOS
-        // points the default input at whatever last claimed it, including the
-        // eleven virtual devices on this Mac, and that is the failure this file
-        // was written to stop being the normal case.
-        //
-        // **Never the WH-1000XM3, even here** (2026-09-23): when the system
-        // default is a `neverRecord` device, any other input that is not one
-        // records instead, and with nothing else on the Mac there is no device
-        // at all — `select` then refuses the recording rather than open it.
-        guard let device = systemDefault() else { return (nil, nil) }
-        if isNeverRecord(device) {
-            guard let other = devices.first(where: { !isNeverRecord($0) }) else { return (nil, nil) }
-            return (known.first { matches(other, $0) }, other)
-        }
-        return (known.first { matches(device, $0) }, device)
+        let fallback = defaultDevice.flatMap { device in usable.first { $0.id == device.id } }
+        let device = explicit ?? fallback ?? usable.first
+        return (device.flatMap { device in known.first { matches(device, $0) } }, device)
     }
 
     /// **The glyph the chip wears, or empty** — empty for a device that is none
@@ -367,6 +272,7 @@ enum InputDevice {
         let id: AudioDeviceID
         let name: String
         let manufacturer: String
+        var uid: String = ""
     }
 
     /// Every device that can actually record. Outputs and the input-less halves
@@ -431,7 +337,8 @@ enum InputDevice {
         return ids.filter { inputChannels($0) > 0 }.map {
             Device(id: $0,
                    name: string($0, kAudioObjectPropertyName) ?? "input \($0)",
-                   manufacturer: string($0, kAudioObjectPropertyManufacturer) ?? "")
+                   manufacturer: string($0, kAudioObjectPropertyManufacturer) ?? "",
+                   uid: string($0, kAudioDevicePropertyDeviceUID) ?? "")
         }
     }
 
@@ -445,7 +352,8 @@ enum InputDevice {
                                          &address, 0, nil, &size, &id) == noErr, id != 0 else { return nil }
         return Device(id: id,
                       name: string(id, kAudioObjectPropertyName) ?? "the system input",
-                      manufacturer: string(id, kAudioObjectPropertyManufacturer) ?? "")
+                      manufacturer: string(id, kAudioObjectPropertyManufacturer) ?? "",
+                      uid: string(id, kAudioDevicePropertyDeviceUID) ?? "")
     }
 
     private static func string(_ id: AudioDeviceID, _ selector: AudioObjectPropertySelector) -> String? {

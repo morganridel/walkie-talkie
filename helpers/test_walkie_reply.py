@@ -11,6 +11,8 @@ import socket
 import stat
 import sys
 import tempfile
+import threading
+import time
 import unittest
 import urllib.error
 
@@ -45,6 +47,73 @@ class WalkieReplyTests(unittest.TestCase):
         token = Path(folder) / "reply-token"
         token.write_text("test-secret-token\n", encoding="utf-8")
         return token
+
+    def test_file_inbox_delivers_text_and_images_without_network(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            token = self.make_token(root)
+            inbox = root / "inbox"
+            inbox.mkdir(mode=0o700)
+            token.with_name("reply-inbox.json").write_text(json.dumps({"version": 1, "directory": str(inbox)}))
+            source = root / "source.png"
+            source.write_bytes(b"synthetic image")
+            seen = []
+
+            def receive():
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    requests = list(inbox.glob("*/request.json"))
+                    if requests:
+                        request = requests[0]
+                        payload = json.loads(request.read_text())
+                        seen.append(payload)
+                        seen.append(Path(payload["images"][0]).read_bytes())
+                        receipt = request.with_name("response.tmp")
+                        receipt.write_text(json.dumps({"status": 200, "body": {"ok": True, "shown": False}}))
+                        receipt.replace(request.with_name("response.json"))
+                        return
+                    time.sleep(0.01)
+
+            worker = threading.Thread(target=receive)
+            worker.start()
+            with redirect_stdout(StringIO()):
+                result = walkie_reply.main(["answer", "--image", str(source), "--thread", "exact-thread"],
+                    token_path=token, env={}, project_root="test-project",
+                    opener=lambda *_a, **_kw: self.fail("file transport must not use network"))
+            worker.join(timeout=4)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(result, 0)
+            self.assertEqual(seen[0]["tty"], "codex:exact-thread")
+            self.assertEqual(seen[0]["token"], "test-secret-token")
+            self.assertEqual(seen[1], b"synthetic image")
+            self.assertEqual(list(inbox.iterdir()), [])
+
+    def test_file_timeout_retains_one_request_without_retry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            inbox = Path(folder)
+            with self.assertRaisesRegex(walkie_reply.ReplyError, "outcome is unknown.*do not automatically retry"):
+                walkie_reply.file_reply({"text": "answer"}, inbox, timeout=0.01)
+            self.assertEqual(len(list(inbox.glob("*/request.json"))), 1)
+
+    def test_inbox_rejects_shared_directory_symlink_and_invalid_descriptor(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            token = self.make_token(root)
+            descriptor = token.with_name("reply-inbox.json")
+            inbox = root / "inbox"
+            inbox.mkdir(mode=0o755)
+            descriptor.write_text(json.dumps({"version": 1, "directory": str(inbox)}))
+            with self.assertRaises(walkie_reply.ReplyError):
+                walkie_reply.reply_inbox(token)
+            inbox.chmod(0o700)
+            link = root / "link"
+            link.symlink_to(inbox)
+            descriptor.write_text(json.dumps({"version": 1, "directory": str(link)}))
+            with self.assertRaises(walkie_reply.ReplyError):
+                walkie_reply.reply_inbox(token)
+            descriptor.write_text("[]")
+            with self.assertRaises(walkie_reply.ReplyError):
+                walkie_reply.reply_inbox(token)
 
     def test_payload_preserves_codex_destination_images_and_text(self):
         with tempfile.TemporaryDirectory() as folder:

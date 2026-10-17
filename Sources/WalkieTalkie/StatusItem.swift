@@ -142,6 +142,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// Picked from a row of *Rebind to* — point the relay back at that tty.
     var onRebind: ((String) -> Void)?
     var onBindCodexChat: (() -> Void)?
+    var onTerminalForNewChatsChanged: (() -> Void)?
 
     /// **`ttysNNN` → the title that tab is showing now**, for the panel's second
     /// half: a session found in a transcript is only bindable if the tab it ran
@@ -168,32 +169,10 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    /// **The menu is where the gestures are written down.** Every one of these
-    /// commands also has a mouse or keyboard route, and none of those routes
-    /// announces itself anywhere else: ⌘⌃B shadows a system shortcut, and the
-    /// wheel means one thing alone, another held, and a third with the left
-    /// button already down — none of which anybody guesses. A menu row is read
-    /// while reaching for the thing it does, which makes it the one place a
-    /// gesture can be learned without being taught.
-    ///
-    /// ⌘⌃B is not written on this row at all any more (the original author, 2026-09-06): it
-    /// is the one gesture with a mouse route on the very same row, and a key
-    /// equivalent for it existed only to be read — see `gestureRows`, where the
-    /// single shortcut column now lives.
-    ///
-    /// **The gestures are drawn, not spelled.** `hold left, click the wheel` is
-    /// six words describing two objects, and it was read in a menu opened for a
-    /// second: `hold ⬅️ + 🛞` is the same sentence in the shape of the mouse it is
-    /// about.
-    ///
-    /// **And since 2026-09-22 the menu draws one glyph, not that sentence.**
-    /// Right-aligning the chords *into* AppKit's own shortcut column — flush with
-    /// the `>` of the submenu rows — was the original author's ask three times over, and it is
-    /// possible only there, where a row gets one key glyph and no more. So `◀️ + 🔼`
-    /// became `◐`, the emoji legend moved to the About page onto a drawing of his
-    /// mouse, and the menu kept the alignment. See `applyGestureColumn` for the
-    /// measurements behind that, and `AboutWindow` for where the sentence went.
+    /// Keyboard shortcuts use AppKit's native column. Mouse legends remain
+    /// available in tooltips and the About window.
     private let bind = NSMenuItem(title: "Bind Terminal", action: nil, keyEquivalent: "")
+    private let codexChat = NSMenuItem(title: "Bind Codex chat…", action: nil, keyEquivalent: "")
 
     /// **Rebind to** — every destination the relay has spoken to, most recent
     /// first, with how long ago it let go of each.
@@ -212,10 +191,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
     /// **every row of the menu** the moment one item has a submenu, and this menu
     /// spends its right-hand side on the gesture column. One arrow moved all of
     /// it (the original author, 2026-09-10: *"a fugit toată coloana de meniuri din cauza >"*).
-    /// That gutter is measured in `applyGestureColumn` now — 31 pt, 47 with a key
-    /// equivalent in the menu — and the chords have moved *into* it, so an arrow
-    /// costs the column nothing any more. The row stays a pop-up on its own
-    /// merits, below.
+    /// Keyboard shortcuts now use AppKit's native gutter. The row stays a
+    /// pop-up on its own merits, below.
     ///
     /// A popped-up menu keeps everything the submenu was for — it is still built
     /// at the instant it is asked for, never when the menu bar is clicked — and
@@ -296,6 +273,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
     private let newSession = NSMenuItem(title: "Prompt to new", action: nil, keyEquivalent: "")
     private let newChatFolderItem = NSMenuItem(title: "New chat folder", action: nil, keyEquivalent: "")
     private let newChatFolderSubmenu = NSMenu()
+    private let terminalForNewChats = NSMenuItem(title: "Open Chats in Terminal", action: nil, keyEquivalent: "")
     private var folderChooser: NSOpenPanel?
     /// The shutter. Its one route is named: the back button, only while a dictation
     /// is running — which is also the only window in which it stops typing
@@ -445,38 +423,17 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
     // MARK: - Microphone (2026-09-19)
 
-    /// **`Microphone: 🎙️ Elgato Wave XLR`, with the four devices under the
-    /// arrow** — the original author's ask of 2026-09-19, the half of it that is not the
-    /// chip: *"and source should be selectable via menu too. those unavailable
-    /// disabled"*.
-    ///
-    /// **Directly under `Engine`, and that is the whole of the placement
-    /// argument.** The row above answers *what is listening to me*; this one
-    /// answers *through what*. They are the same question one level apart, they
-    /// are the two halves of the mark the chip now wears (`Listening(🎙️/E)...`),
-    /// and a man who has just read one of them off the chip and come to the menu
-    /// to change it should not have to hunt for the second.
-    ///
-    /// **The list is the four he named, never the whole of CoreAudio.** This Mac
-    /// answers with fifteen inputs, eleven of them virtual — Loopback's three,
-    /// Wave Link's two, Zoom's, Teams', Webex's, Iriun's — and a menu that
-    /// offered all of them would be a device chooser, which System Settings
-    /// already is and does better. What it would not be is *readable at a
-    /// glance while he is teaching*, which is the one thing this menu is for.
+    /// Connected CoreAudio inputs, refreshed each time the menu opens.
     private let micItem = NSMenuItem(title: "Mic", action: nil, keyEquivalent: "")
 
     private let micSubmenu = NSMenu()
 
-    /// What he picked — `auto` or one of `InputDevice.known`'s ids. Pushed in by
+    /// Saved choice — `auto`, a stable UID or a legacy roster ID. Pushed in by
     /// `AppDelegate`, never set from the click, for the tick's reason under
     /// `engineId`.
     private var micChosen = "auto"
 
-    /// Which of the four are plugged in **right now**, and what the top row
-    /// should say. Both asked when the menu opens rather than remembered: a
-    /// receiver goes into the port between two openings of this menu, and a list
-    /// that greys a device he is holding in his hand is worse than no list.
-    var micAvailable: (() -> Set<String>)?
+    /// What would record now, including fallback for a disconnected choice.
     var micCurrentLabel: (() -> String)?
 
     /// the original author picked one. `AppDelegate` stores it and calls `setMic` back.
@@ -506,13 +463,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
     private func applyMicRow() {
         applyMicTitle()
         micSubmenu.removeAllItems()
-        let available = micAvailable?() ?? []
-
-        // **Automatic first, and it spells the ladder out**: `Automatic — 🎙️ ▸
-        // 🎤 ▸ 🎧 ▸ 💻` is the same order as the four rows under it, which is
-        // the point — the list he reads *is* the preference (`InputDevice.known`).
-        // Never disabled: it is the one row that is true whatever is on the desk.
-        let auto = NSMenuItem(title: "Automatic — \(InputDevice.ladder)",
+        let choices = InputDevice.choices()
+        let auto = NSMenuItem(title: "Automatic — macOS default input",
                               action: #selector(micPicked(_:)), keyEquivalent: "")
         auto.target = self
         auto.representedObject = "auto"
@@ -520,19 +472,26 @@ final class StatusItem: NSObject, NSMenuDelegate {
         micSubmenu.addItem(auto)
         micSubmenu.addItem(.separator())
 
-        for device in InputDevice.known {
-            let here = available.contains(device.id)
-            // **The absent ones say why they are grey.** A disabled row with no
-            // explanation is indistinguishable from a broken one, and the
-            // explanation is the only thing he can act on — it is a cable.
-            let row = NSMenuItem(title: here ? "\(device.glyph) \(device.label)"
-                                             : "\(device.glyph) \(device.label) — not connected",
-                                 action: #selector(micPicked(_:)), keyEquivalent: "")
+        // Older preferences select a roster entry; show its tick on the actual
+        // connected device until the user picks a UID or Automatic.
+        let resolution = InputDevice.resolve()
+        let resolved = resolution.device.map { InputDevice.selectionID(for: $0) }
+        let legacy = InputDevice.known.contains { $0.id == micChosen }
+        for device in choices {
+            let row = NSMenuItem(title: device.label, action: #selector(micPicked(_:)), keyEquivalent: "")
             row.target = self
             row.representedObject = device.id
-            row.isEnabled = here
-            row.image = device.id == micChosen ? Self.symbolIcon("checkmark") : Self.blankIcon
+            let selected = device.id == micChosen || (legacy && resolution.known?.id == micChosen && device.id == resolved)
+            row.image = selected ? Self.symbolIcon("checkmark") : Self.blankIcon
             micSubmenu.addItem(row)
+        }
+        if micChosen != "auto", (legacy ? resolution.known?.id != micChosen : !choices.contains(where: { $0.id == micChosen })) {
+            let missing = NSMenuItem(title: "Selected microphone — not connected (using macOS default)",
+                                     action: nil, keyEquivalent: "")
+            missing.isEnabled = false
+            missing.representedObject = micChosen
+            missing.image = Self.symbolIcon("checkmark")
+            micSubmenu.addItem(missing)
         }
     }
 
@@ -549,7 +508,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         micSubmenu.items.filter { !$0.isSeparatorItem }.map {
             ["title": $0.title,
              "enabled": $0.isEnabled,
-             "ticked": ($0.representedObject as? String) == micChosen]
+             "ticked": $0.image != nil && $0.image !== Self.blankIcon]
         }
     }
 
@@ -948,7 +907,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         bind.action = #selector(bindClicked)
         bind.target = self
         menu.addItem(bind)
-        let codexChat = NSMenuItem(title: "Bind Codex chat…", action: #selector(bindCodexChatClicked), keyEquivalent: "")
+        codexChat.action = #selector(bindCodexChatClicked)
         codexChat.target = self
         menu.addItem(codexChat)
 
@@ -1171,6 +1130,11 @@ final class StatusItem: NSObject, NSMenuDelegate {
         newChatFolderItem.submenu = newChatFolderSubmenu
         applyNewChatFolderRow()
         menu.addItem(newChatFolderItem)
+        terminalForNewChats.target = self
+        terminalForNewChats.action = #selector(toggleTerminalForNewChats)
+        terminalForNewChats.state = NewChatClient.preferred() == .cli ? .on : .off
+        terminalForNewChats.toolTip = "Use Terminal for quick-access Open and attach it after new chats. Off uses Desktop for Open and sends new chats in the background."
+        menu.addItem(terminalForNewChats)
 
         // **`Halo fx`, last of the pickers**, above Autosend. `sparkles` is ✨'s
         // own SF Symbol, so the row keeps its picture and loses only the colour.
@@ -1213,44 +1177,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         exit.target = self
         menu.addItem(exit)
 
-        // **One column for every shortcut, mouse or key.**
-        // the original author asked twice for the mouse chords to be right-aligned; the first
-        // answer was that `NSMenuItem` does not offer it, which is true only of
-        // the shortcut column itself. A right tab stop in an attributed title is
-        // the same right edge drawn by hand. It sat *beside* AppKit's own ⌘⌃
-        // column for a day — two columns, and rows with an entry in neither
-        // straddling the gap — until (2026-09-06) the key equivalents went and
-        // ⌘⇧P moved in here with the wheel. What is drawn is the whole legend.
-        // **The vocabulary: an emoji for the button, a plain arrow for the
-        // movement.** The emoji ones name a button by where it sits on the mouse
-        // — `⬅️` and `➡️` are the left and right buttons, and since the two side
-        // buttons are stacked, `🔼` is the forward one and `🔽` the back one.
-        // A gesture made by holding a side button and moving the mouse writes the
-        // button first and the direction after it as a text arrow (`🔼 →`), which
-        // is a different weight and colour on screen from the boxed emoji and so
-        // cannot be misread as a second button.
-        //
-        // The wheel's `🛞` went from every row here on 2026-09-09, along with
-        // the chord rows `⬅️ + 🛞` and `➡️ + 🛞` — see *The side buttons speak in
-        // function keys*. It is back in exactly one, `Select Screen Area`, and
-        // the distinction that lets it be is that a **drag** is not a click:
-        // middle-click-to-close-a-tab is untouched.
-        // **The vocabulary: an emoji for the button, a thin arrow for the
-        // movement.** The emoji names a button by where it sits on the mouse —
-        // `◀️` and `▶️` are the left and right buttons, and because the two side
-        // buttons are stacked, `🔼` is the forward one and `🔽` the back one. A
-        // gesture made by holding a side button and moving the mouse writes the
-        // button first and the direction after it as a text arrow (`🔼 →`).
-        // the original author picked the filled triangles over `⬆️`/`⬇️` for exactly that
-        // reason: against a thin `↑` the difference has to be visible at a
-        // glance, and a boxed arrow next to a bare one is not.
-        //
-        // **Two legends per row, and a glyph for each** (2026-09-22). The two
-        // strings are the emoji sentence — `🔼 →` — which is what the About page
-        // prints beside the drawn mouse; the two `Chord`s are what the menu's own
-        // shortcut column draws, one monochrome glyph apiece, because that column
-        // holds exactly one. Both pairs are Logi first, wheel second;
-        // `applyGestureColumn` picks, on the tick as well as on every open.
+        // Preserve both mouse vocabularies for the About window and tooltips.
+        // The menu's shortcut column is populated separately below.
         gestureRows = [
             (bind, bind.title, "◀️ + 🔼", "◀️ + 🛞", Chord("", "◐"), Chord("", "◐")),
             (disconnect, disconnect.title, "🔽 ↓", "▶️ + 🛞", Chord("", "⇓"), Chord("", "◑")),
@@ -1290,20 +1218,13 @@ final class StatusItem: NSObject, NSMenuDelegate {
             (pickLegend, pickLegend.title, "⌘⇧◀️", "⌘⇧◀️",
              Chord("", "◀", [.command, .shift]), Chord("", "◀", [.command, .shift])),
         ]
-        layOutGestures(in: menu)
+        applyShortcutColumn()
 
         item.menu = menu
         mirror.start()
     }
 
-    /// **What the shortcut column draws for one row**: the glyph, and the
-    /// modifiers AppKit prefixes it with.
-    ///
-    /// A key equivalent is the only thing that reaches that column — see
-    /// `applyGestureColumn` — and it holds **one** glyph plus `⌃⌥⇧⌘`. That is the
-    /// whole shape of the vocabulary: the style of the arrow says which button
-    /// (dotted = the front side button, double = the back one), its direction says
-    /// the movement, and a mark says a press with no movement at all.
+    /// A historical mouse glyph and its modifiers for the About legend.
     private struct Chord {
         /// **Empty on every row, and kept for the day it is not.** Anything put
         /// here rides at the end of the title, right-aligned to `gestureTab`. Two
@@ -1356,100 +1277,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         logiGesturesOn ? row.logi : row.wheel
     }
 
-    /// Where the button column's right edge sits, measured from the widest row.
-    private var gestureTab: CGFloat = 0
-
-    /// **The movement is a key equivalent; the button is drawn beside it**
-    /// (2026-09-22).
-    ///
-    /// the original author asked, for the third time, why the chords do not line up with the
-    /// `>` of the submenu rows. Measured, on a menu built for the question: from
-    /// a title they cannot. AppKit reserves that gutter — **31 pt for a submenu
-    /// arrow, 47 when some row also carries a key equivalent** — *after* every
-    /// row's content, so anything written into the title pushes the gutter right
-    /// along with it and the gap never closes. A right tab stop, a negative kern
-    /// to lie about the measured width, a trailing pad: all three were built, and
-    /// all three moved the column and the arrow together.
-    ///
-    /// The one thing drawn *inside* that gutter is `keyEquivalent`, and it holds
-    /// **one glyph** plus the modifiers of `keyEquivalentModifierMask`. `"▲→"`
-    /// draws `▲`; `"ABC"` draws `⇧A`. So the column takes the half of the chord
-    /// that has to line up — the **movement** — and the button stays in the title,
-    /// right-aligned to `gestureTab` just left of it.
-    ///
-    /// **One glyph carries the whole gesture: the style is the button, the
-    /// direction is the movement.** Dotted `⇢ ⇠ ⇡` is the front side button,
-    /// doubled `⇑ ⇓` the back one.
-    ///
-    /// That is the third arrangement of the same night and the one that stands.
-    /// The second put the button in the title as `▲`/`▼` with the movement in the
-    /// column (*"nu poti pune un arrowhead langa spre sus"*), the third swapped
-    /// them (*"nu in titlu, ci in key shortcut tre sa fie arrowheadul"*) — and
-    /// both were rejected on sight, for the same reason underneath: **a gesture
-    /// split across two columns is read as two marks**, and the row it belongs to
-    /// gets neither. *"revino la 2 tipuri de sageti: punctata pt forward si inca
-    /// una pt back."* The convention costs one reading of the About window, which
-    /// draws it on a picture of his own mouse; the split cost a reading of every
-    /// row, every time.
-    ///
-    /// Plain `→ ← ↑ ↓` are not available: AppKit normalises them into the
-    /// arrow-*key* glyphs `▶ ◀ ▲ ▼`, which is the second reason the two families
-    /// are the dotted and the doubled ones — they are drawn as given. The rest of
-    /// the vocabulary is a mark rather than an arrow, because the gesture has no
-    /// direction: `●` a press, `⤢` the wheel drag, `⟳` a 2 s hold, `◐`/`◑` a
-    /// button held while another is pressed, `◎` the wheel, `⦿` twice.
-    ///
-    /// **None of these ever fire as key equivalents.** A status-item app never
-    /// becomes the key app, so the menu matches them only while it is open, and a
-    /// glyph like `⇢` is not a key any keyboard produces. `⌘⇧P` and `⌘⇧◀` name
-    /// chords `HotkeyTap` owns globally; the menu matching them while it is open
-    /// does the same thing they do.
-    ///
-    /// **One tab stop for the whole menu**, re-measured on every open, exactly as
-    /// the old full-chord column was: half the rows get their real title long
-    /// after the menu is assembled (`<folder>@<branch>`), and a title
-    /// wider than the tab widens the menu without moving the tab.
-    private func layOutGestures(in menu: NSMenu) {
-        let font = NSFont.menuFont(ofSize: 0)
-        func width(_ text: String) -> CGFloat {
-            ceil((text as NSString).size(withAttributes: [.font: font]).width)
-        }
-        // Wide enough that the movement reads as a column of its own and not as
-        // the end of the label.
-        let gap: CGFloat = 26
-        var tab: CGFloat = 0
-        let drawn = Set(gestureRows.map { ObjectIdentifier($0.item) })
-        for item in menu.items
-        where !item.isSeparatorItem && !drawn.contains(ObjectIdentifier(item)) {
-            tab = max(tab, width(item.title))
-        }
-        // **Measured against the widest of *both* vocabularies**, not just the one
-        // showing: the tick can be flipped with the menu open, and a column that
-        // resized under the pointer would move every glyph on screen.
-        for row in gestureRows {
-            tab = max(tab, width(row.label) + gap + width(row.logiGlyph.head))
-            tab = max(tab, width(row.label) + gap + width(row.wheelGlyph.head))
-        }
-        gestureTab = tab
-        applyGestureColumn()
-    }
-
-    /// **The price of an attributed title: AppKit stops dimming the row.** A
-    /// disabled item is greyed by the menu only while it is drawing the title
-    /// itself; hand it an attributed string and the colours in that string are the
-    /// last word, so a disabled `End Dictation` came out as black as a live one.
-    /// The ink is therefore chosen here, and this runs from `menuWillOpen` — the
-    /// one moment every `isEnabled` in the file is known to be current. The
-    /// *movement* glyph is not affected: AppKit draws the shortcut column itself
-    /// and dims it on its own, which is one more thing the move into that column
-    /// bought back. A row with no button glyph keeps a plain title and never pays
-    /// this at all.
-    /// **The gesture in words, on hover** (2026-09-22) — the original author: *"menu entry
-    /// pot avea tooltip: explică gestul în tooltip scurt"*. The column draws one
-    /// glyph per row, which is a reminder for someone who already knows the
-    /// vocabulary; this is the sentence for someone who does not. Keyed on the
-    /// emoji legend, so the two modes cannot come to explain different gestures
-    /// than the ones the About page prints.
+    /// Mouse-only actions keep their explanation on hover rather than putting
+    /// a mouse symbol into the keyboard shortcut column.
     private static func gestureTip(_ legend: String) -> String? {
         [
             "◀️ + 🔼": "Hold the left button, click Forward",
@@ -1468,28 +1297,36 @@ final class StatusItem: NSObject, NSMenuDelegate {
         ][legend]
     }
 
-    private func applyGestureColumn() {
+    private func applyShortcutColumn() {
         publishAboutGestures()
-        let font = NSFont.menuFont(ofSize: 0)
-        let style = NSMutableParagraphStyle()
-        style.tabStops = [NSTextTab(textAlignment: .right, location: gestureTab)]
         for row in gestureRows {
-            let chord = logiGesturesOn ? row.logiGlyph : row.wheelGlyph
-            row.item.toolTip = Self.gestureTip(logiGesturesOn ? row.logi : row.wheel)
-            if row.item === shot { row.item.toolTip = "⌃⌘S, or click the rear side button, while recording a prompt" }
-            row.item.keyEquivalent = chord.key
-            row.item.keyEquivalentModifierMask = chord.mask
-            guard !chord.head.isEmpty else {
-                // Back to a plain title, in case the other vocabulary had a head.
-                row.item.attributedTitle = nil
-                row.item.title = row.label
-                continue
-            }
-            let ink: NSColor = row.item.isEnabled ? .labelColor : .disabledControlTextColor
-            row.item.attributedTitle = NSAttributedString(
-                string: "\(row.label)\t\(chord.head)",
-                attributes: [.font: font, .foregroundColor: ink, .paragraphStyle: style])
+            row.item.keyEquivalent = ""
+            row.item.keyEquivalentModifierMask = []
+            row.item.toolTip = Self.gestureTip(gesture(row))
         }
+
+        func assign(_ item: NSMenuItem, _ key: String,
+                    _ mask: NSEvent.ModifierFlags = [.control, .command]) {
+            item.keyEquivalent = key
+            item.keyEquivalentModifierMask = mask
+        }
+        func assign(_ item: NSMenuItem, alias: WalkieKeyboardShortcut) {
+            assign(item, alias.letter ?? (alias == .cancel ? "\u{1b}" : "\r"))
+        }
+        assign(bind, "b")
+        assign(codexChat, "b", [.control, .shift, .command])
+        // Control-Command-T adds a note or stops plain dictation during a take;
+        // it disconnects only at rest.
+        if !(isRecording?() ?? false) { assign(disconnect, alias: .note) }
+        assign(promptAtCaret, alias: .caret)
+        assign(startDictation, "d")
+        assign(newSession, alias: .newChat)
+        assign(dictatePlain, alias: .dictate)
+        assign(stopRecording, "d")
+        assign(cancelDictation, alias: .cancel)
+        assign(screenRecording, alias: .film)
+        assign(shot, "s")
+        shot.toolTip = "⌃⌘S, or click the rear side button, while recording a prompt"
     }
 
     /// Shown beside the name in the menu **and** in the menu bar itself.
@@ -2045,11 +1882,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         // Not while one is running: two transcripts arriving at one panel is an
         // ordering problem there is no reason to create from a menu.
         recoverDictation.isEnabled = !recording && (isRecoverable?() ?? false)
-        // The one row that does not ask about a binding — it brings its own
-        // destination. Only a dictation already running takes it away: the row
-        // *starts* one, and the sentence already open is re-aimed by the wheel's
-        // second click, not from here.
-        newSession.isEnabled = !recording
+        // New-chat also redirects an active recording and reopens its folder picker.
+        newSession.isEnabled = true
         shot.isEnabled = canTakeScreenshot?() ?? recording
     }
 
@@ -2252,6 +2086,13 @@ final class StatusItem: NSObject, NSMenuDelegate {
     @objc private func bindClicked() { onBind?() }
     @objc private func bindCodexChatClicked() { onBindCodexChat?() }
 
+    @objc private func toggleTerminalForNewChats() {
+        let enabled = NewChatClient.preferred() != .cli
+        UserDefaults.standard.set(enabled, forKey: NewChatClient.terminalPreferenceKey)
+        terminalForNewChats.state = enabled ? .on : .off
+        onTerminalForNewChatsChanged?()
+    }
+
     /// **The list, shown where the pointer already is.**
     ///
     /// Dispatched rather than run inline, which is the pop-up menu's old reason
@@ -2302,8 +2143,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
     @objc private func chooseNewChatFolder() {
         guard folderChooser == nil else { folderChooser?.makeKeyAndOrderFront(nil); return }
         let panel = NSOpenPanel()
-        panel.title = "Default folder for new Codex CLI chats"
-        panel.message = "Used by Prompt to new when you don't pick another folder."
+        panel.title = "Default folder for new Codex chats"
+        panel.message = "Used when no chat is bound, or when you press the new-chat shortcut again."
         panel.prompt = "Use folder"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -2377,10 +2218,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         applyHaloVoiceRow()
         applyStopRecording()
         pasteLast.isEnabled = hasLastDictation?() ?? false
-        // Re-measured, not just re-inked: `applyHeader` and `applyEngineRow`
-        // above have just written the titles that are longest, and the column
-        // has to be laid out against the menu he is about to see.
-        applyGestureColumn()
+        // Refresh contextual shortcuts after updating the recording state.
+        applyShortcutColumn()
     }
 
     /// **The bare `petclinic@main` since 2026-10-03** (the original author: *"prima linie, nu
@@ -2451,10 +2290,9 @@ final class StatusItem: NSObject, NSMenuDelegate {
         logiGesturesOn = on
         UserDefaults.standard.set(on, forKey: Self.logiGesturesKey)
         applyLogiGesturesRow()
-        // **The legend column is rewritten, not just the tick.** The menu is
-        // where every gesture is written down, and a row saying `⇢` on a Mac
-        // whose forward button does nothing is worse than no legend at all.
-        applyGestureColumn()
+        // Refresh mouse tooltips and the About legend; keyboard labels stay
+        // independent of the selected mouse mode.
+        applyShortcutColumn()
     }
 
     @objc private func gesturesPicked(_ sender: NSMenuItem) {

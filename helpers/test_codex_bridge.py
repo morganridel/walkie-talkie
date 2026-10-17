@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import os
+from types import SimpleNamespace
 from pathlib import Path
 import socket
 import sqlite3
@@ -118,6 +119,8 @@ class CodexBridgeTests(unittest.TestCase):
             "CODEX_HOME": str(self.home),
             "FAKE_CODEX_LOG": str(self.log),
             "WALKIE_CODEX_TTY_DIR": str(self.root / "tty-map"),
+            "WALKIE_BACKGROUND_HOME": str(self.root / "background"),
+            "WALKIE_BACKGROUND_MONITOR": "0",
         })
         self.make_state()
         self.make_history()
@@ -481,6 +484,271 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertFalse(result["threads"][0]["live"])
         self.assertIn("thread/list", self.rpc_methods())
 
+    def test_archive_inclusive_native_list_merges_pages_filters_guardian_and_deduplicates(self):
+        calls = []
+
+        class FakeRpcClient:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def request(self, method, params):
+                calls.append((method, dict(params)))
+                if method != "thread/list":
+                    raise AssertionError(method)
+                archived, cursor = params["archived"], params.get("cursor")
+                if not archived and cursor is None:
+                    return {"data": [
+                        {"id": "new-active", "name": "Active", "cwd": "/work",
+                         "updatedAt": 30, "source": "cli"},
+                        {"id": "new-active", "name": "Duplicate row", "cwd": "/work",
+                         "updatedAt": 29, "source": "cli"},
+                        {"id": "guardian", "threadSource": "guardian_review",
+                         "source": "appServer", "cwd": "/work"},
+                    ], "nextCursor": "active-page-2"}
+                if archived and cursor is None:
+                    return {"data": [
+                        {"id": "old-archived", "name": "Archived", "cwd": "/work",
+                         "updatedAt": 10, "source": "cli", "archived": True},
+                    ], "nextCursor": "archived-page-2"}
+                if not archived and cursor == "active-page-2":
+                    return {"data": [
+                        {"id": "middle-active", "name": "Middle", "cwd": "/work",
+                         "updatedAt": 20, "source": "cli"},
+                    ], "nextCursor": None}
+                if archived and cursor == "archived-page-2":
+                    return {"data": [
+                        {"id": "oldest-archived", "name": "Older archive", "cwd": "/work",
+                         "updatedAt": 5, "source": "cli", "archived": True},
+                    ], "nextCursor": None}
+                raise AssertionError((archived, cursor))
+
+        noop = lambda rows: rows
+        with mock.patch.object(codex_bridge, "RpcClient", FakeRpcClient), \
+             mock.patch.object(codex_bridge, "add_ttys", noop), \
+             mock.patch.object(codex_bridge, "enrich_background_owners", noop), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners", noop):
+            first = codex_bridge.list_threads(SimpleNamespace(
+                limit=1, cursor=None, cwd=None, project=None, query=None,
+                live_only=False, include_archived=True))
+            second = codex_bridge.list_threads(SimpleNamespace(
+                limit=1, cursor=first["nextCursor"], cwd=None, project=None,
+                query=None, live_only=False, include_archived=True))
+            third = codex_bridge.list_threads(SimpleNamespace(
+                limit=1, cursor=second["nextCursor"], cwd=None, project=None,
+                query=None, live_only=False, include_archived=True))
+            fourth = codex_bridge.list_threads(SimpleNamespace(
+                limit=1, cursor=third["nextCursor"], cwd=None, project=None,
+                query=None, live_only=False, include_archived=True))
+
+        self.assertEqual([row["id"] for result in (first, second, third, fourth)
+                          for row in result["threads"]],
+                         ["new-active", "middle-active", "old-archived", "oldest-archived"])
+        self.assertTrue(third["threads"][0]["archived"])
+        self.assertTrue(fourth["threads"][0]["archived"])
+        self.assertEqual(len({row["id"] for result in (first, second, third, fourth)
+                              for row in result["threads"]}), 4)
+        self.assertIsNone(fourth["nextCursor"])
+        self.assertTrue(all(params["sourceKinds"] == codex_bridge.ALL_SOURCE_KINDS
+                            for method, params in calls if method == "thread/list"))
+        self.assertEqual({params["archived"] for method, params in calls
+                          if method == "thread/list"}, {False, True})
+        cursor_state = json.loads(base64.urlsafe_b64decode(
+            first["nextCursor"].split(":", 1)[1] + "==="))
+        self.assertEqual(cursor_state, {"phase": "active", "cursor": "active-page-2"})
+        # Cursor goes over argv to the Swift host, so keep it bounded and free
+        # of titles/previews or other row metadata.
+        self.assertLess(len(first["nextCursor"]), 256)
+        for private_value in ("Active", "Duplicate row", "preview", "new-active"):
+            self.assertNotIn(private_value, first["nextCursor"])
+
+    def test_catalog_search_command_uses_selected_folder_and_all_history(self):
+        old_thread = "old-alpha"
+        beta_thread = "new-beta"
+        now = int(time.time() * 1000)
+        db = sqlite3.connect(self.home / "state_5.sqlite")
+        for thread_id, cwd, updated in ((old_thread, "/tmp/project", 1),
+                                        (beta_thread, "/tmp/other", now)):
+            db.execute("""INSERT INTO threads VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (thread_id, f"/rollout/{thread_id}", updated // 1000,
+                        updated // 1000, updated, updated, "cli", cwd, thread_id,
+                        thread_id, "", "", "p1", "fake", "main", 0, updated, 0, 0))
+        db.commit()
+        db.close()
+        history = sqlite3.connect(self.home / "thread_history_1.sqlite")
+        for thread_id, ordinal, role, text in (
+                (old_thread, 1, "userMessage", "a rare old-folder marker"),
+                (old_thread, 2, "agentMessage", "the rare marker answer"),
+                (beta_thread, 1, "userMessage", "a rare old-folder marker")):
+            item = ({"type": "userMessage", "content": [{"type": "text", "text": text}]}
+                    if role == "userMessage" else {"type": "agentMessage", "text": text})
+            history.execute("INSERT INTO thread_items VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (thread_id, "turn", f"item-{ordinal}", ordinal, ordinal,
+                             json.dumps(item), role))
+        history.commit()
+        history.close()
+        with mock.patch.object(codex_bridge, "codex_home", return_value=self.home):
+            parsed = codex_bridge.build_parser().parse_args([
+                "catalog-search", "--cwd", "/tmp/project", "--query", "rare marker",
+                "--limit", "10"])
+            result = codex_bridge.catalog_search(parsed)
+        self.assertEqual([row["session"] for row in result["threads"]], [old_thread])
+        self.assertEqual(result["threads"][0]["hits"], 2)
+        self.assertIsNone(result["nextCursor"])
+
+    def test_recent_picker_uses_sqlite_without_daemon_or_owner_probes(self):
+        args = codex_bridge.build_parser().parse_args(["recent", "--limit", "10"])
+        with mock.patch.object(codex_bridge, "db_path", side_effect=lambda name: self.home / name), \
+             mock.patch.object(codex_bridge, "RpcClient", side_effect=AssertionError("RPC used")), \
+             mock.patch.object(codex_bridge, "add_ttys", side_effect=AssertionError("TTY scan used")), \
+             mock.patch.object(codex_bridge, "enrich_background_owners", side_effect=AssertionError("owner scan used")), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners", side_effect=AssertionError("desktop scan used")):
+            result = codex_bridge.recent_threads(args)
+        self.assertEqual([row["id"] for row in result["threads"]],
+                         ["11111111-1111-4111-8111-111111111111"])
+        row = result["threads"][0]
+        self.assertEqual(row["source"], "cli")
+        self.assertIsNone(row["busy"])
+        self.assertFalse(row["live"])
+        self.assertIsNone(result["nextCursor"])
+
+    def test_latest_preview_is_sqlite_only_and_rejects_guardian(self):
+        thread_id = "11111111-1111-4111-8111-111111111111"
+        args = SimpleNamespace(thread=thread_id)
+        with mock.patch.object(codex_bridge, "db_path", side_effect=lambda name: self.home / name), \
+             mock.patch.object(codex_bridge, "RpcClient", side_effect=AssertionError("RPC used")):
+            result = codex_bridge.latest_thread_preview(args)
+        self.assertEqual(result["threadId"], thread_id)
+        self.assertEqual(result["turns"][0]["items"][0]["type"], "userMessage")
+        self.assertEqual(result["turns"][0]["items"][1]["type"], "agentMessage")
+
+        state = sqlite3.connect(self.home / "state_5.sqlite")
+        state.execute("ALTER TABLE threads ADD COLUMN thread_source TEXT")
+        state.execute("UPDATE threads SET thread_source = 'guardian_review' WHERE id = ?",
+                      (thread_id,))
+        state.commit()
+        state.close()
+        with mock.patch.object(codex_bridge, "db_path", side_effect=lambda name: self.home / name), \
+             mock.patch.object(codex_bridge, "RpcClient", side_effect=AssertionError("RPC used")), \
+             mock.patch.object(codex_bridge.codex_catalog, "sqlite_latest_visible_turn",
+                               side_effect=AssertionError("guardian history read")):
+            with self.assertRaises(codex_bridge.BridgeError) as raised:
+                codex_bridge.latest_thread_preview(args)
+        self.assertEqual(raised.exception.code, "thread_hidden")
+
+    def test_history_page_refuses_guardian_before_requesting_turn_items(self):
+        thread = "guardian-thread"
+
+        class FakeRpcClient:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def request(self, method, params):
+                if method == "thread/read":
+                    return {"thread": {"id": thread,
+                                       "threadSource": "guardian_review",
+                                       "source": "appServer"}}
+                raise AssertionError("guardian preview must be refused before history read")
+
+        with mock.patch.object(codex_bridge, "RpcClient", FakeRpcClient):
+            with self.assertRaises(codex_bridge.BridgeError) as raised:
+                codex_bridge.history_page(SimpleNamespace(
+                    thread=thread, limit=10, cursor=None, direction="desc"))
+        self.assertEqual(raised.exception.code, "thread_hidden")
+
+    def test_offline_exact_thread_lookup_includes_archived_and_hides_guardian(self):
+        thread = "11111111-1111-4111-8111-111111111111"
+        db = sqlite3.connect(self.home / "state_5.sqlite")
+        db.execute("ALTER TABLE threads ADD COLUMN thread_source TEXT")
+        db.execute("UPDATE threads SET archived = 1 WHERE id = ?", (thread,))
+        db.commit()
+        db.close()
+
+        class OfflineRpcClient:
+            def __enter__(self):
+                raise codex_bridge.BridgeError(
+                    "shared daemon unavailable", code="shared_daemon_unavailable")
+
+            def __exit__(self, *_):
+                pass
+
+        noop = lambda rows: rows
+        with mock.patch.object(codex_bridge, "codex_home", return_value=self.home), \
+             mock.patch.object(codex_bridge, "RpcClient", OfflineRpcClient), \
+             mock.patch.object(codex_bridge, "add_ttys", noop), \
+             mock.patch.object(codex_bridge, "enrich_background_owners", noop), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners", noop):
+            archived = codex_bridge.one_thread(thread)
+        self.assertTrue(archived["archived"])
+
+        db = sqlite3.connect(self.home / "state_5.sqlite")
+        db.execute("UPDATE threads SET source = ? WHERE id = ?", (
+            json.dumps({"subAgent": {"other": "guardian"}}), thread))
+        db.commit()
+        db.close()
+        with mock.patch.object(codex_bridge, "codex_home", return_value=self.home), \
+             mock.patch.object(codex_bridge, "RpcClient", OfflineRpcClient):
+            with self.assertRaises(codex_bridge.BridgeError) as raised:
+                codex_bridge.one_thread(thread)
+        self.assertEqual(raised.exception.code, "thread_hidden")
+
+    def test_offline_archived_catalog_offset_cursor_stays_on_sqlite_when_rpc_returns(self):
+        db = sqlite3.connect(self.home / "state_5.sqlite")
+        db.execute("UPDATE threads SET archived = 1")
+        now = int(time.time() * 1000)
+        for index in range(105):
+            thread_id = f"offline-archived-{index:03d}"
+            db.execute("""INSERT INTO threads VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (thread_id, f"/rollout/{thread_id}", now // 1000,
+                        now // 1000, now, now, "cli", "/tmp/project", thread_id,
+                        thread_id, "private preview", "", "p1", "fake", "main",
+                        1, now - index, 0, 0))
+        db.commit()
+        db.close()
+
+        class OfflineRpcClient:
+            def __enter__(self):
+                raise codex_bridge.BridgeError(
+                    "shared daemon unavailable", code="shared_daemon_unavailable")
+
+            def __exit__(self, *_):
+                pass
+
+        class NewlyAvailableRpcClient:
+            def __init__(self):
+                raise AssertionError("SQLite offset cursor must not switch sources")
+
+        noop = lambda rows: rows
+        args = SimpleNamespace(limit=100, cursor=None, cwd=None, project=None,
+                               query=None, live_only=False, include_archived=True)
+        with mock.patch.object(codex_bridge, "codex_home", return_value=self.home), \
+             mock.patch.object(codex_bridge, "RpcClient", OfflineRpcClient), \
+             mock.patch.object(codex_bridge, "add_ttys", noop), \
+             mock.patch.object(codex_bridge, "enrich_background_owners", noop), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners", noop):
+            first = codex_bridge.list_threads(args)
+
+        self.assertEqual(len(first["threads"]), 100)
+        self.assertEqual(first["nextCursor"], "offset:100")
+        args.cursor = first["nextCursor"]
+        with mock.patch.object(codex_bridge, "codex_home", return_value=self.home), \
+             mock.patch.object(codex_bridge, "RpcClient", NewlyAvailableRpcClient), \
+             mock.patch.object(codex_bridge, "add_ttys", noop), \
+             mock.patch.object(codex_bridge, "enrich_background_owners", noop), \
+             mock.patch.object(codex_bridge, "enrich_desktop_owners", noop):
+            second = codex_bridge.list_threads(args)
+
+        self.assertEqual(len(second["threads"]), 6)
+        self.assertTrue(all(row["archived"] for row in second["threads"]))
+        self.assertIsNone(second["nextCursor"])
+
     def test_one_thread_shared_read_keeps_verified_cli_tty(self):
         thread = "11111111-1111-4111-8111-111111111111"
         record = {"tty": "/dev/ttys007", "pid": 42,
@@ -655,7 +923,7 @@ class CodexBridgeTests(unittest.TestCase):
             "send", "--thread", "11111111-1111-4111-8111-111111111111",
             "--text-file", str(text))
         self.assertEqual(result.returncode, 2)
-        self.assertEqual(json.loads(result.stdout)["code"], "thread_not_owned")
+        self.assertEqual(json.loads(result.stdout)["code"], "thread_ownership_unknown")
         methods = self.rpc_methods()
         self.assertNotIn("thread/resume", methods)
         self.assertNotIn("turn/start", methods)
@@ -879,6 +1147,167 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertEqual(events[-1]["type"], "error")
         self.assertEqual(events[-1]["code"], "quick_tool_denied")
         self.assertIn("turn/interrupt", self.rpc_methods())
+
+
+class ReleasePreflightTests(unittest.TestCase):
+    @staticmethod
+    def _rpc(thread, status="notLoaded"):
+        rpc = mock.MagicMock()
+        rpc.__enter__.return_value = rpc
+        rpc.request.return_value = {"thread": {"id": thread, "status": {"type": status}}}
+        return rpc
+
+    @staticmethod
+    def _snapshot(*, threads=None, requests=None, problem=None):
+        return {"ok": True, "threads": threads or [], "requests": requests or [],
+                "problem": problem}
+
+    def test_pending_release_checks_all_native_pages_without_mutating_broker(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        broker = mock.Mock(return_value={"threads": [{"id": thread, "background": True,
+                                                       "subscribed": False, "state": "idle"}]})
+        rpc = self._rpc(thread, "idle")
+        rpc.request.side_effect = [
+            {"thread": {"id": thread, "status": {"type": "idle"}}},
+            {"data": [], "nextCursor": "page2"}, {"data": [thread]},
+        ]
+        with mock.patch.dict(sys.modules, {"codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "active_turn_id", return_value=None):
+            with self.assertRaises(codex_bridge.BridgeError) as caught:
+                codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertEqual(caught.exception.code, "thread_release_pending")
+        self.assertEqual([call.args[0] for call in broker.call_args_list], ["status"])
+        self.assertEqual(rpc.request.call_args.args[1]["cursor"], "page2")
+
+    def test_pending_approval_prevents_even_release_polling(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        broker = mock.Mock(return_value=self._snapshot(
+            threads=[{"id": thread, "background": True, "subscribed": False,
+                      "state": "idle", "busy": False}],
+            requests=[{"threadId": thread}],
+        ))
+        rpc = self._rpc(thread)
+        with mock.patch.dict(sys.modules, {"codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "active_turn_id", return_value=None):
+            with self.assertRaises(codex_bridge.BridgeError) as caught:
+                codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertEqual(caught.exception.code, "thread_busy")
+        self.assertEqual(rpc.request.call_args.args[0], "thread/read")
+        self.assertNotIn("thread/loaded/list", [call.args[0] for call in rpc.request.call_args_list])
+
+    def test_closed_stored_chat_opens_without_desktop_owner_or_broker_prepare_probe(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        broker = mock.Mock(return_value=self._snapshot())
+        rpc = self._rpc(thread)
+        with mock.patch.dict(sys.modules, {"codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "active_turn_id", return_value=None), \
+                mock.patch.object(codex_bridge, "DesktopIpcClient",
+                                  side_effect=AssertionError("Desktop owner probe used")):
+            result = codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertTrue(result["safe"])
+        self.assertEqual(result["thread"]["id"], thread)
+        self.assertEqual([call.args[0] for call in broker.call_args_list], ["status"])
+        self.assertEqual([call.args[0] for call in rpc.request.call_args_list], ["thread/read"])
+
+    def test_native_unloaded_clears_stale_unsubscribed_owner_unknown(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        snapshot = self._snapshot(threads=[{
+            "id": thread, "background": True, "subscribed": False,
+            "state": "idle", "busy": False, "ownerState": "unknown",
+            "releaseState": "waiting",
+        }])
+        broker = mock.Mock(return_value=snapshot)
+        rpc = self._rpc(thread, "notLoaded")
+        with mock.patch.dict(sys.modules, {
+                "codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "active_turn_id", return_value=None), \
+                mock.patch.object(codex_bridge, "DesktopIpcClient",
+                                  side_effect=AssertionError("Desktop owner probe used")):
+            result = codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertTrue(result["safe"])
+        self.assertEqual([call.args[0] for call in broker.call_args_list], ["status"])
+        self.assertEqual([call.args[0] for call in rpc.request.call_args_list], ["thread/read"])
+
+    def test_not_loaded_fastpath_is_vetoed_by_active_turn(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        snapshot = self._snapshot()
+        broker = mock.Mock(side_effect=[snapshot, {"ok": True, "safe": True}])
+        rpc = self._rpc(thread)
+        with mock.patch.dict(sys.modules, {"codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "active_turn_id", return_value="turn-active"):
+            result = codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertIn("safe", result)
+        self.assertTrue(result["safe"])
+        self.assertEqual([call.args[0] for call in broker.call_args_list],
+                         ["status", "prepare-open"])
+
+    def test_not_loaded_fastpath_is_vetoed_by_subscribed_or_unknown_writer(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        cases = [
+            {"id": thread, "background": True, "subscribed": True,
+             "state": "idle", "busy": False},
+            {"id": thread, "background": True, "subscribed": False,
+             "state": "unknown", "busy": None},
+        ]
+        for tracked in cases:
+            with self.subTest(tracked=tracked):
+                snapshot = self._snapshot(threads=[tracked])
+                broker = mock.Mock(side_effect=[snapshot, {"ok": True, "safe": True}])
+                rpc = self._rpc(thread)
+                # An unsubscribed unknown row takes the normal loaded check;
+                # a subscribed row goes straight to broker handoff.
+                rpc.request.side_effect = [
+                    {"thread": {"id": thread, "status": {"type": "notLoaded"}}},
+                    {"data": []},
+                ]
+                with mock.patch.dict(sys.modules, {
+                        "codex_background": SimpleNamespace(broker_request=broker)}), \
+                        mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                        mock.patch.object(codex_bridge, "active_turn_id", return_value=None):
+                    result = codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+                self.assertTrue(result["safe"])
+                self.assertEqual(broker.call_args_list[-1].args[0], "prepare-open")
+
+    def test_not_loaded_fastpath_rejects_identity_mismatch_and_guardian(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        for native, code in [
+                ({"id": "22222222-2222-4222-8222-222222222222",
+                  "status": {"type": "notLoaded"}}, "thread_identity_mismatch"),
+                ({"id": thread, "threadSource": "guardian_review",
+                  "status": {"type": "notLoaded"}}, "thread_hidden")]:
+            with self.subTest(code=code):
+                rpc = mock.MagicMock()
+                rpc.__enter__.return_value = rpc
+                rpc.request.return_value = {"thread": native}
+                with mock.patch.dict(sys.modules, {
+                        "codex_background": SimpleNamespace(broker_request=mock.Mock())}), \
+                        mock.patch.object(codex_bridge, "RpcClient", return_value=rpc):
+                    with self.assertRaises(codex_bridge.BridgeError) as caught:
+                        codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+                self.assertEqual(caught.exception.code, code)
+
+    def test_active_background_writer_is_refused_without_desktop_owner_probe(self):
+        thread = "11111111-2222-4333-8444-555555555555"
+        snapshot = self._snapshot(threads=[{
+            "id": thread, "background": True, "subscribed": True,
+            "state": "active", "busy": True,
+        }])
+        broker = mock.Mock(return_value=snapshot)
+        rpc = self._rpc(thread, "active")
+        with mock.patch.dict(sys.modules, {
+                "codex_background": SimpleNamespace(broker_request=broker)}), \
+                mock.patch.object(codex_bridge, "RpcClient", return_value=rpc), \
+                mock.patch.object(codex_bridge, "DesktopIpcClient",
+                                  side_effect=AssertionError("Desktop owner probe used")):
+            with self.assertRaises(codex_bridge.BridgeError) as caught:
+                codex_bridge.prepare_open(SimpleNamespace(id=thread, destination="desktop"))
+        self.assertEqual(caught.exception.code, "thread_busy")
+        self.assertEqual([call.args[0] for call in broker.call_args_list], ["status"])
 
 
 if __name__ == "__main__":

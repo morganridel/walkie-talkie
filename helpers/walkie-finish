@@ -39,6 +39,10 @@ def process_matches(record, thread_id):
         tty = codex_bridge.validated_tty(record["tty"])
     except (KeyError, TypeError, ValueError, codex_bridge.BridgeError):
         return False
+    if record.get("hostPID"):
+        # Revalidate both real Terminal/host ownership and the exact child PTY,
+        # parent PID and resume argv before signalling a managed TUI.
+        return codex_bridge.sidecar_tty_map().get(thread_id) == record
     for process in codex_bridge.process_rows():
         if process.get("pid") != pid or Path(process.get("tty", "")).name != Path(tty).name:
             continue

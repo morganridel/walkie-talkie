@@ -141,6 +141,8 @@ enum SpawnFolderMenu {
         var bound: Bool = false
         /// The session is working right now — a ⏳ in front of its name.
         var busy: Bool = false
+        var client: NewChatClient? = nil
+        var isOption: Bool = false
     }
 
     /// **The rows, in the order they are drawn**: the pinned half first, then
@@ -290,6 +292,24 @@ enum SpawnFolderMenu {
     /// top edge is the one that has to stay still.
     private static var anchor: NSPoint = .zero
     private static var chosen: ((Choice) -> Void)?
+    private static var selectedClient: NewChatClient = .background
+    private static var selectedDirectory = NewChatFolder.path
+    private static var boundDirectory: String?
+
+    private static var options: [Choice] {
+        var result: [Choice] = [
+            .init(name: "\(selectedClient == .background ? "✓ " : "")Codex in background", path: "",
+                  client: .background, isOption: true),
+            .init(name: "\(selectedClient == .cli ? "✓ " : "")Codex CLI", path: "",
+                  client: .cli, isOption: true),
+            .init(name: "\(selectedDirectory == NewChatFolder.path ? "✓ " : "")Default · \((NewChatFolder.path as NSString).lastPathComponent)",
+                  path: NewChatFolder.path, isOption: true)]
+        if let directory = boundDirectory, directory != NewChatFolder.path {
+            result.append(.init(name: "\(selectedDirectory == directory ? "✓ " : "")Bound folder · \((directory as NSString).lastPathComponent)",
+                                path: directory, isOption: true))
+        }
+        return result
+    }
     /// The hand on the menu, which suspends the fade — see `solidSeconds`.
     private static var hovered = false
     /// Whether the solid period has run out; the fade an exit triggers only
@@ -320,12 +340,18 @@ enum SpawnFolderMenu {
     ///
     /// `bound` is the tty the relay is pointed at now, for the tick in the
     /// *Active Terminals* submenu.
-    static func show(at point: CGPoint, bound: String? = nil, pick: @escaping (Choice) -> Void) {
+    static func show(at point: CGPoint, bound: String? = nil,
+                     directory: String = NewChatFolder.path, client: NewChatClient = .background,
+                     boundDirectory: String? = nil,
+                     pick: @escaping (Choice) -> Void) {
         guard Thread.isMainThread else {
-            DispatchQueue.main.async { show(at: point, bound: bound, pick: pick) }
+            DispatchQueue.main.async { show(at: point, bound: bound, directory: directory, client: client, boundDirectory: boundDirectory, pick: pick) }
             return
         }
         hide()
+        selectedDirectory = directory
+        self.boundDirectory = boundDirectory
+        selectedClient = client
         // **Ask for a fresh ranking on the way past.** One `stat`, and on the
         // one day in a hundred it says the file is stale, a detached process
         // this app never waits on. See `RecentProjects.refreshIfStale`.
@@ -334,7 +360,6 @@ enum SpawnFolderMenu {
         boundTTY = bound
         allSessions = lastSessions
         regroup()
-        guard !rendered.pinned.isEmpty || !rendered.recent.isEmpty else { return }
         chosen = pick
 
         let size = measure()
@@ -556,7 +581,8 @@ enum SpawnFolderMenu {
                    + sessionIndent + checkGutter + iconSize + iconGap - starGap - starSize }
             .max() ?? 0
         let widest = min(maxNameWidth, max(folderWidth, sessionWidth))
-        let headerWidth = (header as NSString).size(withAttributes: [.font: headerFont]).width
+        let headerWidth = max((header as NSString).size(withAttributes: [.font: headerFont]).width,
+            options.map { ($0.name as NSString).size(withAttributes: [.font: rowFont]).width }.max() ?? 0)
         // **Measured for its longest label**, so the answer arriving
         // (`fillActive`) rewrites the row without resizing the panel under the
         // hand. Its chevron sits in the star column.
@@ -570,7 +596,7 @@ enum SpawnFolderMenu {
         let divider = (rendered.pinned.isEmpty || rendered.recent.isEmpty) ? 0 : separatorHeight
         // *Active Terminals* and the line under it.
         let top = rowHeight + separatorHeight
-        let height = 2 * pad + top + headerHeight + CGFloat(all.count) * rowHeight + divider
+        let height = 2 * pad + top + headerHeight + CGFloat(all.count + options.count) * rowHeight + divider
             + CGFloat(sessions.count) * sessionHeight
         return NSSize(width: ceil(width), height: ceil(height))
     }
@@ -591,6 +617,14 @@ enum SpawnFolderMenu {
         }
         for choice in rendered.pinned.reversed() { y = add(choice, at: y, size: size, to: root) }
         y = addHeader(header, at: y, size: size, to: root)
+        for choice in options.reversed() {
+            let row = FolderRow(frame: NSRect(x: pad, y: y, width: size.width - 2 * pad,
+                                             height: rowHeight), choice: choice, font: rowFont)
+            row.onClick = { take($0) }
+            row.toolTip = choice.path.isEmpty ? choice.name : choice.path
+            root.addSubview(row)
+            y += rowHeight
+        }
         y = addSeparator(at: y, size: size, to: root)
         // **First, always** — with nothing behind it, dimmed rather than hidden
         // (see `ActiveTerminals.emptyLabel`). `evals/test_active_terminals.py`
@@ -968,7 +1002,7 @@ final class FolderRow: NSView {
         self.font = font
         super.init(frame: frame)
         // A terminal row has nothing to pin — it is not a folder.
-        guard choice.tty == nil else { return }
+        guard choice.tty == nil, !choice.isOption else { return }
         let box = NSRect(x: frame.width - SpawnFolderMenu.rowInset - SpawnFolderMenu.starSize,
                          y: (frame.height - SpawnFolderMenu.starSize) / 2,
                          width: SpawnFolderMenu.starSize, height: SpawnFolderMenu.starSize)
@@ -1015,7 +1049,7 @@ final class FolderRow: NSView {
         style.lineBreakMode = .byTruncatingTail
         // A folder row says *a click here opens a new session* with the ✨ in
         // front of its name; a session row says *working* with a ⏳.
-        let name = choice.tty == nil
+        let name = choice.isOption ? choice.name : choice.tty == nil
             ? (enabled ? SpawnFolderMenu.sparkle : "") + choice.name
             : SpawnFolderMenu.sessionText(choice)
         let text = NSAttributedString(string: name,
@@ -1023,7 +1057,7 @@ final class FolderRow: NSView {
                                                    .paragraphStyle: style])
         let size = text.size()
         let width = bounds.width - x - SpawnFolderMenu.rowInset
-            - (choice.tty == nil ? SpawnFolderMenu.starSize : 0)
+            - (choice.tty == nil && !choice.isOption ? SpawnFolderMenu.starSize : 0)
         text.draw(with: NSRect(x: x, y: (bounds.height - size.height) / 2,
                                width: width, height: size.height),
                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])

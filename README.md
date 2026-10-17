@@ -6,8 +6,11 @@ then assemble words, screenshots, selected text, and browser picks into a prompt
 Prompts are held for review before delivery. The app also has a quick-answer
 panel for spoken questions.
 
-This fork adapts the upstream project for Codex CLI and Codex chats. Upstream:
-[walkie-talkie](https://github.com/victorrentea/walkie-talkie).
+This is Morgan's Codex-focused adaptation of [Victor Rentea's upstream
+Walkie Talkie project](https://github.com/victorrentea/walkie-talkie). It keeps
+the original project's voice-and-context companion idea and credits Victor as
+the upstream author; the Codex integrations, workflows, and other fork-specific
+changes are maintained here.
 
 ## Requirements
 
@@ -41,7 +44,7 @@ Command Line Tools omit XCTest, `tools/swift-build.sh test` downloads the matchi
 open-source XCTest package into the same user cache and runs the XCTest suite.
 The debug application build succeeds with the cached Swift 6.2.3 toolchain and
 compiler workaround; system Command Line Tools remain unchanged. The full Swift
-suite executes 330 tests with 2 opt-in integration skips and no failures (328 passed). The release bundle builds, installs, launches, and loads
+suite executes 354 tests with 2 opt-in integration skips and no failures (352 passed). The release bundle builds, installs, launches, and loads
 the local model successfully. The installed helper discovers the native Codex CLI.
 The local signing certificate is unavailable, so macOS may ask for permissions
 again after a rebuild. Desktop text, image input, and same-turn steering passed in a disposable chat.
@@ -95,10 +98,13 @@ stages. Source links survived resize and queued-reply restoration after cancel.
 These are observations from individual runs, not performance guarantees.
 
 The installed `walkie-reply` helper supports text and image callbacks tied to
-the exact Codex chat. It stages images in the app cache before sending, avoiding
-blocked native reads from protected project folders. Images are copied for the
-bubble before staging is removed. Timeouts with an unknown outcome are not
-automatically retried; their staging directory is retained for a late copy.
+the exact Codex chat. It uses a private temporary file inbox with authenticated
+delivery receipts, so normal Codex commands need no localhost/network approval.
+Images are staged beside the request and copied for the bubble before staging
+is removed. Replies remain hidden when their sending CLI tab is in front.
+Timeouts with an unknown outcome are not automatically retried; their staging
+directory is retained for a late copy. Older app versions without an inbox use
+the original localhost transport.
 
 Quick answers default to `gpt-6-luna` with low reasoning effort for latency.
 This changes the model from upstream and does not promise identical answer
@@ -114,10 +120,11 @@ to pick it. The extension also pauses playing browser media while dictating.
 
 ## First use
 
-1. Press **⌃⇧⌘B from any app** for the project/chat switcher (also available
-   as **Bind Codex chat…** in the menu). Choose a project, then a chat.
-   Once bound to desktop, ⌃⌘B opens it too; in Terminal, ⌃⌘B binds the active CLI tab directly.
-   Confirm the selected chat in the target row before dictating.
+1. Open **Find Codex chat…** for quick access to recent chats, ordered by
+   activity and labeled with their folder. Use the keyboard to select a chat;
+   **Return** binds it and closes the picker. **⌘Return** opens it in the
+   configured destination (Desktop by default). The selected row shows only
+   the latest prompt and answer.
 2. Start a prompt with **⌘⌃D** or from the menu. Speak, optionally capture a
    screenshot or select context, then press **⌘⌃D again to stop**. Review the prompt and attachments;
    send or cancel it in the held-prompt panel.
@@ -139,21 +146,48 @@ For local English recognition, choose **Engine → Local language → English**;
 Automatic remains the default. This selection applies to captions and the
 final transcript without reloading the model.
 
-The [daily workflows](docs/CODEX_TEST_GUIDE.md#daily-workflows) compare continuing a chat, editing a draft with F5, and starting a new CLI or desktop chat. The [keyboard and mouse guide](docs/GESTURES.md) covers trackpad use, the
-optional one-time Options+ mappings, and Wheel mode. The app's menu lists current gestures and actions. Use **Disconnect** to clear a
-binding. **Rebind to…** offers recent destinations and searches Codex session
-history. New Codex chats can be launched through the Codex CLI from **Prompt to
-new**. Without a folder pick, they use **`~/workspace`**. Change the saved
-default through **New chat folder → Choose folder…** in the menu, or select
-**Use ~/workspace** to reset it. A folder picked for one recording overrides
-the default for that take. The saved setting wins over the legacy
-`WT_PROJECT_ROOT` launch-environment fallback. Codex desktop text, images, and steering have passed disposable-chat
-tests; verify the selected target before sending work prompts.
+The [daily workflows](docs/CODEX_TEST_GUIDE.md#daily-workflows) cover bound
+delivery, new background chats, and the folder based history explorer. The
+[keyboard and mouse guide](docs/GESTURES.md) covers trackpad use, the optional
+one-time Options+ mappings, and Wheel mode. The app's menu shows keyboard
+shortcuts beside each action; mouse-only actions have hover hints.
+
+**⌃⌘D** continues the currently bound chat. **Prompt to new / ⌃⌘N** records
+for a new chat in the bound chat's full working folder, or the saved default
+when unbound. Press **⌃⌘N again while recording** to switch to the saved default
+and choose another folder. Review and send the prompt to create the chat; it is
+submitted in the background and does not open a terminal or change focus.
+Submitted work runs through the shared Codex app-server and can continue after
+Walkie quits. Approval requests and questions remain available when Walkie
+reopens; see the [workflow guide](docs/CODEX_TEST_GUIDE.md#daily-workflows) and
+[parity matrix](docs/CODEX_PARITY.md) for current evidence and limits.
+
+**Find Codex chat…** opens as a keyboard quick-access picker. It immediately
+shows recent chats in activity order with a folder label; typing searches chat
+titles and folder paths, and an optional folder filter narrows prompt and answer
+search. The cached list appears immediately while SQLite reads recent metadata
+and the latest prompt/answer asynchronously. The selected chat shows only its
+latest prompt and answer. **Return**
+binds the selected chat and dismisses the picker. **⌘Return** opens it in the
+default destination, Desktop; the **Open Chats in Terminal** preference changes
+that destination to CLI. Browsing does not change D's binding. Desktop opens
+immediately: when another client holds the chat, Desktop shows saved history in
+its read-only conflict view. Walkie does not release or interrupt that client.
+CLI attachment and sending retain their ownership checks. Archived chats are hidden by default, and guardian
+reviews are excluded. Approval requests and questions are available in a
+secondary keyboard mode. The cursor shows bound-chat activity and the total
+running count, then briefly marks completed work with a checkmark. There are no
+unread markers or completion popups.
+
+The saved default is **`~/workspace`**; change it through **New chat folder →
+Choose folder…**, or select **Use ~/workspace** to reset it. The saved setting
+wins over the legacy `WT_PROJECT_ROOT` launch-environment fallback.
 
 The packaged app uses the generic local bundle identity `local.walkie-talkie`.
 On a fresh profile, Local Whisper is the default engine; saved preferences or
-`WT_SOURCE` can select another engine. Microphone choices are discovered from
-the current system inputs, with automatic selection as the default; there is no
+`WT_SOURCE` can select another engine. The Mic menu lists all connected input devices by their macOS names. Automatic
+follows the macOS default input; explicit choices survive USB reconnects. A
+disconnected choice falls back to the current default until it returns. There is no
 machine-specific microphone exclusion in this fork.
 
 Transcribed recordings are kept locally as WAV plus transcript under
@@ -177,9 +211,15 @@ read-only `/target`, `/engine`, and `/test/state` routes. Restart the installed
 app only after a build has completed; `./relay-restart.sh --build` performs the
 project's guarded build-and-relaunch flow.
 
-The current Python suite has 77 passing tests. The Swift suite has 328 passing
-tests and 2 opt-in integration skips (330 executed, no failures); those opt-in
+The current Python suite has 140 passing tests. The Swift suite has 352 passing
+tests and 2 opt-in integration skips (354 executed, no failures); those opt-in
 checks also passed separately in a disposable native CLI PTY. The finish helper verifies the exact session and closes only a window containing
 that single tab; a window with sibling tabs is refused before signaling Codex. The checks in the guide distinguish route or
 protocol evidence from packaged-app and UI evidence. See the parity matrix for
 the current status.
+
+Recent chat metadata is read from the local Codex history database. The picker
+uses its cached list immediately and reads recent metadata and the latest
+prompt/answer asynchronously; it does not scan running processes or test chat
+ownership while listing. Ownership is checked only when opening a chat or
+sending a prompt.

@@ -39,6 +39,14 @@ import uuid
 
 sys.dont_write_bytecode = True
 
+try:  # Package import in unit tests; direct sibling import in the bundled helper.
+    from . import codex_catalog
+except ImportError:
+    import codex_catalog
+if __name__ == "__main__":
+    # Lazy sibling modules must share this module's exception classes/state.
+    sys.modules.setdefault("codex_bridge", sys.modules[__name__])
+
 
 APP_CODEX = Path("/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex")
 CODEX_APP = Path("/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex")
@@ -649,6 +657,8 @@ def thread_row(raw, *, live):
         "busy": status == "active" if live else None,
         "live": live,
         "source": source_name(raw.get("source")),
+        "threadSource": raw.get("threadSource", raw.get("thread_source")),
+        "archived": codex_catalog.thread_archived(raw),
         "projectId": raw.get("projectId") if "projectId" in raw else raw.get("project_id"),
         "createdAt": raw.get("createdAt") if "createdAt" in raw else raw.get("created_at"),
         "updatedAt": raw.get("updatedAt") if "updatedAt" in raw else raw.get("updated_at"),
@@ -724,12 +734,37 @@ def sidecar_tty_map():
         process = processes.get(pid)
         if process is None or not UUID_RE.fullmatch(thread_id):
             continue
-        if not verified_codex_resume_process(process, tty=tty, thread_id=thread_id):
+        if record.get("hostPID"):
+            host = {"hostPID": record["hostPID"], "tty": tty}
+            if (not verified_terminal_host(host, processes)
+                    or process.get("ppid") != record["hostPID"]
+                    or not verified_codex_resume_process(process, tty=record.get("childTTY", ""), thread_id=thread_id)):
+                continue
+        elif not verified_codex_resume_process(process, tty=tty, thread_id=thread_id):
             continue
         result[thread_id] = {
             "tty": tty, "pid": pid, "sourceResolution": "sidecar",
+            **({"hostPID": record["hostPID"], "childTTY": record["childTTY"]} if record.get("hostPID") else {}),
         }
     return result
+
+
+def verified_terminal_host(record, processes):
+    """An exact Walkie launcher process on the original Terminal TTY."""
+    try:
+        process = processes[int(record["hostPID"])]
+        # ps flattens argv without quoting paths containing spaces. Match the
+        # complete known script path and immediate flag before parsing the rest.
+        executable, arguments = process["command"].split(None, 1)
+        launcher = str(Path(__file__).resolve().parent / "walkie-codex")
+        prefix = launcher + " --managed"
+        quoted_prefix = shlex.quote(launcher) + " --managed"
+        return (Path(process["tty"]).name == Path(validated_tty(record["tty"])).name
+                and Path(executable).name in {"python3", "Python", "python3.9"}
+                and any(arguments == p or arguments.startswith(p + " ")
+                        for p in (prefix, quoted_prefix)))
+    except (KeyError, ValueError, TypeError, BridgeError):
+        return False
 
 
 def process_rows():
@@ -873,43 +908,124 @@ def enrich_desktop_owners(rows, *, budget=1.5):
 
 
 def list_threads(args):
+    include_archived = bool(getattr(args, "include_archived", False))
+    limit = max(1, min(int(getattr(args, "limit", 100)), 1000))
+    cursor = getattr(args, "cursor", None)
+    # SQLite fallback pages use offset cursors. Keep these on the same source
+    # even if the shared daemon becomes reachable between page requests.
+    sqlite_cursor = isinstance(cursor, str) and cursor.startswith("offset:")
+    if include_archived and cursor and not sqlite_cursor:
+        cursor_state = _decode_archive_cursor(cursor)
+    else:
+        cursor_state = {"active": cursor,
+                        "archived": None, "pending": []}
     try:
+        if sqlite_cursor:
+            raise BridgeError("continuing SQLite catalog page", code="shared_daemon_unavailable")
         with RpcClient() as client:
-            params = {
-                "limit": args.limit,
-                "sortKey": "recency_at",
-                "sortDirection": "desc",
-                "sourceKinds": ALL_SOURCE_KINDS,
-                "useStateDbOnly": True,
-            }
-            if args.cursor:
-                params["cursor"] = args.cursor
-            if args.cwd:
-                params["cwd"] = str(Path(args.cwd).expanduser().resolve())
-            if args.query:
-                params["searchTerm"] = args.query
-            result = client.request("thread/list", params)
-            # A daemon record alone is saved metadata. A row becomes live only
-            # after an exact CLI process/TTY or desktop-window owner is proven.
-            rows = [thread_row(raw, live=False) for raw in result.get("data", [])]
-            if args.project:
-                rows = [row for row in rows if row.get("projectId") == args.project]
+            if include_archived:
+                raw_rows, next_cursor = _combined_archive_page(
+                    client, args, cursor_state, limit)
+                backwards_cursor = None
+            else:
+                result = _native_list_page(client, args, limit,
+                                           cursor=cursor, archived=False)
+                raw_rows = result.get("data", [])
+                next_cursor = result.get("nextCursor")
+                backwards_cursor = result.get("backwardsCursor")
+            # Filter from raw metadata so tagged guardian source variants are
+            # removed before thread_row condenses their source field.
+            rows = []
+            for raw in raw_rows:
+                if codex_catalog.guardian_review(raw):
+                    continue
+                row = thread_row(raw, live=False)
+                if getattr(args, "project", None) and row.get("projectId") != args.project:
+                    continue
+                rows.append(row)
             rows = add_ttys(rows)
+            enrich_background_owners(rows)
             enrich_desktop_owners([row for row in rows if not row["live"]])
-            if args.live_only:
+            if getattr(args, "live_only", False):
                 rows = [row for row in rows if row["live"]]
-            return {"threads": rows, "nextCursor": result.get("nextCursor"),
-                    "backwardsCursor": result.get("backwardsCursor"),
+            return {"threads": rows, "nextCursor": next_cursor,
+                    "backwardsCursor": backwards_cursor,
                     "live": any(row["live"] for row in rows)}
     except BridgeError as error:
         if error.code != "shared_daemon_unavailable":
             raise
-    rows = enrich_desktop_owners(add_ttys(db_threads(
-        limit=args.limit, cwd=args.cwd, project=args.project, query=args.query)))
-    if args.live_only:
+    result = codex_catalog.sqlite_threads(
+        db_path("state_5.sqlite"), limit=limit, cursor=getattr(args, "cursor", None),
+        cwd=getattr(args, "cwd", None), project=getattr(args, "project", None),
+        query=getattr(args, "query", None), include_archived=include_archived)
+    rows = [dict(row, status=row.get("status", "unknown"), busy=None,
+                 live=False, tty=None, ttyOwner=False) for row in result["threads"]]
+    rows = add_ttys(rows)
+    enrich_background_owners(rows)
+    enrich_desktop_owners([row for row in rows if not row["live"]])
+    if getattr(args, "live_only", False):
         rows = [row for row in rows if row["live"]]
-    return {"threads": rows, "nextCursor": None,
+    return {"threads": rows, "nextCursor": result["nextCursor"],
             "backwardsCursor": None, "live": any(row["live"] for row in rows)}
+
+
+def _native_list_page(client, args, limit, *, cursor=None, archived=False):
+    params = {"limit": limit, "sortKey": "recency_at", "sortDirection": "desc",
+              "sourceKinds": ALL_SOURCE_KINDS, "useStateDbOnly": True,
+              "archived": archived}
+    if cursor:
+        params["cursor"] = cursor
+    if getattr(args, "cwd", None):
+        params["cwd"] = os.path.normpath(os.path.expanduser(args.cwd))
+    if getattr(args, "query", None):
+        params["searchTerm"] = args.query
+    return client.request("thread/list", params)
+
+
+def _decode_archive_cursor(cursor):
+    if not cursor.startswith("catalog-v1:"):
+        raise BridgeError("invalid archived catalog cursor", code="invalid_cursor")
+    try:
+        encoded = cursor.split(":", 1)[1].encode()
+        payload = base64.urlsafe_b64decode(encoded + b"=" * (-len(encoded) % 4))
+        state = json.loads(payload)
+        if (not isinstance(state, dict) or state.get("phase") not in ("active", "archived")
+                or (state.get("cursor") is not None and not isinstance(state.get("cursor"), str))):
+            raise ValueError
+        return state
+    except (ValueError, TypeError, json.JSONDecodeError):
+        raise BridgeError("invalid archived catalog cursor", code="invalid_cursor")
+
+
+def _encode_archive_cursor(state):
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(state, separators=(",", ":")).encode()).decode().rstrip("=")
+    return "catalog-v1:" + encoded
+
+
+def _combined_archive_page(client, args, state, limit):
+    # Archive-inclusive browsing uses two disjoint native streams. Finish the
+    # active stream before moving to archived pages; the cursor stores only the
+    # native opaque cursor and phase, never chat titles or message previews.
+    phase = state.get("phase", "active")
+    native_cursor = state.get("cursor")
+    archived = phase == "archived"
+    result = _native_list_page(client, args, limit, cursor=native_cursor, archived=archived)
+    raw_rows, seen = [], set()
+    for raw in result.get("data", []):
+        thread_id = raw.get("id")
+        if not thread_id or thread_id in seen or codex_catalog.guardian_review(raw):
+            continue
+        seen.add(thread_id)
+        raw_rows.append({**raw, "archived": archived})
+    next_native = result.get("nextCursor")
+    if next_native:
+        next_cursor = _encode_archive_cursor({"phase": phase, "cursor": next_native})
+    elif phase == "active":
+        next_cursor = _encode_archive_cursor({"phase": "archived", "cursor": None})
+    else:
+        next_cursor = None
+    return raw_rows, next_cursor
 
 
 def one_thread(thread_id, *, require_owner_state=False):
@@ -917,15 +1033,24 @@ def one_thread(thread_id, *, require_owner_state=False):
     try:
         with RpcClient() as client:
             result = client.request("thread/read", {"threadId": thread_id, "includeTurns": False})
+            from codex_catalog import guardian_review
+            if guardian_review(result.get("thread") or {}):
+                raise BridgeError("guardian review chats are hidden", code="thread_hidden")
             row = add_ttys([thread_row(result["thread"], live=False)])[0]
     except BridgeError as error:
         if error.code != "shared_daemon_unavailable":
             raise
     if row is None:
-        rows = db_threads(thread_id=thread_id, limit=1)
+        raw = codex_catalog.sqlite_thread_record(db_path("state_5.sqlite"), thread_id)
+        if raw is not None and codex_catalog.guardian_review(raw):
+            raise BridgeError("guardian review chats are hidden", code="thread_hidden")
+        rows = codex_catalog.sqlite_threads(
+            db_path("state_5.sqlite"), thread_id=thread_id, limit=1,
+            include_archived=True)["threads"]
         if not rows:
             raise BridgeError("Codex thread not found", code="thread_not_found")
-        row = add_ttys(rows)[0]
+        row = add_ttys([dict(rows[0], live=False, busy=None, tty=None, ttyOwner=False)])[0]
+    enrich_background_owners([row])
     if row["live"]:
         if require_owner_state:
             row["ownerState"] = "live"
@@ -963,6 +1088,173 @@ def one_thread(thread_id, *, require_owner_state=False):
     return row
 
 
+def enrich_background_owners(rows):
+    """Only a live authenticated subscriber may assert headless ownership."""
+    from codex_background import broker_request
+    try:
+        snapshot = broker_request("status", timeout=2)
+    except (BridgeError, OSError):
+        return rows
+    tracked = {value["id"]: value for value in (snapshot or {}).get("threads", [])
+               if value.get("background") and value.get("subscribed")}
+    for row in rows:
+        owner = tracked.get(row.get("id"))
+        if owner:
+            row.update(live=True, background=True, tty="codex:" + row["id"], ttyOwner=False,
+                       ownerState="live", state=owner.get("state"), busy=owner.get("busy"),
+                       status=owner.get("status", "unknown"), turnId=owner.get("turnId"))
+    return rows
+
+
+def background_create(args):
+    from codex_background import broker_request
+    inputs = make_input(read_text_file(args.text_file), args.image)
+    return broker_request("create", {"cwd": args.cwd, "input": inputs, "model": args.model}, start=True)
+
+
+def background_status(args):
+    from codex_background import broker_request, offline_status
+    result = broker_request("status", {"since": args.since}, timeout=3) or offline_status()
+    bound = getattr(args, "thread", None)
+    if bound and not any(value.get("id") == bound for value in result["threads"]):
+        # Read-only status does not start a daemon/subscriber or claim ownership.
+        active = active_turn_id(bound)
+        result["threads"].append({"id": bound, "threadId": bound,
+                                  "state": "active" if active else "idle",
+                                  "busy": bool(active), "turnId": active, "background": False})
+    return result
+
+
+def background_respond(args):
+    from codex_background import broker_request
+    try:
+        response = json.loads(Path(args.response_file).read_text())
+    except (OSError, ValueError) as error:
+        raise BridgeError("could not read Codex response JSON", code="invalid_response") from error
+    result = broker_request("respond", {"requestId": args.request_id, "response": response})
+    if result is None:
+        raise BridgeError("background worker is unavailable; this request cannot be replayed",
+                          code="background_unavailable")
+    return result
+
+
+def prepare_open(args):
+    from codex_background import broker_request
+    desktop_snapshot = None
+    if args.destination == "desktop":
+        # A stored, fully unloaded rollout needs no writer handoff. Prove the
+        # exact ID and its native status first; this avoids waiting through the
+        # Desktop router's negative peer-discovery window for old history.
+        try:
+            with RpcClient() as client:
+                native = client.request("thread/read", {
+                    "threadId": args.id, "includeTurns": False,
+                })
+        except BridgeError:
+            native = None
+        native_thread = native.get("thread") if isinstance(native, dict) else None
+        if native_thread is not None:
+            if not isinstance(native_thread, dict) or native_thread.get("id") != args.id:
+                raise BridgeError("Codex returned a different thread during open preflight",
+                                  code="thread_identity_mismatch")
+            from codex_catalog import guardian_review
+            if guardian_review(native_thread):
+                raise BridgeError("guardian review chats are hidden", code="thread_hidden")
+            native_status = native_thread.get("status") or {}
+            native_status = (native_status.get("type") if isinstance(native_status, dict)
+                             else native_status)
+            desktop_snapshot = broker_request("status", timeout=3)
+            if (isinstance(desktop_snapshot, dict) and desktop_snapshot.get("ok") is True
+                    and isinstance(desktop_snapshot.get("threads"), list)
+                    and isinstance(desktop_snapshot.get("requests"), list)
+                    and not desktop_snapshot.get("problem")):
+                pending = any(
+                    isinstance(row, dict) and row.get("threadId") == args.id
+                    for row in desktop_snapshot["requests"]
+                )
+                active_background = any(
+                    isinstance(row, dict) and row.get("id") == args.id
+                    and row.get("background")
+                    and (row.get("busy") is True
+                         or row.get("state") in {"active", "waiting", "waitingOnApproval",
+                                                  "waitingOnUserInput"})
+                    for row in desktop_snapshot["threads"]
+                )
+                if pending or active_background:
+                    raise BridgeError("this chat is working; opening it could interrupt the turn",
+                                      code="thread_busy")
+            if native_status == "notLoaded" and active_turn_id(args.id) is None:
+                snapshot = desktop_snapshot
+                if snapshot is None:
+                    # A missing broker is fine only if its persisted state does
+                    # not report an interrupted or otherwise unknown writer.
+                    from codex_background import offline_status
+                    snapshot = offline_status()
+                safe_snapshot = (
+                    isinstance(snapshot, dict) and snapshot.get("ok") is True
+                    and isinstance(snapshot.get("threads"), list)
+                    and isinstance(snapshot.get("requests"), list)
+                    and not snapshot.get("problem")
+                )
+                if safe_snapshot:
+                    safe_snapshot = not any(
+                        isinstance(row, dict) and row.get("threadId") == args.id
+                        for row in snapshot["requests"]
+                    )
+                if safe_snapshot:
+                    exact_rows = [row for row in snapshot["threads"]
+                                  if isinstance(row, dict) and row.get("id") == args.id]
+                    # Any tracked writer must be known idle and unsubscribed
+                    # before taking the no-owner-probe path. Subscribed rows go
+                    # through the broker's normal handoff and loaded check.
+                    for row in exact_rows:
+                        if (row.get("busy") is not False
+                                or row.get("state") not in {"idle", "completed", "notLoaded"}
+                                or (row.get("background") and row.get("subscribed"))):
+                            safe_snapshot = False
+                            break
+                if safe_snapshot:
+                    row = thread_row(native_thread, live=False)
+                    return {"ok": True, "safe": True, "threadId": args.id,
+                            "destination": args.destination, "thread": row}
+
+        # Poll the native release grace without serializing more mutations or
+        # repeating Desktop owner discovery on every picker progress tick.
+        snapshot = desktop_snapshot or broker_request("status", timeout=3) or {}
+        remembered = next((row for row in snapshot.get("threads", [])
+                           if row.get("id") == args.id and row.get("background")), None)
+        if remembered and not remembered.get("subscribed"):
+            if (remembered.get("busy") or remembered.get("state") in {"active", "waiting"}
+                    or any(row.get("threadId") == args.id for row in snapshot.get("requests", []))
+                    or active_turn_id(args.id)):
+                raise BridgeError("this chat is working; opening it could interrupt the turn", code="thread_busy")
+            with RpcClient() as client:
+                cursor = None
+                while True:
+                    params = {"limit": 100}
+                    if cursor:
+                        params["cursor"] = cursor
+                    loaded = client.request("thread/loaded/list", params)
+                    if args.id in loaded.get("data", []):
+                        raise BridgeError(
+                            "Codex is releasing this chat for Desktop. This can take about a minute; an open CLI view can keep it loaded.",
+                            code="thread_release_pending")
+                    cursor = loaded.get("nextCursor")
+                    if not cursor:
+                        break
+    result = broker_request("prepare-open", {"threadId": args.id, "destination": args.destination})
+    if result is not None:
+        return result
+    row = one_thread(args.id, require_owner_state=True)
+    if args.destination == "cli" and row.get("live") and str(row.get("tty", "")).startswith("codex:"):
+        raise BridgeError("Codex Desktop owns this chat; open it in Desktop", code="desktop_thread_owned")
+    if args.destination == "desktop" and row.get("live") and str(row.get("tty", "")).startswith("codex:"):
+        return {"ok": True, "safe": True, "threadId": args.id, "destination": args.destination, "thread": row}
+    if row.get("busy") or active_turn_id(args.id):
+        raise BridgeError("this chat is working; opening it could interrupt the turn", code="thread_busy")
+    return {"ok": True, "safe": True, "threadId": args.id, "destination": args.destination, "thread": row}
+
+
 def make_input(text, images):
     value = [{"type": "text", "text": text}]
     for image in images:
@@ -971,6 +1263,91 @@ def make_input(text, images):
             raise BridgeError(f"image does not exist: {path}", code="image_not_found")
         value.append({"type": "localImage", "path": str(path)})
     return value
+
+
+def wait_for_desktop_history(thread, timeout=8):
+    """The start response precedes the asynchronous first rollout write."""
+    thread_id = thread["id"]
+    path = Path(thread.get("path") or "").resolve()
+    root = (codex_home() / "sessions").resolve()
+    if root not in path.parents or thread_id not in path.name:
+        raise BridgeError("Codex returned an incompatible history path", code="desktop_history_unavailable")
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            with path.open("rb") as stream:
+                first = json.loads(stream.readline(1024 * 1024))
+            if (isinstance(first, dict) and first.get("type") == "session_meta"
+                    and isinstance(first.get("payload"), dict) and first["payload"].get("id") == thread_id):
+                return
+        except (OSError, ValueError):
+            pass
+        if time.monotonic() >= deadline:
+            raise BridgeError("new chat history is not ready", code="desktop_history_unavailable")
+        time.sleep(0.05)
+
+
+def create_desktop(args):
+    """Create only an empty thread; send nothing until Desktop owns its ID."""
+    cwd = Path(args.cwd).expanduser().resolve()
+    if cwd == Path.home() / "workspace":
+        cwd.mkdir(parents=True, exist_ok=True)
+    if not cwd.is_dir():
+        raise BridgeError("new chat folder is unavailable", code="invalid_cwd")
+    if desktop_ipc_socket() is None:
+        raise BridgeError("Open Codex Desktop before creating a new chat",
+                          code="desktop_ipc_unavailable")
+    subprocess.run([str(find_codex()), "app-server", "daemon", "start"],
+                   stdout=subprocess.DEVNULL, check=True, timeout=15)
+    thread_id = None
+    try:
+        with RpcClient(timeout=15) as client:
+            result = client.request("thread/start", {
+                "cwd": str(cwd),
+            }, timeout=20)
+            thread = result.get("thread") or {}
+            thread_id = thread.get("id")
+            if not isinstance(thread_id, str) or UUID_RE.fullmatch(thread_id) is None:
+                raise BridgeError("Codex returned no valid new chat ID", code="protocol_error")
+            # Naming materializes the lazy empty rollout without adding a message
+            # or running a model. Opening it before this yields rollout_not_found.
+            title = getattr(args, "title", None) or "New chat"
+            client.request("thread/name/set", {"threadId": thread_id, "name": title}, timeout=10)
+            thread["name"] = title
+            # Unsubscribe retains the daemon's writer during its grace period.
+            # For this brand-new, message-free ID only, archive flushes and unloads
+            # that writer; unarchive restores storage without loading a new writer.
+            # Never perform this lifecycle on an existing or Desktop-owned chat.
+            client.request("thread/archive", {"threadId": thread_id}, timeout=10)
+            restored = client.request("thread/unarchive", {"threadId": thread_id}, timeout=10)
+            thread = restored.get("thread") or {}
+            if thread.get("id") != thread_id or (thread.get("status") or {}).get("type") != "notLoaded":
+                raise BridgeError("Codex could not release the new chat for Desktop",
+                                  code="desktop_handoff_failed", details={"threadId": thread_id})
+        wait_for_desktop_history(thread)
+        subprocess.run(["/usr/bin/open", "-g", "-b", "com.openai.codex",
+                        "codex://threads/" + thread_id + "?hostId=local"],
+                       check=True, timeout=10)
+        # Only read-only owner discovery repeats. Never retry creation or send.
+        for attempt in range(3):
+            try:
+                with DesktopIpcClient(timeout=12) as desktop:
+                    desktop.find_owner(thread_id)
+                row = thread_row(thread, live=True)
+                row.update({"cwd": str(cwd), "live": True, "ttyOwner": False, "status": "idle", "busy": False})
+                return {"ok": True, "thread": row}
+            except BridgeError as error:
+                if error.code != "desktop_thread_not_owned" or attempt == 2:
+                    raise
+                time.sleep(0.5)
+    except (BridgeError, subprocess.SubprocessError, OSError) as error:
+        if thread_id is None:
+            raise
+        raise BridgeError(
+            "Desktop did not confirm new chat " + thread_id
+            + "; no prompt was sent. Open that chat before continuing.",
+            code="desktop_handoff_failed", details={"threadId": thread_id, "reason": str(error)},
+        ) from error
 
 
 def read_text_file(path):
@@ -1139,14 +1516,30 @@ def send_desktop(args, inputs, cwd=None):
         action = "started"
     with DesktopIpcClient() as client:
         result, _ = client.follower_request(args.thread, method, params)
-    return {"ok": True, "threadId": args.thread,
+    return observe_delivery({"ok": True, "threadId": args.thread,
             "turnId": nested_turn_id(result), "action": action,
-            "transport": "desktop-ipc"}
+            "transport": "desktop-ipc"})
+
+
+def observe_delivery(result):
+    """Monitoring failure must never turn an accepted send into a resend."""
+    from codex_background import broker_request
+    if result.get("turnId") and os.environ.get("WALKIE_BACKGROUND_MONITOR", "1") != "0":
+        try:
+            broker_request("observe", {"threadId": result["threadId"], "turnId": result["turnId"]}, start=True)
+        except Exception:
+            result["monitoringUnavailable"] = True
+    return result
 
 
 def send_existing(args):
     text = read_text_file(args.text_file)
     inputs = make_input(text, args.image)
+    from codex_background import broker_request
+    owned = broker_request("owns", {"threadId": args.thread})
+    if owned and owned.get("owned"):
+        return broker_request("send", {"threadId": args.thread, "input": inputs,
+                              "model": args.model, "expectedTurnId": getattr(args, "expected_turn", None)})
     try:
         client = RpcClient()
     except BridgeError as error:
@@ -1183,9 +1576,9 @@ def send_existing(args):
                 "clientUserMessageId": str(uuid.uuid4()),
                 "input": inputs,
             })
-            return {"ok": True, "threadId": args.thread,
+            return observe_delivery({"ok": True, "threadId": args.thread,
                     "turnId": result.get("turnId"), "action": "steered",
-                    "transport": "app-server-websocket"}
+                    "transport": "app-server-websocket"})
         if status == "notLoaded":
             # A desktop window may own this same stored thread while the shared
             # daemon reports it as unloaded. Prefer the app's owner-routed IPC;
@@ -1196,10 +1589,13 @@ def send_existing(args):
             except BridgeError as error:
                 if error.code not in ("desktop_ipc_unavailable", "desktop_thread_not_owned"):
                     raise
-            raise BridgeError(
-                "thread is not owned by the shared daemon or a desktop window; resume it explicitly",
-                code="thread_not_owned",
-            )
+                if error.code == "desktop_ipc_unavailable":
+                    raise BridgeError("Desktop ownership could not be checked; this chat was not resumed",
+                                      code="thread_ownership_unknown") from error
+            # The broker performs a fresh conclusive owner check before resuming
+            # this exact stored ID. Unknown ownership still refuses the send.
+            return broker_request("send", {"threadId": args.thread, "input": inputs,
+                                  "model": args.model, "expectedTurnId": getattr(args, "expected_turn", None)}, start=True)
         params = {
             "threadId": args.thread,
             "clientUserMessageId": str(uuid.uuid4()),
@@ -1209,9 +1605,9 @@ def send_existing(args):
         if args.model:
             params["model"] = args.model
         result = client.request("turn/start", params)
-        return {"ok": True, "threadId": args.thread,
+        return observe_delivery({"ok": True, "threadId": args.thread,
                 "turnId": (result.get("turn") or {}).get("id"), "action": "started",
-                "transport": "app-server-websocket"}
+                "transport": "app-server-websocket"})
 
 
 def project_rows():
@@ -1367,7 +1763,68 @@ def search_threads(args):
         state.close()
 
 
+def catalog_search(args):
+    result = codex_catalog.search_history(
+        db_path("state_5.sqlite"), db_path("thread_history_1.sqlite"),
+        query=args.query, cwd=args.cwd, limit=args.limit, cursor=args.cursor,
+        include_archived=getattr(args, "include_archived", False))
+    return {"threads": result["threads"], "nextCursor": result["nextCursor"],
+            "scanned": result["scanned"]}
+
+
+def recent_threads(args):
+    """Fast local metadata picker page; deliberately performs no owner probes."""
+    result = codex_catalog.sqlite_recent_threads(
+        db_path("state_5.sqlite"), limit=args.limit, cursor=args.cursor,
+        cwd=args.cwd, include_archived=args.include_archived)
+    rows = []
+    for raw in result["threads"]:
+        row = thread_row(raw, live=False)
+        if row["id"]:
+            rows.append(row)
+    return {"threads": rows, "nextCursor": result["nextCursor"],
+            "live": False}
+
+
+def latest_thread_preview(args):
+    """Read only the newest visible prompt/answer from local history storage."""
+    raw_thread = codex_catalog.sqlite_thread_record(
+        db_path("state_5.sqlite"), args.thread)
+    if raw_thread is None:
+        raise BridgeError("Codex thread not found", code="thread_not_found")
+    _guard_history_preview(args.thread, raw_thread)
+    turn = codex_catalog.sqlite_latest_visible_turn(
+        db_path("thread_history_1.sqlite"), args.thread)
+    return {"threadId": args.thread,
+            "turns": [turn] if turn else [],
+            "nextCursor": None, "backwardsCursor": None, "live": False}
+
+
+def _guard_history_preview(thread_id, raw_thread):
+    try:
+        codex_catalog.guard_history_preview(thread_id, raw_thread)
+    except codex_catalog.CatalogError as error:
+        raise BridgeError(str(error), code="thread_hidden") from error
+
+
 def history_page(args):
+    raw_thread = None
+    try:
+        with RpcClient() as client:
+            metadata = client.request("thread/read", {
+                "threadId": args.thread, "includeTurns": False,
+            })
+            raw_thread = metadata.get("thread") or {}
+            _guard_history_preview(args.thread, raw_thread)
+    except BridgeError as error:
+        if error.code != "shared_daemon_unavailable":
+            raise
+    if raw_thread is None:
+        raw_thread = codex_catalog.sqlite_thread_record(
+            db_path("state_5.sqlite"), args.thread)
+        if raw_thread is None:
+            raise BridgeError("Codex thread not found", code="thread_not_found")
+        _guard_history_preview(args.thread, raw_thread)
     try:
         with RpcClient() as client:
             params = {"threadId": args.thread, "limit": args.limit,
@@ -1384,12 +1841,23 @@ def history_page(args):
     history = connect_readonly(db_path("thread_history_1.sqlite"))
     try:
         direction = "ASC" if args.direction == "asc" else "DESC"
+        try:
+            cursor = getattr(args, "cursor", None)
+            offset = int(cursor.removeprefix("offset:")) if cursor else 0
+            if offset < 0:
+                raise ValueError
+        except (AttributeError, TypeError, ValueError):
+            raise BridgeError("invalid history cursor", code="invalid_cursor")
+        limit = max(1, min(int(getattr(args, "limit", 50)), 1000))
         turns = []
-        for turn in history.execute(f"""
-            SELECT turn_id, status, error_json, started_at, completed_at, duration_ms
+        raw_turns = history.execute(f"""
+            SELECT turn_id, status, error_json, started_at, completed_at, duration_ms,
+                   rollout_ordinal
               FROM thread_turns WHERE thread_id = ?
-             ORDER BY rollout_ordinal {direction} LIMIT ?
-        """, (args.thread, args.limit)):
+             ORDER BY rollout_ordinal {direction} LIMIT ? OFFSET ?
+        """, (args.thread, limit + 1, offset)).fetchall()
+        has_more = len(raw_turns) > limit
+        for turn in raw_turns[:limit]:
             items = []
             for item in history.execute("""
                 SELECT item_json FROM thread_items
@@ -1403,7 +1871,8 @@ def history_page(args):
                           "error": json.loads(turn["error_json"]) if turn["error_json"] else None,
                           "startedAt": turn["started_at"], "completedAt": turn["completed_at"],
                           "durationMs": turn["duration_ms"], "items": items})
-        return {"threadId": args.thread, "turns": turns, "nextCursor": None,
+        next_cursor = f"offset:{offset + limit}" if has_more else None
+        return {"threadId": args.thread, "turns": turns, "nextCursor": next_cursor,
                 "backwardsCursor": None, "live": False}
     finally:
         history.close()
@@ -1553,6 +2022,7 @@ def build_parser():
     listed.add_argument("--project")
     listed.add_argument("--query")
     listed.add_argument("--live-only", action="store_true")
+    listed.add_argument("--include-archived", action="store_true")
 
     thread = commands.add_parser("thread")
     thread.add_argument("--id", required=True)
@@ -1565,6 +2035,28 @@ def build_parser():
     send.add_argument("--model")
     send.add_argument("--expected-turn")
 
+    desktop = commands.add_parser("create-desktop")
+    desktop.add_argument("--cwd", required=True)
+    desktop.add_argument("--title")
+
+    background = commands.add_parser("background-create")
+    background.add_argument("--cwd", required=True)
+    background.add_argument("--text-file", required=True)
+    background.add_argument("--image", action="append", default=[])
+    background.add_argument("--model")
+
+    background_status_parser = commands.add_parser("background-status")
+    background_status_parser.add_argument("--thread")
+    background_status_parser.add_argument("--since", type=float)
+
+    respond = commands.add_parser("background-respond")
+    respond.add_argument("--request-id", required=True)
+    respond.add_argument("--response-file", required=True)
+
+    opening = commands.add_parser("prepare-open")
+    opening.add_argument("--id", required=True)
+    opening.add_argument("--destination", choices=("desktop", "cli"), required=True)
+
     resolve = commands.add_parser("resolve")
     resolve.add_argument("--tty", required=True)
 
@@ -1574,6 +2066,22 @@ def build_parser():
     search.add_argument("--query", required=True)
     search.add_argument("--days", type=float, default=21)
     search.add_argument("--limit", type=int, default=25)
+
+    catalog = commands.add_parser("catalog-search")
+    catalog.add_argument("--cwd", required=True)
+    catalog.add_argument("--query", required=True)
+    catalog.add_argument("--limit", type=int, default=50)
+    catalog.add_argument("--cursor")
+    catalog.add_argument("--include-archived", action="store_true")
+
+    recent = commands.add_parser("recent")
+    recent.add_argument("--limit", type=int, default=100)
+    recent.add_argument("--cursor")
+    recent.add_argument("--cwd")
+    recent.add_argument("--include-archived", action="store_true")
+
+    latest = commands.add_parser("latest")
+    latest.add_argument("--thread", required=True)
 
     history = commands.add_parser("history")
     history.add_argument("--thread", required=True)
@@ -1607,12 +2115,28 @@ def main(argv=None):
         print_json(one_thread(args.id, require_owner_state=args.require_owner_state))
     elif args.command == "send":
         print_json(send_existing(args))
+    elif args.command == "create-desktop":
+        print_json(create_desktop(args))
+    elif args.command == "background-create":
+        print_json(background_create(args))
+    elif args.command == "background-status":
+        print_json(background_status(args))
+    elif args.command == "background-respond":
+        print_json(background_respond(args))
+    elif args.command == "prepare-open":
+        print_json(prepare_open(args))
     elif args.command == "resolve":
         print_json(resolve_tty(args.tty))
     elif args.command == "projects":
         print_json({"projects": project_rows()})
     elif args.command == "search":
         search_threads(args)
+    elif args.command == "catalog-search":
+        print_json(catalog_search(args))
+    elif args.command == "recent":
+        print_json(recent_threads(args))
+    elif args.command == "latest":
+        print_json(latest_thread_preview(args))
     elif args.command == "history":
         print_json(history_page(args))
     elif args.command == "watch-until-idle":

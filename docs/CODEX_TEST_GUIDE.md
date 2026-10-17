@@ -30,48 +30,36 @@ checks remain deferred.
 ## Daily workflows
 
 The destination can be an existing chat, the draft under your caret, or a new
-CLI chat. Binding chooses a chat; it does not choose an unsent draft inside it.
+Codex chat. Binding chooses where **⌃⌘D** sends the next prompt; new chats run
+in the background through the shared Codex app-server. Submitted work can
+continue after Walkie quits, and approval requests or questions remain
+available when it reopens. The steps below are learning workflows; use the
+evidence notes and [parity matrix](CODEX_PARITY.md) for current verification
+status and version-specific limits.
 
 | What you want | Workflow | Result |
 |---|---|---|
 | Ask a standalone quick question, without selecting a folder | While idle, press **⌃⌘A**, speak, then **⌃⌘I** to stop. Works in either mouse mode, without Fn. | Automatically answers in a bubble; no binding, folder choice or Return. A cancels if a recording/prompt or answer is already in progress; **⌃⌘Esc** is the dedicated cancel control. |
 | Continue an existing chat | Bind it with **⌃⌘B**. Press **⌃⌘D**, speak, press **⌃⌘D** again, review, then **Return**. | Sends a prompt to that exact chat. If it is already answering, it can steer the active turn. |
 | Add words to an existing unsent prompt | Click inside that prompt, press **⌃⌘I** (or F5), speak, then the same key again. Send using Codex when ready. | Inserts plain text at the caret without Return. Binding is not required; existing draft text remains editable. |
-| Dictate the first prompt of a new chat in the same project folder | Press **⌃⌘N**, click the **✨ folder row** for that project, speak, stop with **⌃⌘D**, review, then **Return**. | Opens a new Codex CLI chat in Terminal in the chosen folder. Choose the folder explicitly; the current binding does not automatically supply it. |
-| Dictate to a new chat outside that project | Use **⌃⌘N** and choose another offered folder, or a neutral folder you have pinned. Speak, stop with **⌃⌘D**, review, then **Return**. | Opens a separate CLI chat in that folder. Every CLI chat has a working directory. |
-| Use a new Codex desktop chat inside or outside a sidebar project | Create that chat in Codex in the desired project, or outside projects. Bind it with **⌃⌘B**, then use **⌃⌘D** for a submitted prompt or **F5** to edit its draft. | Uses a native desktop chat. Walkie Talkie's new-session action currently creates CLI chats. |
-| Return to an older chat within a project | Open the switcher with **⌃⇧⌘B**, choose its project folder, then choose the conversation. | Freshly checks that exact chat: an open owner binds; a conclusively closed chat can reopen in Terminal without repeating its old prompt. An unknown owner shows an error. |
+| Dictate a new chat in the current folder | Bind a Codex chat. Press **⌃⌘N**, speak, stop with **⌃⌘D**, review, then **Return**. | Sends the first prompt to a new background chat in the bound chat’s full working folder. The chat is created only when the reviewed prompt is sent, and sending does not open a terminal or change focus. |
+| Use the default folder or choose another | While recording the new prompt, press **⌃⌘N again**. The saved default becomes the destination; choose another folder in the folder picker if needed. | Folder choices belong to this recording and survive the review panel. |
+| Choose where chats open | In the Walkie menu, enable **Open Chats in Terminal** to make CLI the default open destination. It is off by default. | The quick-access picker opens chats in Desktop by default; this preference changes its open action to CLI. Background sending still leaves the current app in front. |
+| Continue the bound chat | Press **⌃⌘D**, speak, stop, review, and send. | D keeps using the current binding, including after browsing or opening another chat. |
+| Review previous chats | Open **Find Codex chat…**. The cached recent list appears immediately in activity order with each chat’s folder label. Use Up/Down to select; type to search chat titles and folder paths. An optional folder filter narrows prompt and answer search. | SQLite reads recent metadata and the latest prompt/answer asynchronously. The selected row shows only that prompt and answer. **Return** binds the chat and dismisses the picker. **⌘Return** opens it in the configured destination. Desktop opens immediately, including while another client is running the chat; its read-only conflict view shows saved history until writing becomes available. Browsing leaves the current binding unchanged. |
+| Review older chats or requests | Turn on **Include archived** for archived chats. Use the secondary keyboard mode to inspect approval requests and questions. | Guardian reviews are excluded. Full transcripts and older-message loading are not part of quick access. |
 
-**⌃⇧⌘B opens the switcher from any app, whether or not a chat is already
-bound.** Once bound to Codex desktop, **⌃⌘B** does too. Open the project
-switcher, type to search, use **↑/↓** and
-**Return**, then choose the chat. Go back to projects using the back control or
-**Escape**; Escape at the project list dismisses the switcher. You do not need
-to foreground Codex again. For the initial desktop binding, use ⌃⇧⌘B, or
-**Bind Codex chat…**. With a CLI binding, ⌃⌘B retains direct binding
-of the foreground Terminal tab; pressing it again on that same tab disconnects.
-Mouse binding continues to target the focused terminal.
+The cursor shows whether the bound chat is working and the total number of
+running chats. A brief checkmark marks a completed result. There are no unread
+markers or completion popups. Submitted work belongs to the shared app-server,
+so it can continue after Walkie quits; pending approvals and questions are
+available when Walkie reopens. This does not mean that every UI step has been
+visually exercised on every supported app version.
 
-Here, a switcher project means the chat's **recorded working folder**. It is
-not a promise of membership in a Codex desktop sidebar group. Choosing a folder
-for a new CLI chat does not automatically inherit the bound desktop chat's
-sidebar project. For an actual new projectless desktop chat, use Codex's normal
-new-chat flow and then bind it as above.
-
-The new-chat folder menu offers pinned/recent folders and their open chats.
-Click **✨ the folder** for a new chat; clicking an indented chat selects that
-existing conversation instead. Keep the pointer over the menu to stop its fade.
-If you choose nothing, the default is **`~/workspace`**, independent of the
-current binding. Change it in **Walkie Talkie menu → New chat folder → Choose
-folder…**; **Use ~/workspace** resets it. The selection is saved and applies to
-the next new-chat recording without a restart. An explicit folder pick for one
-recording still wins. The menu shows the full current default, and the prompt's
-destination label shows the folder for that take; check it before Send.
-`WT_PROJECT_ROOT` remains a launch-environment fallback only when no folder has
-been saved in the app. The temporary new-chat menu has no arbitrary-folder
-browse control; the settings chooser does. Pins are an existing `pinned` array of absolute paths in
-`~/.walkie-talkie/pinned-projects.json`; keep other entries when adding a folder,
-and relaunch to reload them.
+Folders in the explorer come from each chat's recorded working directory, not
+Codex Desktop sidebar membership. The new-chat default is **`~/workspace`**;
+change it in **Walkie Talkie menu → New chat folder → Choose folder…**. The saved
+setting wins over the legacy `WT_PROJECT_ROOT` launch-environment fallback.
 
 The new **⌃⌘letter** shortcuts work with a keyboard and trackpad, in either
 mouse mode, without Fn or Options+. The old ⌃⌥⌘F-key mappings remain available
@@ -179,54 +167,37 @@ metadata independently matched `local-whisper` and the exact selected chat.
 
 ## Codex binding and chat selection
 
-- While a safe browser/editor is in front, press **⌃⇧⌘B**. The floating
-  switcher should appear near the pointer, within the display bounds, with
-  search focused and project folders shown first, ordered by their most recent
-  chat. Type a folder name, use ↑/↓
-  and Return, and check that only that folder's chats appear. Search their
-  titles; use Escape or ‹ to return to projects, and Escape again to dismiss.
-  Clicking outside dismisses it and returns the keyboard to the previous app.
-- Repeat once bound to a desktop chat using **⌃⌘B** without foregrounding
-  Codex. Initial/unbound and CLI sessions can always use ⌃⇧⌘B. Cached folders
-  should appear promptly on subsequent openings while metadata refreshes.
-- Choose the open disposable desktop chat. Even an unverified row must be
-  checked by exact stable ID before binding. Confirm `GET /target` contains that
-  ID. Switching a binding alone must not send a prompt or create a turn.
-- Choose an older, non-archived disposable chat in the same project folder.
-  A fresh live owner binds; conclusive closure permits reopening that same chat
-  in Terminal in its recorded folder, without repeating an old prompt. Allow
-  around twelve seconds for a negative owner check. Unknown ownership must
-  leave the switcher open with an error and open no second copy.
-- Test a project and conversation beyond the latest 100 global records where
-  available. The shared-daemon catalog follows metadata pages and deduplicates
-  stable IDs. Archived chats are excluded; restore one in Codex before using it.
-  If the shared daemon is unavailable, the metadata fallback is bounded rather
-  than a guarantee of complete history. Rebind's message-body search is separate
-  from this switcher's project-name and chat-title search.
-- Change the selected row, type another query, go back, or close/reopen while an
-  owner check is pending. The stale result must never activate the old selection.
-  Repeated Return must not create duplicate resumes. Check closed, unknown and
-  wrong-ID results independently of successful binding.
-- Test direct CLI binding separately: focus a disposable Terminal tab and press
-  **⌃⌘B**. The target must retain its verified native CLI identity; repeating
-  that key on the same CLI tab disconnects. Physical mouse binding is a separate
-  check: hold left-click then press the configured front thumb button (Logi), or
-  the wheel (Wheel mode). Hovering alone does not change the binding.
-- **Rebind to…** also searches message bodies and recent destinations. This panel
-  existed upstream and now uses Codex history; the project-first picker is new.
-  Search a body-only marker, activate the matching test chat, and verify the
-  same exact live ID binds without a new turn. Closed sessions use the same
-  guarded resume path; metadata drawing must not run Git or probe project paths.
-- Run **Prompt to new** (⌃⌥⌘F8) against an explicitly chosen disposable folder.
-  Verify a native Codex CLI opens with the initial prompt exactly once, and the
-  app binds that same ID/TTY. The launcher starts the shared daemon idempotently,
-  persists the first prompt before attaching the TUI, and records its owner.
-  A new launch without an initial prompt is rejected. Saved resume supplies
-  only the conversation ID and never replays the initial prompt.
-- Native CLI PTY checks already passed first-prompt exactly-once delivery,
-  follow-up text, a genuine red-image input, and steering the same active turn.
-  Desktop delivery passed those checks separately. Neither substitutes for the
-  switcher's physical keyboard/pointer checks. Repeat only with disposable chats.
+- Put a browser or editor in front and open **Find Codex chat…**. Confirm the
+  compact keyboard picker leaves that app in front and shows its cached recent
+  list immediately, ordered by activity with a recorded-folder label. Confirm
+  the first metadata refresh reads SQLite without app-server, process, TTY, or
+  desktop-owner probes.
+- Type a title or folder path and confirm metadata search filters the recent
+  list. Clear it, choose a folder filter, then search for a marker in a user
+  prompt and an assistant answer. Confirm body search stays within that folder.
+  Verify stable IDs do not duplicate across result pages.
+- Move through results with Up/Down. Confirm each selected row shows only the
+  latest prompt and answer, and that an unanswered current prompt does not pair
+  with an answer from an earlier turn. **Return** must bind that exact stable ID
+  and dismiss the picker. **⌘Return** must open in Desktop by default; enabling
+  **Open Chats in Terminal** makes CLI the default. Browsing leaves `GET /target`
+  unchanged. Owner checks run only after an open or send action.
+- Start a harmless prompt through N and send it. Confirm it appears in the
+  history explorer while Walkie leaves the foreground app in front. Repeat N
+  during another recording and verify the saved default folder and folder picker.
+  Confirm D still sends to the bound chat. Restart Walkie after a submitted test
+  prompt and verify the background broker continues the turn and retains any
+  pending approval/question for review in Walkie.
+- Enable **Open Chats in Terminal**, select a disposable chat and use
+  **⌘Return**. Confirm the CLI opens. Disable it and repeat to verify Desktop is
+  the default destination; the preference should persist across restarts.
+- Turn on **Include archived** and confirm archived test chats appear only in
+  their recorded folder. Guardian review records must never appear, including
+  when searching their message text or directly requesting a preview.
+- With a bound chat active, confirm the cursor reports that chat as working and
+  the total running count. Finish a harmless turn and check the brief completion
+  mark. Confirm no unread marker or popup appears. Exercise approval and question
+  callbacks with disposable work; review and answer them only in Walkie.
 
 ## Prompt delivery, quick answers, and reply UI
 
@@ -608,3 +579,13 @@ autorepeat suppression, cancel-only Escape dispatch, stage-dependent hints,
 compact external-display layout and rendered dark/light previews. The full
 Swift run passed: 330 executed, 2 opt-in skips, 0 failures (328 passed).
 The 19:17 installed build passed a synthetic plain recording/hint/cancel check without microphone, screenshots or delivery. After unlock, the existing grants were refreshed in System Settings. The running app verifies Accessibility/event tap and Screen Recording, the saved test-chat binding was restored, and English/workspace/keyboard-hint settings remain. Morgan physically confirmed that Control-Command-I inserted spoken words without submission and that the Control-Command recording reminder appeared. App metadata reports Local Whisper delivery to the caret; the other letter aliases were not separately exercised physically.
+
+
+Desktop read-only history regression: create a disposable background chat with a
+completed, unmistakable seed answer, then run a second harmless bounded turn.
+While the exact second turn is active, open through the picker with Command-Return.
+The picker must close immediately without invoking prepare-open/unsubscribe or
+waiting for native unload. Desktop should show the saved seed history and its
+“This is open in another app” read-only state. Verify the original exact turn
+continues and completes once. Read-only history is not proof of live updates or
+unrestricted older-page loading. Never send/retry the prompt as part of opening.

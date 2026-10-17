@@ -11,11 +11,14 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
+import uuid
 
 PORTS = (8917, 8918, 8919)
 REQUEST_TIMEOUT = 8
@@ -218,6 +221,62 @@ def cleanup_staging(staging):
         shutil.rmtree(staging)
 
 
+def reply_inbox(token_path):
+    """Discover the app's private temporary inbox; older apps use HTTP."""
+    descriptor = Path(token_path).with_name("reply-inbox.json")
+    try:
+        value = json.loads(descriptor.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        raise ReplyError("cannot read Walkie Talkie's reply inbox; reopen the app") from error
+    try:
+        directory = Path(value["directory"])
+        info = directory.lstat()
+        if (value.get("version") != 1 or not directory.is_absolute()
+                or not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o700):
+            raise ValueError("unsafe inbox")
+    except (KeyError, TypeError, AttributeError, OSError, ValueError) as error:
+        raise ReplyError("Walkie Talkie's reply inbox is unavailable; reopen the app") from error
+    return directory
+
+
+def file_reply(payload, directory, *, timeout=REQUEST_TIMEOUT):
+    """Publish once and wait for a receipt; never fall back after publication."""
+    request = directory / str(uuid.uuid4())
+    try:
+        request.mkdir(mode=0o700)
+        staged_payload, _ = stage_images(payload, cache_dir=request)
+        pending = request / "pending.json"
+        pending.write_text(json.dumps(staged_payload), encoding="utf-8")
+        pending.replace(request / "request.json")
+    except (OSError, ReplyError) as error:
+        shutil.rmtree(request, ignore_errors=True)
+        raise ReplyError("could not publish the local reply; no reply was delivered") from error
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            receipt = json.loads((request / "response.json").read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            time.sleep(0.05)
+            continue
+        except (OSError, ValueError) as error:
+            raise ReplyError("local reply outcome is unknown; check the bubble and do not automatically retry") from error
+        if (not isinstance(receipt, dict) or not isinstance(receipt.get("body"), dict)
+                or not isinstance(receipt.get("status"), int)):
+            raise ReplyError("local reply outcome is unknown; check the bubble and do not automatically retry")
+        answer = receipt["body"]
+        try:
+            shutil.rmtree(request)
+        except OSError:
+            print(f"walkie-reply: receipt received; staged files remain at {request}", file=sys.stderr)
+        if receipt["status"] != 200 or answer.get("ok") is not True:
+            raise ReplyError(f"Walkie Talkie refused the local reply (status {receipt['status']})")
+        return answer
+    raise ReplyError(f"local reply outcome is unknown (receipt timed out); check the bubble and do not automatically retry; staged reply kept at {request}")
+
+
 def main(argv=None, *, stdin_text=None, token_path=None, env=None, cwd=None,
          project_root=None, tty=None, opener=None, ports=PORTS, cache_dir=None):
     argv = sys.argv[1:] if argv is None else argv
@@ -229,13 +288,18 @@ def main(argv=None, *, stdin_text=None, token_path=None, env=None, cwd=None,
             stdin_text = sys.stdin.read() if not text and not images else ""
         payload = make_payload(argv, token_path=token_path, stdin_text=stdin_text,
                                env=env, cwd=cwd, project_root=project_root, tty=tty)
-        payload, staging = stage_images(payload, cache_dir=cache_dir)
-        try:
-            answer = post_reply(payload, ports=ports, opener=opener)
-        except ReplyError as error:
-            if staging is not None:
-                raise ReplyError(f"{error}; staged images kept at {staging}") from error
-            raise
+        inbox = reply_inbox(token_path)
+        staging = None
+        if inbox is not None:
+            answer = file_reply(payload, inbox)
+        else:
+            payload, staging = stage_images(payload, cache_dir=cache_dir)
+            try:
+                answer = post_reply(payload, ports=ports, opener=opener)
+            except ReplyError as error:
+                if staging is not None:
+                    raise ReplyError(f"{error}; staged images kept at {staging}") from error
+                raise
     except ReplyError as error:
         print("walkie-reply: " + str(error), file=sys.stderr)
         return 1

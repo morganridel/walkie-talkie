@@ -1,6 +1,6 @@
 import Foundation
 
-/// A deliberate default for new CLI chats, independent of the current binding.
+/// The fallback folder for new chats and the second new-chat gesture.
 /// A folder selected in the app wins over the legacy launch-environment hint.
 enum NewChatFolder {
     static let preferenceKey = "newChatFolder"

@@ -14,7 +14,7 @@ import Foundation
 /// So the preference is a **file**, and the file is the contract:
 ///
 /// ```
-/// ~/.walkie-talkie/mic/choice     # one line: auto | xlr | rx | stage | bose | mac   (tx went 2026-09-23; an old one reads as auto)
+/// ~/.walkie-talkie/mic/choice     # one line: auto | uid:<base64 CoreAudio UID> | legacy roster id
 /// ```
 ///
 /// ## Why a file and not a port
@@ -41,22 +41,30 @@ import Foundation
 /// on the file itself — see `watch`.)
 enum MicChoice {
 
-    /// The id meaning *let the ladder decide*, and the answer to anything
+    /// The id meaning *follow the macOS default input*, and the answer to anything
     /// unreadable. Never a device id.
     static let automatic = "auto"
 
     static var folder: URL { Outbox.home.appendingPathComponent("mic") }
     static var url: URL { folder.appendingPathComponent("choice") }
 
-    /// **What is on disk, or `auto`.** Unknown ids read as `auto` rather than
-    /// being kept: the two apps' rosters are meant to be the same list, and the
-    /// day one of them learns a device the other has not, the older one should
-    /// fall back to its ladder rather than tick nothing and record through
-    /// whatever CoreAudio last pointed at.
+    /// Preserve valid UID choices even while the device is disconnected.
+    /// Unknown legacy IDs and malformed UIDs fall back to automatic.
     static func read(known: [String]) -> String {
         guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return automatic }
         let id = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return known.contains(id) ? id : automatic
+        return normalized(id, known: known)
+    }
+
+    static func normalized(_ id: String, known: [String]) -> String {
+        known.contains(id) || deviceUID(id) != nil ? id : automatic
+    }
+
+    static func deviceUID(_ id: String) -> String? {
+        guard id.hasPrefix("uid:"),
+              let data = Data(base64Encoded: String(id.dropFirst(4))),
+              let uid = String(data: data, encoding: .utf8), !uid.isEmpty else { return nil }
+        return uid
     }
 
     /// Publish a pick. Atomic, so a reader woken by the write never sees a

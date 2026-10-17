@@ -97,6 +97,37 @@ final class KeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(spot.rect.size, NSSize(width: 400, height: 122))
     }
 
+    func testHintMeasurementSurvivesTheReportedCoreTextException() {
+        let font = NSFont.systemFont(ofSize: 12)
+        let size = GestureHintBar.Board.textSize("⌃⌘N", font: font) {
+            NSException(name: .invalidArgumentException,
+                        reason: "attempt to insert nil object from objects[0]", userInfo: nil).raise()
+            return .zero
+        }
+        XCTAssertGreaterThanOrEqual(size.width, 36)
+        XCTAssertGreaterThan(size.height, 12)
+        XCTAssertGreaterThan(GestureHintBar.Board.textSize("New chat", font: font).width, 0)
+    }
+
+    func testHintLayoutRemainsStableAcrossPointerMovementAndStageChanges() {
+        let board = GestureHintBar.Board(frame: .zero)
+        let screen = GestureHintBar.Display(frame: NSRect(x: 0, y: 0, width: 1728, height: 1117),
+            visible: NSRect(x: 0, y: 0, width: 1728, height: 1079), builtIn: true)
+        for stage in [GestureHintBar.Stage(listening: true, prompting: true),
+                      .init(listening: true, prompting: true, filming: true, spawn: true),
+                      .init(listening: true), .init(listening: true, quick: true)] {
+            board.keyboard = GestureHintBar.keyboardHints(for: stage)
+            let size = board.baseSize
+            XCTAssertGreaterThan(size.width, 0)
+            XCTAssertLessThanOrEqual(size.width, 600)
+            for i in 0..<1000 {
+                let spot = GestureHintBar.spot(base: board.baseSize, on: [screen],
+                    pointer: NSPoint(x: i % 1728, y: i % 1117), scaleOverride: 1)
+                XCTAssertEqual(spot?.rect.size, size)
+            }
+        }
+    }
+
     func testRenderKeyboardHintsForReview() throws {
         guard let directory = ProcessInfo.processInfo.environment["KEYBOARD_HINT_PNG"] else { return }
         for (name, stage) in [("prompt", GestureHintBar.Stage(listening: true, prompting: true)),

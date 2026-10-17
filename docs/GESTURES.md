@@ -20,7 +20,7 @@ only a keyboard and trackpad. Physical mouse gestures remain untested on this Ma
 
 Press **⌃⇧⌘B from any app** for the project/chat switcher. Choose a project, then an open or historical chat. Projects are ordered by their most recent chat. Once bound to Codex desktop, **⌃⌘B** opens it too. In Terminal, ⌃⌘B binds the active Codex CLI tab directly. The menu's **Bind Codex chat…** opens the same switcher.
 
-New CLI chats default to `~/workspace`. Set another default in **Walkie Talkie menu → New chat folder → Choose folder…**, or reset it with **Use ~/workspace**. Picking a folder during a new-chat recording overrides the default for that take.
+New chats use Codex CLI and reuse the bound chat’s folder. With no binding, they use the saved default (`~/workspace` initially). Press **⌃⌘N again while recording** to select the default and show the folder picker, where other folders are available. Set the saved default in **Walkie Talkie menu → New chat folder → Choose folder…**, or reset it with **Use ~/workspace**. No chat is created until the reviewed prompt is sent.
 
 See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, editing an unsent draft, new chats in the same/different folder, and native desktop chats outside sidebar projects.
 
@@ -32,7 +32,7 @@ See [Daily workflows](CODEX_TEST_GUIDE.md#daily-workflows) for existing chats, e
 | Start / stop plain dictation without Return | **⌃⌘I** (I for insert); **F5** also remains available |
 | Prompt at the caret / stop it | **⌃⌘P** |
 | Quick Ask while idle; cancel active work otherwise | **⌃⌘A** (A for ask); stop the question with **⌃⌘I** |
-| New CLI chat / redirect the current recording to a new chat | **⌃⌘N**; ignore the folder menu to use the saved default |
+| New chat / redirect the current recording to a new chat | **⌃⌘N**; press again for the default folder and picker |
 | Screenshot during a prompt | **⌃⌘S** |
 | Start / stop film during a prompt | **⌃⌘V** (V for video) |
 | Typed note during a prompt; disconnect while idle | **⌃⌘T**; during plain dictation it stops without Return |
@@ -104,7 +104,7 @@ During a normal prompt, these are the actions:
 |---|---|---|
 | 🏁 end | Front click | **⌃⌘D** to stop; review, then Return to send |
 | 🗑️ cancel | Front + left | **⌃⌘Esc** |
-| ✨ new | Front + up | **⌃⌘N**; redirects this recording to a new CLI chat |
+| ✨ new | Front + up | **⌃⌘N**; redirects this recording to a new CLI chat; repeat for the default folder and picker |
 | ☠️ | Front + down | **⌃⌘K**; toggles the completion-and-close/archive cue |
 | 📸 shot | Rear click | **⌃⌘S**, or **⌃⌥⌘F6** |
 | 🔴 / ⏹️ video | Rear + up | **⌃⌘V** |
@@ -119,7 +119,7 @@ the model. See the full mapping below for state-dependent behavior.
 ## Showing something while you speak
 
 Moving the pointer by itself is **not a continuous visual feed to Codex**.
-A normal prompt to the bound chat, a new CLI chat, or a full prompt at the caret
+A normal prompt to the bound chat, a new chat, or a full prompt at the caret
 attempts an opening screenshot with that moment's pointer position. Plain F5
 dictation and Quick Ask take no opening screenshot. Check the attachment count;
 Screen Recording permission is needed for a successful capture.

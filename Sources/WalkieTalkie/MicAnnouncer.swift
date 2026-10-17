@@ -5,23 +5,9 @@ import CoreAudio
 /// bottom edge of the screen under the mouse when the microphone this app would
 /// record through changes, holds ~2.5 s and falls away (2026-09-23).
 ///
-/// the original author: *"pune notificarea verde de jos sa vina de la walkie"*. It was the original author
-/// Addons' for one afternoon, announcing the **system default input** — and on
-/// the first real plug-in it said nothing at all: the DJI receiver went in,
-/// this app and addons' Whisper both moved to it, and the system default stayed
-/// on the WH-1000XM3 headphones, so an announcer watching the default had
-/// nothing to announce. What is worth saying is what *records*, which is
-/// `InputDevice.resolve()` — the choice file plus the ladder over the devices
-/// present, the same answer the chip, the menu and `MicRecorder` read.
-///
-/// **Triggers:** a CoreAudio device-list change (a plug or an unplug) and a
-/// change of `~/.walkie-talkie/mic/choice` (either app's menu). Every trigger
-/// only restarts a 0.6 s settle — a plug-in fires a burst — and the resolver is
-/// asked once when it expires; a burst that ends where it began says nothing.
-/// **Never at launch**: the device present then is the baseline. The system
-/// default input is deliberately **not** a trigger: it is not what this app
-/// records through, and the original author Addons now moves it off the WH-1000XM3 on its
-/// own, which would otherwise raise a second tab about a device nobody records.
+/// Watches device connections, the macOS default input and the saved choice.
+/// Changes settle for 0.6 s before resolving, so plug-in bursts announce once.
+/// The launch input is the baseline; runtime changes are logged without a tab.
 ///
 /// **The look is the original author Addons' `BottomTabBanner`, reproduced** — green, flush
 /// on the bottom edge, top corners rounded, click-through, non-activating.
@@ -79,16 +65,17 @@ final class MicAnnouncer {
             guard let self else { return }
             self.last = Self.current().key
             Log.info("🎤 mic announcer: baseline \(self.last.isEmpty ? "none" : self.last)")
-            var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices,
-                                                  mScope: kAudioObjectPropertyScopeGlobal,
-                                                  mElement: kAudioObjectPropertyElementMain)
             let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.poke() }
-            if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject),
-                                                   &addr, self.queue, block) == noErr {
-                self.listener = block
-            } else {
-                Log.error("🎤 mic announcer: cannot watch the device list")
+            for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultInputDevice] {
+                var addr = AudioObjectPropertyAddress(mSelector: selector,
+                                                      mScope: kAudioObjectPropertyScopeGlobal,
+                                                      mElement: kAudioObjectPropertyElementMain)
+                if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject),
+                                                       &addr, self.queue, block) != noErr {
+                    Log.error("🎤 mic announcer: cannot watch audio property \(selector)")
+                }
             }
+            self.listener = block
         }
     }
 

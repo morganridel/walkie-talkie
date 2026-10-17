@@ -140,7 +140,7 @@ final class CodexBindingTests: XCTestCase {
         var saved = row
         saved["live"] = false
         XCTAssertNil(CodexBridge.Conversation(saved)?.terminalTTY)
-        XCTAssertTrue(CodexBridge.Conversation(saved)?.locationLabel.hasPrefix("Status unverified") == true)
+        XCTAssertEqual(CodexBridge.Conversation(saved)?.locationLabel, "Saved chat")
         for invalid in ["codex:chat-a", "ttys009", "/dev/ttys009;kill", "/tmp/ttys009"] {
             var malformed = row
             malformed["tty"] = invalid

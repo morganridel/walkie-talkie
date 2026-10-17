@@ -14,12 +14,21 @@ from codex_bridge import BridgeError, RpcClient, find_codex, sidecar_dir, make_i
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--managed", action="store_true", help="Allow safe reuse of this Walkie terminal")
+    parser.add_argument("--reuse-request", help="Try a private staged request in an idle managed terminal")
     parser.add_argument("--cd", default=os.getcwd(), help="Project folder")
     parser.add_argument("--resume", help="Resume this exact Codex conversation ID")
     parser.add_argument("--model", help="Optional model override")
     parser.add_argument("--image", action="append", default=[], help="Attach a screenshot to the first prompt")
     parser.add_argument("prompt", nargs="?", default="")
     args = parser.parse_args()
+    if args.reuse_request:
+        from codex_terminal import try_reuse
+        try:
+            print(json.dumps(try_reuse(json.loads(Path(args.reuse_request).read_text()))))
+        except Exception as error:
+            print(json.dumps({"status": "error", "error": str(error)}))
+        return
     if not args.resume and not args.prompt.strip():
         parser.error("a new session needs its first prompt; use --resume for an existing chat")
     cwd = Path(args.cd).expanduser().resolve()
@@ -35,6 +44,10 @@ def main():
                    stdout=subprocess.DEVNULL)
     with RpcClient(timeout=20) as client:
         if args.resume:
+            # Opening an existing thread must not clone a Desktop writer or
+            # interrupt active work. This never sends/replays a user prompt.
+            from codex_bridge import prepare_open
+            prepare_open(argparse.Namespace(id=args.resume, destination="cli"))
             started = client.request("thread/resume", {"threadId": args.resume}, timeout=30)
         else:
             params = {"cwd": str(cwd)}
@@ -50,6 +63,11 @@ def main():
             # by the TUI. Persist the actual user prompt before attaching it.
             client.request("turn/start", {"threadId": thread_id,
                            "input": make_input(args.prompt, args.image)}, timeout=30)
+    if args.managed:
+        from codex_terminal import TerminalHost
+        os.environ.setdefault("WALKIE_SHOTS", str(Path.home() / "Library/Caches/local.walkie-talkie/shots"))
+        TerminalHost(binary, thread_id, cwd, "/dev/" + tty, args.model).run()
+        return
     folder = sidecar_dir()
     folder.mkdir(parents=True, exist_ok=True)
     record = folder / (tty + ".json")

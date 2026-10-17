@@ -35,7 +35,7 @@ enum WalkieKeyboardShortcut: String, CaseIterable {
         case .dictate: return "Dictate without Return / stop Quick Ask"
         case .dictateAndEnter: return "Dictate + Return / screenshot during a prompt"
         case .caret: return "Prompt at caret / stop"
-        case .newChat: return "New CLI chat / redirect recording"
+        case .newChat: return "New chat / default folder picker"
         case .finish: return "Toggle finish-and-close cue"
         case .route: return "Bound prompt / switch bound and caret"
         case .ask: return "Quick Ask at rest / cancel active work"
